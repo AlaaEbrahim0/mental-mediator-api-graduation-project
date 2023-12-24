@@ -6,9 +6,10 @@ using System.Threading.Tasks;
 using Shared;
 
 namespace Application.Services;
-public interface IAuthenticationService
+public interface IAuthService
 {
     Task<AuthResponse> RegisterAsync(RegistrationModel registrationModel);
     Task<AuthResponse> SignInAsync(SignInModel registrationModel);
-
+    Task<AuthResponse> AddExternalLoginAsync();
 }
+

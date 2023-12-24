@@ -8,7 +8,6 @@
 
   <ItemGroup>
     <Folder Include="Constants\" />
-    <Folder Include="Enums\" />
   </ItemGroup>
 
   <ItemGroup>

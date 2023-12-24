@@ -1,5 +1,4 @@
 ﻿using System.IdentityModel.Tokens.Jwt;
-using System.Net;
 using System.Security.Claims;
 using System.Text;
 using Application.Options;
@@ -10,18 +9,20 @@ using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using Shared;
 
-namespace Infrastructure;
-public class AuthenticationService : IAuthenticationService
+namespace Infrastructure.Services;
+public class AuthService : IAuthService
 {
     private readonly UserManager<AppUser> _userManager;
+    private readonly SignInManager<AppUser> _signInManager;
     private readonly JwtOptions _jwtOptions;
     private readonly IMapper _mapper;
 
-    public AuthenticationService(UserManager<AppUser> userManager, IMapper mapper, IOptions<JwtOptions> jwtOptions)
+    public AuthService(UserManager<AppUser> userManager, IMapper mapper, IOptions<JwtOptions> jwtOptions, SignInManager<AppUser> signInManager)
     {
         _userManager = userManager;
         _mapper = mapper;
         _jwtOptions = jwtOptions.Value;
+        _signInManager = signInManager;
     }
 
     public async Task<AuthResponse> RegisterAsync(RegistrationModel model)
@@ -34,32 +35,31 @@ public class AuthenticationService : IAuthenticationService
         {
             response.Message = "Email already exist";
         }
-       
+
         var user = _mapper.Map<AppUser>(model);
         var result = await _userManager.CreateAsync(user, model.Password);
 
         var sb = new StringBuilder();
         if (!result.Succeeded)
         {
-            foreach(var error in  result.Errors)
+            foreach (var error in result.Errors)
             {
                 sb.AppendLine(error.Code + " : " + error.Description);
             }
             response.Message = sb.ToString();
             return response;
         }
-        
+
         await _userManager.AddToRoleAsync(user, "User");
-            
+
         var token = await CreateJwtToken(user);
 
         response.Message = $"User: [{model.Email}] has been created succesfully";
         response.IsAuthenticated = true;
         response.Token = new JwtSecurityTokenHandler().WriteToken(token);
-        response.ExpiresOn = token.ValidTo; 
+        response.ExpiresOn = token.ValidTo;
         response.Email = model.Email;
         response.Roles = new List<string> { "User" };
-
 
         return response;
     }
@@ -110,7 +110,7 @@ public class AuthenticationService : IAuthenticationService
         var authModel = new AuthResponse();
 
         var user = await _userManager.FindByEmailAsync(signInModel.Email);
-        
+
         if (user is null || !await _userManager.CheckPasswordAsync(user, signInModel.Password))
         {
             authModel.Message = "Invalid Email Address or Password";
@@ -128,4 +128,45 @@ public class AuthenticationService : IAuthenticationService
 
         return authModel;
     }
+
+    public async Task<AuthResponse> AddExternalLoginAsync()
+    {
+        var authModel = new AuthResponse();
+
+        var externalUserInfo = await _signInManager.GetExternalLoginInfoAsync();
+        if (externalUserInfo is null)
+        {
+            authModel.Message = "Error loading external login information";
+            authModel.IsAuthenticated = false;
+        }
+
+        var localUserAccount = await _userManager.FindByEmailAsync(externalUserInfo!.Principal.FindFirstValue(ClaimTypes.Email)!);
+
+        if (localUserAccount is null)
+        {
+            var externalUserEmail = externalUserInfo.Principal.FindFirstValue(ClaimTypes.Email);
+            localUserAccount = new AppUser()
+            {
+                Email = externalUserEmail,
+                UserName = externalUserEmail.Split('@')[0]
+            };
+            var result = await _userManager.CreateAsync(localUserAccount);
+            result = await _userManager.AddToRoleAsync(localUserAccount, "User");
+        }
+
+        await _userManager.AddLoginAsync(localUserAccount, externalUserInfo);
+        await _signInManager.ExternalLoginSignInAsync(externalUserInfo.LoginProvider, externalUserInfo.ProviderKey, false, true);
+
+        var token = await CreateJwtToken(localUserAccount);
+        authModel.Token = new JwtSecurityTokenHandler().WriteToken(token);
+        authModel.Email = localUserAccount.Email;
+        authModel.ExpiresOn = token.ValidTo;
+        authModel.IsAuthenticated = true;
+        authModel.Roles = (await _userManager.GetRolesAsync(localUserAccount)).ToList();
+        CreateUser(authModel, token);
+
+        return authModel;
+
+    }
+
 }

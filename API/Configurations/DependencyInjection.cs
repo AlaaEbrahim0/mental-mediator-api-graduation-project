@@ -3,6 +3,7 @@ using Application.Options;
 using Application.Services;
 using Infrastructure;
 using Infrastructure.Data;
+using Infrastructure.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -47,13 +48,19 @@ public static class DependencyInjection
     }
     public static IServiceCollection ConfigureAuthentication(this IServiceCollection services, ConfigurationManager configuration)
     {
-        services.AddScoped<IAuthenticationService, AuthenticationService>();
+        services.AddScoped<IAuthService, AuthService>();
 
         services
             .AddAuthentication(options =>
             {
                 options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
                 options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+            })
+            .AddGoogle(options =>
+            {
+                options.ClientId = configuration["GoogleAuthentication:Id"]!;
+                options.ClientSecret = configuration["GoogleAuthentication:Secret"]!;
+                
             })
             .AddJwtBearer(config =>
             {
@@ -68,7 +75,7 @@ public static class DependencyInjection
                     ValidateLifetime = true,
                 };
             });
-
+            
         return services;
     }
     public static IServiceCollection ConfigureAuthorization(this IServiceCollection services)
@@ -96,6 +103,8 @@ public static class DependencyInjection
     public static IServiceCollection ConfigureOptions(this IServiceCollection services, IConfiguration configuration)
     {
         services.Configure<JwtOptions>(configuration.GetSection("JwtSettings"));
+        services.Configure<GoogleAuthenticationOptions>(configuration.GetSection("GoogleAuthentication"));
+
         return services;
     }
     public static IServiceCollection ConfigureAutoMapper(this IServiceCollection services)
