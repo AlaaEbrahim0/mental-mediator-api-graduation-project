@@ -12,7 +12,8 @@ builder.Services
     .ConfigureIdentity()
     .ConfigureAuthentication(builder.Configuration)
     .ConfigureAuthorization()
-    .ConfigureMail(builder.Configuration)
+    .ConfigureMailSettings(builder.Configuration)
+    .ConfigureMailService()
     .ConfigureOptions(builder.Configuration)
     .ConfigureAutoMapper()
     .ConfigureDbContext(builder.Configuration);
