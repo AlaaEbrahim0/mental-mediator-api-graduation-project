@@ -46,6 +46,19 @@ public static class DependencyInjection
 
         return services;
     }
+
+    public static IServiceCollection ConfigureMailSettings(this IServiceCollection services, ConfigurationManager configuration)
+    {
+        services.Configure<MailSettings>(configuration.GetSection("MailSettings"));
+        return services;
+    }
+
+    public static IServiceCollection ConfigureMailService(this IServiceCollection services)
+    {
+        services.AddTransient<IMailService, MailService>();
+        return services;
+    }
+
     public static IServiceCollection ConfigureAuthentication(this IServiceCollection services, ConfigurationManager configuration)
     {
         services.AddScoped<IAuthService, AuthService>();
