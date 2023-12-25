@@ -150,8 +150,8 @@ public class AuthService : IAuthService
                 Email = externalUserEmail,
                 UserName = externalUserEmail.Split('@')[0]
             };
-            var result = await _userManager.CreateAsync(localUserAccount);
-            result = await _userManager.AddToRoleAsync(localUserAccount, "User");
+            await _userManager.CreateAsync(localUserAccount);
+            await _userManager.AddToRoleAsync(localUserAccount, "User");
         }
 
         await _userManager.AddLoginAsync(localUserAccount, externalUserInfo);
@@ -163,7 +163,6 @@ public class AuthService : IAuthService
         authModel.ExpiresOn = token.ValidTo;
         authModel.IsAuthenticated = true;
         authModel.Roles = (await _userManager.GetRolesAsync(localUserAccount)).ToList();
-        CreateUser(authModel, token);
 
         return authModel;
 

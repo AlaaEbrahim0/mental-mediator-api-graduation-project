@@ -1,10 +1,5 @@
-﻿using System.Net;
-using System.Net.Sockets;
-using System.Runtime.InteropServices;
-using System.Security.Claims;
-using Application.Services;
+﻿using Application.Services;
 using Infrastructure;
-using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -13,7 +8,7 @@ using Shared;
 namespace API.Controllers;
 
 [ApiController]
-[Route("api")]
+[Route("api/auth")]
 public class AuthController : ControllerBase
 {
     private readonly IAuthService _authService;
