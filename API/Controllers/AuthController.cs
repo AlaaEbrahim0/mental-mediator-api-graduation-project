@@ -36,6 +36,10 @@ public class AuthController : ControllerBase
         {
             return BadRequest(result.Message);
         }
+
+        var confirmationLink = Url.Action("ConfirmEmail", "Auth", new { email = result.Email }, Request.Scheme);
+        await _authService.SendEmailConfirmationMessage(result.Email, confirmationLink);
+
         return StatusCode(201, result);
     }
 
@@ -54,8 +58,7 @@ public class AuthController : ControllerBase
         return Ok(result);
     }
 
-    [HttpGet]
-    [Route("external-login")]
+    [HttpGet("external-login")]
     public IActionResult ExternalLogin()
     {
         var provider = "Google";
@@ -65,8 +68,7 @@ public class AuthController : ControllerBase
         return Challenge(properties, provider);
     }
     
-    [HttpGet]
-    [Route("external-login-callback")]
+    [HttpGet("external-login-callback")]
     public async Task<IActionResult> ExternalLoginCallBack()
     {
         var result = await _authService.AddExternalLoginAsync();
@@ -74,12 +76,23 @@ public class AuthController : ControllerBase
         {
             return BadRequest(result.Message);
         }
+
+        var confirmationLink = Url.Action("ConfirmEmail", "Auth", new { email = result.Email }, Request.Scheme);
+        await _authService.SendEmailConfirmationMessage(result.Email, confirmationLink);
+
+        return Ok(result);
+    }
+
+    [HttpGet("email-confirmation")]
+    public async Task<IActionResult> ConfirmEmail(string email, string token)
+    {
+        var result = await _authService.ConfirmEmail(email, token);
         return Ok(result);
     }
 
     [HttpGet("test")]
     [Authorize]
-    public IActionResult test()
+    public IActionResult Test()
     {       
         return Ok("You are authorized now");
     }
@@ -90,7 +103,4 @@ public class AuthController : ControllerBase
         await _mailService.SendEmailAsync(mailRequest);
         return Ok();
     }
-
-
-
 }

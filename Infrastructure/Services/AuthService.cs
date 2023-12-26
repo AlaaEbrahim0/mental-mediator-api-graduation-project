@@ -1,11 +1,14 @@
 ﻿using System.Diagnostics.Tracing;
 using System.IdentityModel.Tokens.Jwt;
+using System.Net;
 using System.Security.Claims;
+using System.Security.Policy;
 using System.Text;
 using Application.Options;
 using Application.Services;
 using AutoMapper;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using Shared;
@@ -16,14 +19,16 @@ public class AuthService : IAuthService
     private readonly UserManager<AppUser> _userManager;
     private readonly SignInManager<AppUser> _signInManager;
     private readonly JwtOptions _jwtOptions;
+    private readonly IMailService _mailService;
     private readonly IMapper _mapper;
 
-    public AuthService(UserManager<AppUser> userManager, IMapper mapper, IOptions<JwtOptions> jwtOptions, SignInManager<AppUser> signInManager)
+    public AuthService(UserManager<AppUser> userManager, IMapper mapper, IOptions<JwtOptions> jwtOptions, SignInManager<AppUser> signInManager, IMailService mailService)
     {
         _userManager = userManager;
         _mapper = mapper;
         _jwtOptions = jwtOptions.Value;
         _signInManager = signInManager;
+        _mailService = mailService;
     }
 
     public async Task<AuthResponse> RegisterAsync(RegistrationModel model)
@@ -63,6 +68,19 @@ public class AuthService : IAuthService
         response.Roles = new List<string> { "User" };
 
         return response;
+    }
+
+    public async Task SendEmailConfirmationMessage(string email, string confirmationLink)
+    {
+        var user = await _userManager.FindByEmailAsync(email);
+        var token = await _userManager.GenerateEmailConfirmationTokenAsync(user);
+        confirmationLink += $"&token={WebUtility.UrlEncode(token)}";
+        var mailRequest = new MailRequest();
+        mailRequest.ToEmail = email;
+        mailRequest.Subject = "Email Confirmation";
+        var message = EmailConfirmationMessageTemplate.GenerateConfirmationEmail(mailRequest.ToEmail, confirmationLink);
+        mailRequest.Body = message;
+        await _mailService.SendEmailAsync(mailRequest);
     }
 
     private async Task<bool> FindByEmail(string email)
@@ -119,6 +137,13 @@ public class AuthService : IAuthService
             return authModel;
         }
 
+        if (!user.EmailConfirmed)
+        {
+            authModel.Message = "Email isn't confirmed";
+            authModel.IsAuthenticated = false;
+            return authModel;
+        }
+
         var token = await CreateJwtToken(user!);
         var userRoles = await _userManager.GetRolesAsync(user!);
 
@@ -165,9 +190,28 @@ public class AuthService : IAuthService
         authModel.ExpiresOn = token.ValidTo;
         authModel.IsAuthenticated = true;
         authModel.Roles = (await _userManager.GetRolesAsync(localUserAccount)).ToList();
+        authModel.Message = "Successful Login";
 
         return authModel;
 
     }
 
+    public async Task<string> ConfirmEmail(string email, string token)
+    {
+        var user = await _userManager.FindByEmailAsync(email);
+        if (user is null)
+        {
+            return $"Confirmation Failed\nERROR: user: {email} doesn't exist";
+        }
+
+        var actualToken = await _userManager.GenerateEmailConfirmationTokenAsync(user);
+        var result = await _userManager.ConfirmEmailAsync(user, token);
+        var sb = new StringBuilder();
+        if (!result.Succeeded)
+        {
+            result.Errors.Select(e => sb.AppendLine(e.Description));
+            return sb.ToString();
+        }
+        return "Email has been confirmed successfully";
+    }
 }

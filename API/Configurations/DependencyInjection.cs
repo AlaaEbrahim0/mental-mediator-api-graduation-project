@@ -99,14 +99,18 @@ public static class DependencyInjection
     public static IServiceCollection ConfigureIdentity(this IServiceCollection services)
     {
         services
-            .AddIdentity<AppUser, IdentityRole>()
-            .AddEntityFrameworkStores<AppDbContext>();
+            .AddIdentity<AppUser, IdentityRole>(options =>
+            {
+                options.SignIn.RequireConfirmedEmail = true;
+            })
+            .AddEntityFrameworkStores<AppDbContext>()
+            .AddDefaultTokenProviders();
 
         return services;
     }
     public static IServiceCollection ConfigureDbContext(this IServiceCollection services, IConfiguration configuration)
     {
-        var connectionString = configuration.GetConnectionString("somee_constr");
+        var connectionString = configuration.GetConnectionString("constr");
         services.AddDbContext<AppDbContext>(config =>
         {   
             config.UseSqlServer(connectionString, b => b.MigrationsAssembly(nameof(Infrastructure)));
