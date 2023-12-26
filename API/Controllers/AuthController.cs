@@ -13,13 +13,15 @@ public class AuthController : ControllerBase
 {
     private readonly IAuthService _authService;
     private readonly SignInManager<AppUser> _signInManager;
+    private readonly IMailService _mailService;
     private readonly UserManager<AppUser> _userManager;
 
-    public AuthController(IAuthService authService, SignInManager<AppUser> signInManager, UserManager<AppUser> userManager)
+    public AuthController(IAuthService authService, SignInManager<AppUser> signInManager, UserManager<AppUser> userManager, IMailService mailService)
     {
         _authService = authService;
         _signInManager = signInManager;
         _userManager = userManager;
+        _mailService = mailService;
     }
 
     [HttpPost("register")]
@@ -80,6 +82,13 @@ public class AuthController : ControllerBase
     public IActionResult test()
     {       
         return Ok("You are authorized now");
+    }
+
+    [HttpPost("mail")]
+    public async Task<IActionResult> SendMail(MailRequest mailRequest)
+    {
+        await _mailService.SendEmailAsync(mailRequest);
+        return Ok();
     }
 
 

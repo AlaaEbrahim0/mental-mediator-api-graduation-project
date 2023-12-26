@@ -1,9 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using Application.Options;
+﻿using Application.Options;
 using Application.Services;
 using MailKit.Net.Smtp;
 using MailKit.Security;
@@ -24,7 +19,7 @@ public class MailService : IMailService
     public async Task SendEmailAsync(MailRequest mailRequest)
     {
         var email = new MimeMessage();
-        email.Sender = MailboxAddress.Parse(_mailSettings.Mail);
+        email.Sender = MailboxAddress.Parse(_mailSettings.Username);
         email.To.Add(MailboxAddress.Parse(mailRequest.ToEmail));
         email.Subject = mailRequest.Subject;
 
@@ -36,7 +31,7 @@ public class MailService : IMailService
         using (var smtp = new SmtpClient()) 
         {
             smtp.Connect(_mailSettings.Host, _mailSettings.Port, SecureSocketOptions.StartTls);
-            smtp.Authenticate(_mailSettings.Mail, _mailSettings.Password);
+            smtp.Authenticate(_mailSettings.Username, _mailSettings.Password);
             await smtp.SendAsync(email);
             smtp.Disconnect(true);
         }
