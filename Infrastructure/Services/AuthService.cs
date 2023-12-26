@@ -1,4 +1,5 @@
-﻿using System.IdentityModel.Tokens.Jwt;
+﻿using System.Diagnostics.Tracing;
+using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
 using Application.Options;
@@ -115,6 +116,7 @@ public class AuthService : IAuthService
         {
             authModel.Message = "Invalid Email Address or Password";
             authModel.IsAuthenticated = false;
+            return authModel;
         }
 
         var token = await CreateJwtToken(user!);
@@ -148,7 +150,7 @@ public class AuthService : IAuthService
             localUserAccount = new AppUser()
             {
                 Email = externalUserEmail,
-                UserName = externalUserEmail.Split('@')[0]
+                UserName = externalUserEmail!.Split('@')[0]
             };
             await _userManager.CreateAsync(localUserAccount);
             await _userManager.AddToRoleAsync(localUserAccount, "User");
