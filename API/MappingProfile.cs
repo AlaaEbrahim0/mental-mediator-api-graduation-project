@@ -1,5 +1,6 @@
 ﻿namespace API;
 using AutoMapper;
+using Domain.Entities;
 using Infrastructure;
 using Shared;
 

@@ -1,4 +1,5 @@
 ﻿using Application.Services;
+using Domain.Entities;
 using Infrastructure;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
@@ -12,16 +13,10 @@ namespace API.Controllers;
 public class AuthController : ControllerBase
 {
     private readonly IAuthService _authService;
-    private readonly SignInManager<AppUser> _signInManager;
-    private readonly IMailService _mailService;
-    private readonly UserManager<AppUser> _userManager;
 
-    public AuthController(IAuthService authService, SignInManager<AppUser> signInManager, UserManager<AppUser> userManager, IMailService mailService)
+    public AuthController(IAuthService authService)
     {
         _authService = authService;
-        _signInManager = signInManager;
-        _userManager = userManager;
-        _mailService = mailService;
     }
 
     [HttpPost("register")]
@@ -31,15 +26,15 @@ public class AuthController : ControllerBase
         {
             return UnprocessableEntity(ModelState);
         }
-        var result = await _authService.RegisterAsync(model);
+        var result = await _authService.RegisterAsync(model, (id, token) =>
+        {
+            var confirmationLink = Url.Action("ConfirmEmail", "Auth", new {id = id, token = token}, Request.Scheme);
+            return confirmationLink!;
+        });
         if (!result.IsAuthenticated)
         {
             return BadRequest(result.Message);
         }
-
-        var confirmationLink = Url.Action("ConfirmEmail", "Auth", new { email = result.Email }, Request.Scheme);
-        await _authService.SendEmailConfirmationMessage(result.Email, confirmationLink);
-
         return StatusCode(201, result);
     }
 
@@ -58,49 +53,47 @@ public class AuthController : ControllerBase
         return Ok(result);
     }
 
+
     [HttpGet("external-login")]
     public IActionResult ExternalLogin()
     {
         var provider = "Google";
-        var redirectUrl = Url.Action("ExternalLoginCallBack", "Auth");
-        var properties = _signInManager.ConfigureExternalAuthenticationProperties(provider, redirectUrl);
+        var redirectUrl = Url.Action("ExternalLoginCallback", "Auth", new { }, Request.Scheme);
+        var properties = _authService.GetExternalAuthenticationProperties(provider, redirectUrl);
 
         return Challenge(properties, provider);
     }
-    
+
+
     [HttpGet("external-login-callback")]
-    public async Task<IActionResult> ExternalLoginCallBack()
+    public async Task<IActionResult> ExternalLoginCallback()
     {
-        var result = await _authService.AddExternalLoginAsync();
-        if (!result.IsAuthenticated)
+        var signInResult = await _authService.ExternalLoginAsync();
+        if (!signInResult.IsAuthenticated)
         {
-            return BadRequest(result.Message);
+            return BadRequest(signInResult.Message);
         }
 
-        var confirmationLink = Url.Action("ConfirmEmail", "Auth", new { email = result.Email }, Request.Scheme);
-        await _authService.SendEmailConfirmationMessage(result.Email, confirmationLink);
-
-        return Ok(result);
-    }
-
-    [HttpGet("email-confirmation")]
-    public async Task<IActionResult> ConfirmEmail(string email, string token)
-    {
-        var result = await _authService.ConfirmEmail(email, token);
-        return Ok(result);
+        return Ok(signInResult);
     }
 
     [HttpGet("test")]
     [Authorize]
-    public IActionResult Test()
+    public IActionResult test()
     {       
         return Ok("You are authorized now");
     }
 
-    [HttpPost("mail")]
-    public async Task<IActionResult> SendMail(MailRequest mailRequest)
+    [HttpPost("confirm-email")]
+    public async Task<IActionResult> ConfirmEmail(string id, string token)
     {
-        await _mailService.SendEmailAsync(mailRequest);
-        return Ok();
+        var result = await _authService.ConfirmEmailAsync(id, token);
+        if (!result.IsSuccessful)
+        {
+            return BadRequest(result.Message);
+        }
+        return Ok(result.Message);
     }
+
+
 }

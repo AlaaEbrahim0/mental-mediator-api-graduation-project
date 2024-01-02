@@ -1,5 +1,4 @@
 ﻿namespace Shared;
-
 public class AuthResponse
 {
     public string? Message { get; set; }
