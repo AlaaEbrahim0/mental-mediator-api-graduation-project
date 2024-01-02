@@ -1,4 +1,5 @@
 ﻿using System.Security.Claims;
+using Domain.Abstractions;
 using Infrastructure.Services;
 using Microsoft.AspNetCore.Authentication;
 using Shared;
@@ -6,10 +7,11 @@ using Shared;
 namespace Application.Services;
 public interface IAuthService
 {
-    Task<AuthResponse> RegisterAsync(RegistrationModel registrationModel, Func<string, string, string> callback);
-    Task<AuthResponse> SignInAsync(SignInModel signInModel);
-    Task<AuthResponse> ExternalLoginAsync();
+    Task<Result<RegisterationResponse>> RegisterAsync(RegistrationRequest RegistrationRequest, Func<string, string, string> callback);
+    Task<Result<AuthResponse>> SignInAsync(SignInRequest signInModel);
+    Task<Result<AuthResponse>> ExternalLoginAsync();
+    Task<Result<EmailConfirmationResponse>> ConfirmEmailAsync(string id, string token);  
     AuthenticationProperties GetExternalAuthenticationProperties(string provider, string? redirectUrl);
-    Task<EmailConfirmationResponse> ConfirmEmailAsync(string id, string token);  
 }
 
+            

@@ -20,7 +20,7 @@ public class AuthController : ControllerBase
     }
 
     [HttpPost("register")]
-    public async Task<IActionResult> Register([FromBody] RegistrationModel model)
+    public async Task<IActionResult> Register([FromBody] RegistrationRequest model)
     {
         if (model is null)
         {
@@ -31,28 +31,27 @@ public class AuthController : ControllerBase
             var confirmationLink = Url.Action("ConfirmEmail", "Auth", new {id = id, token = token}, Request.Scheme);
             return confirmationLink!;
         });
-        if (!result.IsAuthenticated)
+        if (result.IsFailure)
         {
-            return BadRequest(result.Message);
+            return BadRequest(result.Error);
         }
-        return StatusCode(201, result);
+        return StatusCode(201, result.Value);
     }
 
     [HttpPost("signin")]
-    public async Task<IActionResult> SignIn([FromBody] SignInModel model)
+    public async Task<IActionResult> SignIn([FromBody] SignInRequest model)
     {
         if (model is null)
         {
             return UnprocessableEntity(ModelState);
         }
         var result = await _authService.SignInAsync(model);
-        if (!result.IsAuthenticated)
+        if (result.IsFailure)
         {
-            return BadRequest(result.Message);
+            return BadRequest(result.Error);
         }
-        return Ok(result);
+        return Ok(result.Value);
     }
-
 
     [HttpGet("external-login")]
     public IActionResult ExternalLogin()
@@ -64,17 +63,31 @@ public class AuthController : ControllerBase
         return Challenge(properties, provider);
     }
 
-
     [HttpGet("external-login-callback")]
     public async Task<IActionResult> ExternalLoginCallback()
     {
-        var signInResult = await _authService.ExternalLoginAsync();
-        if (!signInResult.IsAuthenticated)
+        var result = await _authService.ExternalLoginAsync();
+        if (result.IsFailure)
         {
-            return BadRequest(signInResult.Message);
+            return BadRequest(result.Error);
         }
 
-        return Ok(signInResult);
+        return Ok(result.Value);
+    }
+
+    [HttpPost("confirm-email")]
+    public async Task<IActionResult> ConfirmEmail(string id, string token)
+    {
+        if (string.IsNullOrEmpty(id) || string.IsNullOrEmpty(token))
+        {
+            BadRequest("Null or empty values for either id or token");
+        }
+        var result = await _authService.ConfirmEmailAsync(id, token);
+        if (result.IsFailure)
+        {
+            return BadRequest(result.Error);
+        }
+        return Ok(result.Value);
     }
 
     [HttpGet("test")]
@@ -82,17 +95,6 @@ public class AuthController : ControllerBase
     public IActionResult test()
     {       
         return Ok("You are authorized now");
-    }
-
-    [HttpPost("confirm-email")]
-    public async Task<IActionResult> ConfirmEmail(string id, string token)
-    {
-        var result = await _authService.ConfirmEmailAsync(id, token);
-        if (!result.IsSuccessful)
-        {
-            return BadRequest(result.Message);
-        }
-        return Ok(result.Message);
     }
 
 

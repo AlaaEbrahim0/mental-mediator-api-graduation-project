@@ -7,4 +7,8 @@
     <Configurations>Debug;Release;Somee</Configurations>
   </PropertyGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\Domain\Domain.csproj" />
+  </ItemGroup>
+
 </Project>

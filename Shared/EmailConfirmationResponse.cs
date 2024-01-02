@@ -1,8 +1,10 @@
-﻿namespace Infrastructure.Services;
+﻿using System.ComponentModel;
+
+namespace Infrastructure.Services;
 
 public class EmailConfirmationResponse
 {
-    public bool IsSuccessful { get; set; }
     public string? Message { get; set; }
+    public string? Email { get; set; }
 }
     

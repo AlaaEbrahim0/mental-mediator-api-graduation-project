@@ -8,6 +8,6 @@ public class MappingProfile: Profile
 {
     public MappingProfile()
     {
-        CreateMap<RegistrationModel, AppUser>();
+        CreateMap<RegistrationRequest, AppUser>();
     }
 }

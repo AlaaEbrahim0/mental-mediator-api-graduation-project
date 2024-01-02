@@ -4,7 +4,6 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Linq;
 using System.Security.Claims;
 using System.Text;
-using System.Threading.Tasks;
 using Application.Options;
 using Domain.Entities;
 using Microsoft.AspNetCore.Identity;
@@ -22,7 +21,7 @@ public class JwtTokenGenerator
         _userManager = userManager;
         _jwtOptions = jwtOptions.Value;
     }
-
+    
     public async Task<JwtSecurityToken> CreateJwtToken(AppUser user)
     {
         IEnumerable<Claim> jwtClaims = await GetUserJwtClaims(user);

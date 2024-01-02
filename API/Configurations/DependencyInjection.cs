@@ -1,9 +1,11 @@
 ﻿using System.Text;
 using Application.Options;
 using Application.Services;
+using Domain.Entities;
 using Infrastructure;
 using Infrastructure.Data;
 using Infrastructure.Services;
+using Infrastructure.Utilities;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -62,6 +64,7 @@ public static class DependencyInjection
     public static IServiceCollection ConfigureAuthentication(this IServiceCollection services, ConfigurationManager configuration)
     {
         services.AddScoped<IAuthService, AuthService>();
+        services.AddTransient<JwtTokenGenerator>();
 
         services
             .AddAuthentication(options =>

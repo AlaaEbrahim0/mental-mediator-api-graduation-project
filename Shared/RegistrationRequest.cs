@@ -2,7 +2,7 @@
 
 namespace Shared;
 
-public record RegistrationModel
+public record RegistrationRequest
 {
 
     [Required(ErrorMessage = "First name is required.")]
@@ -29,8 +29,10 @@ public record RegistrationModel
     public DateOnly BirthDate { get; set; }
 
     [Required(ErrorMessage = "Gender is required")]
-    [AllowedValues("Male", "Female")]
+    [AllowedValues("male", "female", ErrorMessage = "Gender must have a value of [male, female]")]
     public string? Gender { get; set; }
 
     public string Username => Email.Split('@')[0];
+
+
 }

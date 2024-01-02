@@ -4,11 +4,11 @@ using System.Text;
 using Application.Services;
 using Application.Utilities;
 using AutoMapper;
+using Domain.Abstractions;
 using Domain.Entities;
 using Infrastructure.Utilities;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Identity;
-using Microsoft.AspNetCore.WebUtilities;
 using Shared;
 
 namespace Infrastructure.Services;
@@ -19,8 +19,12 @@ public class AuthService : IAuthService
     private readonly JwtTokenGenerator _jwtTokenGenerator;
     private readonly IMailService _mailService;
     private readonly IMapper _mapper;
-
-    public AuthService(UserManager<AppUser> userManager, IMapper mapper, SignInManager<AppUser> signInManager, JwtTokenGenerator jwtTokenGenerator, IMailService mailService)
+    public AuthService(
+        UserManager<AppUser> userManager, 
+        SignInManager<AppUser> signInManager, 
+        JwtTokenGenerator jwtTokenGenerator, 
+        IMailService mailService,
+        IMapper mapper)
     {
         _userManager = userManager;
         _mapper = mapper;
@@ -29,54 +33,42 @@ public class AuthService : IAuthService
         _mailService = mailService;
     }
 
-    public async Task<AuthResponse> RegisterAsync (RegistrationModel model, Func<string, string, string> callback)
+    public async Task<Result<RegisterationResponse>> RegisterAsync(RegistrationRequest model, Func<string, string, string> callback)
     {
-        var response = new AuthResponse();
-
         var user = await _userManager.FindByEmailAsync(model.Email);
 
         if (user is not null)
         {
-            response.Message = "Email already exist";
-            return response;
+            return new Error(
+                "Registeration.EmailAlreadyExist",
+                 "User with the same email address already exists"
+                );
         }
 
         user = _mapper.Map<AppUser>(model);
-        var result = await _userManager.CreateAsync(user, model.Password);
+        var createUserResult = await _userManager.CreateAsync(user, model.Password);
 
         var sb = new StringBuilder();
-        if (!result.Succeeded)
+        if (!createUserResult.Succeeded)
         {
-            foreach (var error in result.Errors)
+            foreach (var error in createUserResult.Errors)
             {
                 sb.AppendLine(error.Code + " : " + error.Description);
             }
-            response.Message = sb.ToString();
-            return response;
+            return new Error("Registration.IdentityErrors", sb.ToString());
         }
 
         await _userManager.AddToRoleAsync(user, "User");
+        await SendEmailConfirmationLink(user, callback);
 
-        var token = await _userManager.GenerateEmailConfirmationTokenAsync(user);
-        var encodedToken = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(token));
-        var confirmationLink = callback.Invoke(user.Id, encodedToken);
-
-        await _mailService.SendEmailAsync(new MailRequest()
-        {
-            ToEmail = user.Email,
-            Subject = "EMAIL CONFIRMATION",
-            Body = NotificationMessageTemplates.EmailConfirmationMessage(user.UserName!, confirmationLink)
-        });
-
+        var response = new RegisterationResponse();
         response.Message = $"User: [{model.Email}] has been created succesfully";
         response.Email = model.Email;
-        response.Roles = new List<string> { "User" };
-        response.IsAuthenticated = true;
-        
+
         return response;
     }
 
-    public async Task<AuthResponse> SignInAsync(SignInModel signInModel)
+    public async Task<Result<AuthResponse>> SignInAsync(SignInRequest signInModel)
     {
         var authModel = new AuthResponse();
 
@@ -84,41 +76,56 @@ public class AuthService : IAuthService
 
         if (user is null || !await _userManager.CheckPasswordAsync(user, signInModel.Password))
         {
-            authModel.Message = "Invalid Email Address or Password";
-            authModel.IsAuthenticated = false;
-            return authModel;
+            return new Error(
+                "Authentication.InvalidCredentials",
+                "Invalid Email Address or Password"
+            );
         }
 
         if (!await _userManager.IsEmailConfirmedAsync(user))
         {
-            authModel.Message = "Email has not been confirmed yet";
-            authModel.IsAuthenticated = false;
-            return authModel;
+            return new Error(
+                "Authentication.UnconfirmedEmail",
+                "Email has not been confirmed yet"
+            );
         }
 
         var token = await _jwtTokenGenerator.CreateJwtToken(user);
         var userRoles = await _userManager.GetRolesAsync(user!);
 
-        authModel.IsAuthenticated = true;
         authModel.Token = new JwtSecurityTokenHandler().WriteToken(token);
         authModel.ExpiresOn = token.ValidTo;
         authModel.Email = user!.Email;
         authModel.Roles = userRoles.ToList();
-        authModel.Message = "Successful sign in";
+        authModel.Message = "User was authenticated successfully";
 
         return authModel;
     }
 
-    public async Task<AuthResponse> ExternalLoginAsync()
+    private async Task SendEmailConfirmationLink(AppUser user, Func<string, string, string> callback)
+    {
+        var token = await _userManager.GenerateEmailConfirmationTokenAsync(user);
+        var confirmationLink = callback.Invoke(user.Id, token);
+
+        await _mailService.SendEmailAsync(new MailRequest()
+        {
+            ToEmail = user.Email,
+            Subject = "EMAIL CONFIRMATION",
+            Body = NotificationMessageTemplates.EmailConfirmationMessage(user.UserName!, confirmationLink)
+        });
+    }
+
+    public async Task<Result<AuthResponse>> ExternalLoginAsync()
     {
         var authModel = new AuthResponse();
 
         var externalUserInfo = await _signInManager.GetExternalLoginInfoAsync();
         if (externalUserInfo is null)
         {
-            authModel.Message = "Error loading external login information";
-            authModel.IsAuthenticated = false;
-            return authModel;
+            return new Error(
+         "ExternalAuthentication.RemoteError",
+              "Error loading external login information"
+             );
         }
 
         var localUserAccount = await _userManager.FindByEmailAsync(externalUserInfo.Principal.FindFirstValue(ClaimTypes.Email)!);
@@ -133,9 +140,11 @@ public class AuthService : IAuthService
             };
             await _userManager.CreateAsync(localUserAccount);
             await _userManager.AddToRoleAsync(localUserAccount, "User");
+            localUserAccount.EmailConfirmed = true;
         }
+
         authModel.Email = localUserAccount.Email;
-        authModel.Message = $"User: [{localUserAccount.Email}] has been created succesfully";
+        authModel.Message = $"User: [{localUserAccount.Email}] has been created and confirmed succesfully";
 
         return authModel;
     }
@@ -145,32 +154,32 @@ public class AuthService : IAuthService
         return _signInManager.ConfigureExternalAuthenticationProperties(provider, redirectUrl);
     }
 
-    public async Task<EmailConfirmationResponse> ConfirmEmailAsync(string id, string token)
+    public async Task<Result<EmailConfirmationResponse>> ConfirmEmailAsync(string id, string token)
     {
-        var responseDto = new EmailConfirmationResponse();
         var user = await _userManager.FindByIdAsync(id);
 
         if (user == null)
         {
-            responseDto.IsSuccessful = false;
-            responseDto.Message = $"Unable to load user with ID '{id}'.";
-            return responseDto;
+            return new Error("EmailConfirmation", $"Unable to load user with ID '{id}'.");
         }
 
         var result = await _userManager.ConfirmEmailAsync(user, token);
 
-        if (result.Succeeded)
+        if (!result.Succeeded)
         {
-            responseDto.IsSuccessful = true;
-            responseDto.Message = "Email confirmed successfully";
-        }
-        else
-        {
-            responseDto.IsSuccessful = false;
-            responseDto.Message = "Error confirming email";
+            var sb = new StringBuilder();
+            foreach (var error in result.Errors)
+            {
+                sb.Append(error.Code + " : " + error.Description);
+            }
+            return new Error("EmailConfirmation.IdentityErrors", sb.ToString());
         }
 
-        return responseDto;
+        return new EmailConfirmationResponse()
+        {
+            Email = user.Email,
+            Message = "Email has been confirmed successfully"
+        };
     }
 
 }
