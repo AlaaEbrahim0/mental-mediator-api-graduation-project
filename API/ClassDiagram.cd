@@ -14,7 +14,7 @@
     </Members>
     <TypeIdentifier />
   </Class>
-  <Class Name="Shared.RegistrationModel">
+  <Class Name="Shared.RegistrationRequest">
     <Position X="13.25" Y="14.5" Width="2.5" />
     <Members>
       <Method Name="&lt;Clone&gt;$" Hidden="true" />
@@ -23,7 +23,7 @@
       <Method Name="op_Inequality" Hidden="true" />
       <Method Name="op_Equality" Hidden="true" />
       <Method Name="PrintMembers" Hidden="true" />
-      <Method Name="RegistrationModel" Hidden="true" />
+      <Method Name="RegistrationRequest" Hidden="true" />
       <Method Name="ToString" Hidden="true" />
     </Members>
     <TypeIdentifier />
