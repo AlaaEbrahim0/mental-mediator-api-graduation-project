@@ -33,15 +33,15 @@ public class AuthService : IAuthService
     {
         var response = new AuthResponse();
 
-        var emailExist = await FindByEmail(model.Email);
+        var user = await _userManager.FindByEmailAsync(model.Email);
 
-        if (emailExist)
+        if (user is not null)
         {
             response.Message = "Email already exist";
             return response;
         }
 
-        var user = _mapper.Map<AppUser>(model);
+        user = _mapper.Map<AppUser>(model);
         var result = await _userManager.CreateAsync(user, model.Password);
 
         var sb = new StringBuilder();
@@ -74,12 +74,6 @@ public class AuthService : IAuthService
         response.IsAuthenticated = true;
         
         return response;
-    }
-
-    private async Task<bool> FindByEmail(string email)
-    {
-        var user = await _userManager.FindByEmailAsync(email);
-        return user is null ? false : true;
     }
 
     public async Task<AuthResponse> SignInAsync(SignInModel signInModel)
