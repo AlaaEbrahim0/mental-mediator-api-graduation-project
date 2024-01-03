@@ -1,6 +1,7 @@
 ﻿using Application.Services;
 using Domain.Entities;
 using Infrastructure;
+using Infrastructure.Data;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -96,6 +97,5 @@ public class AuthController : ControllerBase
     {       
         return Ok("You are authorized now");
     }
-
 
 }

@@ -3,7 +3,9 @@ using Application.Options;
 using Application.Services;
 using Domain.Entities;
 using Infrastructure;
+using Infrastructure.Contracts;
 using Infrastructure.Data;
+using Infrastructure.Repositories;
 using Infrastructure.Services;
 using Infrastructure.Utilities;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -46,6 +48,12 @@ public static class DependencyInjection
         services
             .AddControllers();
 
+        return services;
+    }
+
+    public static IServiceCollection ConfigureRepositores(this IServiceCollection services)
+    {
+        services.AddScoped<IPostRepository, PostRepository>();
         return services;
     }
 

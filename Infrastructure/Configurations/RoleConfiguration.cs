@@ -9,8 +9,9 @@ public class RoleConfiguration : IEntityTypeConfiguration<IdentityRole>
     {
         builder.HasData
         (
-            new IdentityRole("User"),
-            new IdentityRole("Admin")
+            new IdentityRole() { Name = "User", NormalizedName = "USER"},
+            new IdentityRole() { Name = "Admin", NormalizedName = "ADMIN"},
+            new IdentityRole() { Name = "Doctor", NormalizedName = "DOCTOR"}
         );
     }   
 }

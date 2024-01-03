@@ -7,21 +7,12 @@ using Microsoft.EntityFrameworkCore.Migrations;
 
 namespace Infrastructure.Migrations
 {
-    /// <inheritdoc />
+    /// <inheritdoc />`
     public partial class ModifiedAppUser : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.DeleteData(
-                table: "AspNetRoles",
-                keyColumn: "Id",
-                keyValue: "9e2790a2-a8aa-4e41-92fc-ae0b95d13aa8");
-
-            migrationBuilder.DeleteData(
-                table: "AspNetRoles",
-                keyColumn: "Id",
-                keyValue: "eac5305c-a334-4872-a52e-27cc88f02db8");
 
             migrationBuilder.AddColumn<DateOnly>(
                 name: "BirthDate",
@@ -47,15 +38,6 @@ namespace Infrastructure.Migrations
                 table: "AspNetUsers",
                 type: "nvarchar(max)",
                 nullable: true);
-
-            migrationBuilder.InsertData(
-                table: "AspNetRoles",
-                columns: new[] { "Id", "ConcurrencyStamp", "Name", "NormalizedName" },
-                values: new object[,]
-                {
-                    { "511f670e-074a-40b1-8aed-e749992141fa", null, "User", null },
-                    { "f10d6dc3-125c-4293-a6b0-2d839fac8ebf", null, "Admin", null }
-                });
         }
 
         /// <inheritdoc />
@@ -86,15 +68,6 @@ namespace Infrastructure.Migrations
             migrationBuilder.DropColumn(
                 name: "LastName",
                 table: "AspNetUsers");
-
-            migrationBuilder.InsertData(
-                table: "AspNetRoles",
-                columns: new[] { "Id", "ConcurrencyStamp", "Name", "NormalizedName" },
-                values: new object[,]
-                {
-                    { "9e2790a2-a8aa-4e41-92fc-ae0b95d13aa8", null, "User", null },
-                    { "eac5305c-a334-4872-a52e-27cc88f02db8", null, "Admin", null }
-                });
         }
     }
 }

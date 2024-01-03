@@ -14,6 +14,7 @@ builder.Services
     .ConfigureMailService()
     .ConfigureOptions(builder.Configuration)
     .ConfigureAutoMapper()
+    .ConfigureRepositores()
     .ConfigureDbContext(builder.Configuration);
 
 var app = builder.Build();

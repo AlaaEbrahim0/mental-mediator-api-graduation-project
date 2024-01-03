@@ -163,8 +163,8 @@ namespace Infrastructure.Migrations
                 columns: new[] { "Id", "ConcurrencyStamp", "Name", "NormalizedName" },
                 values: new object[,]
                 {
-                    { "9e2790a2-a8aa-4e41-92fc-ae0b95d13aa8", null, "User", null },
-                    { "eac5305c-a334-4872-a52e-27cc88f02db8", null, "Admin", null }
+                    { "9e2790a2-a8aa-4e41-92fc-ae0b95d13aa8", null, "User", "USER" },
+                    { "eac5305c-a334-4872-a52e-27cc88f02db8", null, "Admin", "ADMIN" }
                 });
 
             migrationBuilder.CreateIndex(
@@ -230,6 +230,16 @@ namespace Infrastructure.Migrations
 
             migrationBuilder.DropTable(
                 name: "AspNetUsers");
+
+            migrationBuilder.DeleteData(
+                table: "AspNetRoles",
+                keyColumn: "Id",
+                keyValue: "9e2790a2-a8aa-4e41-92fc-ae0b95d13aa8");
+
+            migrationBuilder.DeleteData(
+                table: "AspNetRoles",
+                keyColumn: "Id",
+                keyValue: "eac5305c-a334-4872-a52e-27cc88f02db8`");
         }
     }
 }
