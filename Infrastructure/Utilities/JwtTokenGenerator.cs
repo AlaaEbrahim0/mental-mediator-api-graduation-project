@@ -54,9 +54,9 @@ public class JwtTokenGenerator
 
         var jwtClaims = new[]
         {
-            new Claim(JwtRegisteredClaimNames.Sub, user.Email!),
+            new Claim("uid", user.Id!),
+            new Claim(JwtRegisteredClaimNames.Email, user.Email!),
             new Claim(JwtRegisteredClaimNames.Jti, user.Email!, Guid.NewGuid().ToString()),
-            new Claim("uid", user.Id),
         }
         .Union(userClaims)
         .Union(roleClaims);

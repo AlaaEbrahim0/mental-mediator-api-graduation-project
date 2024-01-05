@@ -1,5 +1,4 @@
-﻿using System.Security.Claims;
-using Domain.Abstractions;
+﻿using Application.Abstractions;
 using Infrastructure.Services;
 using Microsoft.AspNetCore.Authentication;
 using Shared;

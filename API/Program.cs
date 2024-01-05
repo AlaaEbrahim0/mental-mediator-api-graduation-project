@@ -13,6 +13,7 @@ builder.Services
     .ConfigureMailSettings(builder.Configuration)
     .ConfigureMailService()
     .ConfigureOptions(builder.Configuration)
+    .ConfigurePostService()
     .ConfigureAutoMapper()
     .ConfigureRepositores()
     .ConfigureDbContext(builder.Configuration);

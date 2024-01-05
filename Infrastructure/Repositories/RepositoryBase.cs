@@ -1,10 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Linq.Expressions;
-using System.Text;
-using System.Threading.Tasks;
-using Domain.Entities;
+﻿using System.Linq.Expressions;
 using Infrastructure.Contracts;
 using Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
@@ -27,7 +21,6 @@ public class RepositoryBase<T> : IRepositoryBase<T> where T : class
     public void Delete(T entity)
     {
         _dbContext.Set<T>().Remove(entity);
-
     }
 
     public IQueryable<T> FindAll(bool trackChanges)

@@ -1,4 +1,4 @@
-﻿namespace Domain.Abstractions;
+﻿namespace Application.Abstractions;
 
 public class Result<T>
 {
@@ -16,7 +16,7 @@ public class Result<T>
     }
 
     public bool IsSuccess { get; }
-    public bool IsFailure => !IsSuccess;    
+    public bool IsFailure => !IsSuccess;
     public Error Error { get; }
     public T Value { get; }
 

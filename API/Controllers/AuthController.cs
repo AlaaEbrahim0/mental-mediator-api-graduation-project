@@ -36,6 +36,7 @@ public class AuthController : ControllerBase
         {
             return BadRequest(result.Error);
         }
+
         return StatusCode(201, result.Value);
     }
 

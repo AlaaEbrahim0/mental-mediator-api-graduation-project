@@ -1,11 +1,11 @@
 ﻿using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
+using Application.Abstractions;
 using Application.Services;
 using Application.Utilities;
 using AutoMapper;
-using Domain.Abstractions;
-using Domain.Entities;
+using Domain.Entities ;
 using Infrastructure.Utilities;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Identity;

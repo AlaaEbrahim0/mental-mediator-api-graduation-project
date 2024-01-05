@@ -1,4 +1,4 @@
-﻿namespace Domain.Abstractions;
+﻿namespace Application.Abstractions;
 
 public record Error(string code, string? description = null)
 {
