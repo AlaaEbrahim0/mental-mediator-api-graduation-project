@@ -13,17 +13,16 @@ public class AppDbContext: IdentityDbContext<AppUser>
     }
     protected override void OnModelCreating(ModelBuilder builder)
     {
-        var ids = new string[20];
-        for (int i = 0; i < 20; i++)
+        var ids = new string[50];
+        for (int i = 0; i < 50; i++)
         {
             ids[i] = (Guid.NewGuid().ToString());
         }
         builder.ApplyConfiguration(new AppUserConfiguration(ids));
-        builder.ApplyConfiguration(new RoleConfiguration());
         builder.ApplyConfiguration(new PostConfiguration(ids));
         builder.ApplyConfiguration(new CommentConfiguration(ids));
         builder.ApplyConfiguration(new ReplyConfiguration(ids));
-
+        builder.ApplyConfiguration(new RoleConfiguration());
 
         base.OnModelCreating(builder);
     }
