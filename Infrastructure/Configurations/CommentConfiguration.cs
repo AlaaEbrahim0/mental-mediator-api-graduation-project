@@ -16,18 +16,23 @@ public class CommentConfiguration : IEntityTypeConfiguration<Comment>
 
     public void Configure(EntityTypeBuilder<Comment> builder)
     {
-        var postIds = Enumerable.Range(1, 100).ToArray();
+        bool migrationsApplied = builder.Metadata.GetChangeTrackingStrategy() != ChangeTrackingStrategy.Snapshot;
 
-        int id = 1;
-        var commentFaker = new Faker<Comment>()
-            .RuleFor(c => c.Id, set => id++)
-            .RuleFor(c => c.AppUserId, set => set.Random.ArrayElement(ids))
-            .RuleFor(c => c.CommentedAt, set => set.Date.Past())
-            .RuleFor(c => c.Content, set => set.Lorem.Sentence())
-            .RuleFor(c => c.PostId, set => set.Random.ArrayElement(postIds));
+        if (!migrationsApplied)
+        {
+            var postIds = Enumerable.Range(1, 100).ToArray();
+
+            int id = 1;
+            var commentFaker = new Faker<Comment>()
+                .RuleFor(c => c.Id, set => id++)
+                .RuleFor(c => c.AppUserId, set => set.Random.ArrayElement(ids))
+                .RuleFor(c => c.CommentedAt, set => set.Date.Past())
+                .RuleFor(c => c.Content, set => set.Lorem.Sentence())
+                .RuleFor(c => c.PostId, set => set.Random.ArrayElement(postIds));
 
 
-        var comments = commentFaker.Generate(300);
-        builder.HasData(comments);
+            var comments = commentFaker.Generate(1000);
+            builder.HasData(comments);
+        }
     }
 }

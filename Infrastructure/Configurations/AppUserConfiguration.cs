@@ -17,17 +17,22 @@ public class AppUserConfiguration : IEntityTypeConfiguration<AppUser>
 
     public void Configure(EntityTypeBuilder<AppUser> builder)
     {
-        int id = 0;
-        var userFaker = new Faker<AppUser>()
-            .RuleFor(u => u.Id, set => ids[id++])
-            .RuleFor(u => u.FirstName, set => set.Person.FirstName)
-            .RuleFor(u => u.LastName, set => set.Person.LastName)
-            .RuleFor(u => u.BirthDate, set => set.Date.BetweenDateOnly(new DateOnly(1950, 1, 1), new DateOnly(2003, 1, 1)))
-            .RuleFor(u => u.Email, set => set.Person.Email)
-            .RuleFor(u => u.Gender, set => set.Random.Enum<Gender>().ToString())
-            .RuleFor(u => u.PasswordHash, set => set.Internet.Password(10));
+        bool migrationsApplied = builder.Metadata.GetChangeTrackingStrategy() != ChangeTrackingStrategy.Snapshot;
 
-        var users = userFaker.Generate(20);
-        builder.HasData(users);
+        if (!migrationsApplied)
+        {
+            int id = 0;
+            var userFaker = new Faker<AppUser>()
+                .RuleFor(u => u.Id, set => ids[id++])
+                .RuleFor(u => u.FirstName, set => set.Person.FirstName)
+                .RuleFor(u => u.LastName, set => set.Person.LastName)
+                .RuleFor(u => u.BirthDate, set => set.Date.BetweenDateOnly(new DateOnly(1950, 1, 1), new DateOnly(2003, 1, 1)))
+                .RuleFor(u => u.Email, set => set.Person.Email)
+                .RuleFor(u => u.Gender, set => set.Random.Enum<Gender>().ToString())
+                .RuleFor(u => u.PasswordHash, set => set.Internet.Password(10));
+
+            var users = userFaker.Generate(50);
+            builder.HasData(users);
+        }
     }
 }

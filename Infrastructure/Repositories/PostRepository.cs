@@ -19,6 +19,7 @@ public class PostRepository : RepositoryBase<Post>, IPostRepository
     public void CreatePost(Post post)
     {
         Create(post);
+        
     }
 
     public void DeletePost(Post post)
@@ -36,4 +37,11 @@ public class PostRepository : RepositoryBase<Post>, IPostRepository
         return await FindByCondition(p => p.Id == id, trackChanges)
                     .SingleOrDefaultAsync();
     }
+
+    public void UpdatePost(Post post)
+    {
+        Update(post);
+    }
 }
+
+

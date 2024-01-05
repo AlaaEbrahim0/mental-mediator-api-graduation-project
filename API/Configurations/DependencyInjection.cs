@@ -1,8 +1,8 @@
-﻿using System.Text;
+﻿using System.Security.Claims;
+using System.Text;
 using Application.Options;
 using Application.Services;
 using Domain.Entities;
-using Infrastructure;
 using Infrastructure.Contracts;
 using Infrastructure.Data;
 using Infrastructure.Repositories;
@@ -53,6 +53,7 @@ public static class DependencyInjection
 
     public static IServiceCollection ConfigureRepositores(this IServiceCollection services)
     {
+        services.AddScoped<IRepositoryManager, RepositoryManager>();
         services.AddScoped<IPostRepository, PostRepository>();
         return services;
     }
@@ -66,6 +67,13 @@ public static class DependencyInjection
     public static IServiceCollection ConfigureMailService(this IServiceCollection services)
     {
         services.AddTransient<IMailService, MailService>();
+        return services;
+    }
+
+    public static IServiceCollection ConfigurePostService(this IServiceCollection services)
+    {
+        services.AddScoped<IPostService, PostService>();
+        services.AddScoped<ClaimsPrincipal>();
         return services;
     }
 
