@@ -36,7 +36,7 @@ public static class DependencyInjection
     {
         services
             .AddEndpointsApiExplorer()
-            .AddSwaggerGen(c =>
+            .AddSwaggerGen(options =>
             {
                 c.SwaggerDoc("v1", new OpenApiInfo { Title = "TestApiJWT", Version = "v1" });
             });
