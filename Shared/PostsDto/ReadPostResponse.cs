@@ -1,6 +1,6 @@
 ﻿using System.ComponentModel.DataAnnotations;
 
-namespace Shared;
+namespace Shared.PostsDto;
 
 public class ReadPostResponse
 {
@@ -13,6 +13,8 @@ public class ReadPostResponse
     [MaxLength(2047, ErrorMessage = "Title cannot exceed 2048 characters")]
     public string Content { get; set; } = string.Empty;
     public DateTime PostedOn { get; set; }
+
+    public string Username { get; set; } = string.Empty;
 }
 
 

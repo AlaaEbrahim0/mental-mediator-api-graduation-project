@@ -1,4 +1,4 @@
-﻿namespace Shared;
+﻿namespace Shared.PostsDto;
 
 public class CreatePostResponse
 {

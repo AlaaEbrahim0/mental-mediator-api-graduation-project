@@ -1,4 +1,4 @@
-﻿namespace Application.Abstractions;
+﻿namespace Shared;
 
 public class Result<T>
 {
