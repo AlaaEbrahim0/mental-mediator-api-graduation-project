@@ -1,8 +1,7 @@
-﻿using System.Security.Principal;
-using Application.Services;
+﻿using Application.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Shared;
+using Shared.PostsDto;
 
 namespace API.Controllers;
 
@@ -23,7 +22,7 @@ public class PostController : ControllerBase
         var result = await _postService.GetPosts();
         if (result.IsFailure)
         {
-            return NotFound(result.Error);
+            return result.ToProblemDetails();
         }
         return Ok(result.Value);
     }
@@ -34,7 +33,7 @@ public class PostController : ControllerBase
         var result = await _postService.GetPostById(id);
         if (result.IsFailure)
         {
-            return NotFound(result.Error);
+            return result.ToProblemDetails();
         }
         return Ok(result.Value);
     }
@@ -43,19 +42,25 @@ public class PostController : ControllerBase
     [Authorize]
     public async Task<IActionResult> DeletePost(int id)
     {
-        var result =  await _postService.DeletePost(id);
+        var result = await _postService.DeletePost(id);
         if (result.IsFailure)
         {
-            return NotFound(result.Error);
+            return result.ToProblemDetails();
         }
         return Ok(result.Value);
     }
 
     [HttpPost]
     [Authorize]
-    public IActionResult CreatePost(CreatePostRequest request)
+    public async Task<IActionResult> CreatePost(CreatePostRequest request)
     {
-        var result = _postService.CreatePost(request);
+        var result = await _postService.CreatePostAsync(request);
+
+        if (result.IsFailure)
+        {
+            return result.ToProblemDetails();
+        }
+
         return CreatedAtAction(
             nameof(GetPostById),
             new { id = result.Value.Id },
@@ -69,7 +74,7 @@ public class PostController : ControllerBase
         var result = await _postService.UpdatePost(id, updatePostRequest);
         if (result.IsFailure)
         {
-            return NotFound(result.Error);
+            return result.ToProblemDetails();
         }
         return Ok(result.Value);
     }

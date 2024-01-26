@@ -1,5 +1,5 @@
 ﻿namespace Shared.ReplyDtos;
-public class ReadReplayResponse
+public class ReplyResponse
 {
     public int Id { get; set; }
     public string? Content { get; set; }

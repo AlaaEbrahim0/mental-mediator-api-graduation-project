@@ -977,7 +977,7 @@ namespace Infrastructure.Migrations
 
                     b.HasIndex("PostId");
 
-                    b.ToTable("Comments");
+                    b.ToTable("Comments", (string)null);
 
                     b.HasData(
                         new
@@ -9011,7 +9011,7 @@ namespace Infrastructure.Migrations
 
                     b.HasIndex("AppUserId");
 
-                    b.ToTable("Posts");
+                    b.ToTable("Posts", (string)null);
 
                     b.HasData(
                         new
@@ -10642,7 +10642,7 @@ namespace Infrastructure.Migrations
 
                     b.HasIndex("CommentId");
 
-                    b.ToTable("Replies");
+                    b.ToTable("Replies", (string)null);
 
                     b.HasData(
                         new

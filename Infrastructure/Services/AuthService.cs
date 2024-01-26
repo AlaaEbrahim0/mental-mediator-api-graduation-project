@@ -126,20 +126,29 @@ public class AuthService : IAuthService
         if (localUserAccount is null)
         {
             var externalUserEmail = externalUserInfo.Principal.FindFirstValue(ClaimTypes.Email);
+
+            var username = externalUserEmail!.Split('@')[0];
+            var name = externalUserInfo.Principal.Identity?.Name;
+
             localUserAccount = new AppUser()
             {
                 Email = externalUserEmail,
-                UserName = externalUserEmail!.Split('@')[0]
+                UserName = username,
+                FirstName = name,
             };
+
             await _userManager.CreateAsync(localUserAccount);
             await _userManager.AddToRoleAsync(localUserAccount, "User");
             localUserAccount.EmailConfirmed = true;
         }
         var token = await _jwtTokenGenerator.CreateJwtToken(localUserAccount);
 
+        var roles = await _userManager.GetRolesAsync(localUserAccount);
+
         authModel.Email = localUserAccount.Email;
         authModel.Token = new JwtSecurityTokenHandler().WriteToken(token);
         authModel.ExpiresOn = token.ValidTo;
+        authModel.Roles = roles.ToList();
         authModel.Message = $"User: [{localUserAccount.Email}] has been created and confirmed succesfully";
 
         return authModel;

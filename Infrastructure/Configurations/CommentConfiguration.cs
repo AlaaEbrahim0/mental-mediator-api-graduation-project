@@ -16,6 +16,11 @@ public class CommentConfiguration : IEntityTypeConfiguration<Comment>
 
     public void Configure(EntityTypeBuilder<Comment> builder)
     {
+        builder
+            .HasMany(c => c.Replies)
+            .WithOne(c => c.Comment)
+            .OnDelete(DeleteBehavior.Cascade);
+
         bool migrationsApplied = builder.Metadata.GetChangeTrackingStrategy() != ChangeTrackingStrategy.Snapshot;
 
         if (!migrationsApplied)

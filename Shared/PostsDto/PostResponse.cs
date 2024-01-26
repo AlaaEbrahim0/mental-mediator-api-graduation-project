@@ -2,7 +2,7 @@
 
 namespace Shared.PostsDto;
 
-public class ReadPostResponse
+public class PostResponse
 {
     public int Id { get; set; }
     [Required(ErrorMessage = "Title is required")]

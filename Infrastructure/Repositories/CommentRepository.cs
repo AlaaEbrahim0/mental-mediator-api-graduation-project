@@ -45,6 +45,7 @@ public class CommentRepository : RepositoryBase<Comment>, ICommentRepository
     {
         return await FindByCondition(c => c.Id == commentId && c.PostId == postId, trackChanges)
             .Include(c => c.AppUser)
+            .Include(c => c.Replies)
             .Select(x => new Comment
             {
                 Id = x.Id,

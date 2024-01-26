@@ -18,6 +18,24 @@ namespace API.Configurations;
 
 public static class DependencyInjection
 {
+    public static void ConfigureServices(this IServiceCollection services, ConfigurationManager configuration)
+    {
+        services
+            .ConfigureControllers()
+            .ConfigureCors()
+            .ConfigureSwagger()
+            .ConfigureIdentity()
+            .ConfigureAuthentication(configuration)
+            .ConfigureAuthorization()
+            .ConfigureMailSettings(configuration)
+            .ConfigureMailService()
+            .ConfigureOptions(configuration)
+            .ConfigureEntityServices()
+            .ConfigureAutoMapper()
+            .ConfigureRepositores()
+            .ConfigureDbContext(configuration);
+    }
+
     public static IServiceCollection ConfigureCors(this IServiceCollection services)
     {
         services.AddCors(config =>
@@ -38,7 +56,7 @@ public static class DependencyInjection
             .AddEndpointsApiExplorer()
             .AddSwaggerGen(options =>
             {
-                options.SwaggerDoc("v1", new OpenApiInfo { Title = "TestApiJWT", Version = "v1" });
+                options.SwaggerDoc("v1", new OpenApiInfo { Title = "Mental Mediator", Version = "v1" });
                 options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
                 {
                     Name = "Authorization",
@@ -81,6 +99,7 @@ public static class DependencyInjection
         services.AddScoped<IRepositoryManager, RepositoryManager>();
         services.AddScoped<IPostRepository, PostRepository>();
         services.AddScoped<ICommentRepository, CommentRepository>();
+        services.AddScoped<IReplyRepository, ReplyRepository>();
         return services;
     }
 
@@ -96,10 +115,11 @@ public static class DependencyInjection
         return services;
     }
 
-    public static IServiceCollection ConfigurePostService(this IServiceCollection services)
+    public static IServiceCollection ConfigureEntityServices(this IServiceCollection services)
     {
         services.AddScoped<IPostService, PostService>();
         services.AddScoped<ICommentService, CommentService>();
+        services.AddScoped<IReplyService, ReplyService>();
         services.AddScoped<ClaimsPrincipal>();
         return services;
     }
@@ -156,7 +176,7 @@ public static class DependencyInjection
     }
     public static IServiceCollection ConfigureDbContext(this IServiceCollection services, IConfiguration configuration)
     {
-        var connectionString = configuration.GetConnectionString("constr");
+        var connectionString = configuration.GetConnectionString("constr_somee");
         services.AddDbContext<AppDbContext>(config =>
         {
             config.UseSqlServer(connectionString, b => b.MigrationsAssembly(nameof(Infrastructure)));

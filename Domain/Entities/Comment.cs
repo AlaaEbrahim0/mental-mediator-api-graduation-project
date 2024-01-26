@@ -1,4 +1,6 @@
-﻿namespace Domain.Entities;
+﻿using System.ComponentModel.DataAnnotations.Schema;
+
+namespace Domain.Entities;
 public class Comment
 {
     public int Id { get; set; }
@@ -7,8 +9,12 @@ public class Comment
     public Post? Post { get; set; }
     public AppUser? AppUser { get; set; }
 
-    public string? Content{ get; set; }
+    public string? Content { get; set; }
     public DateTime CommentedAt { get; set; }
 
     public List<Reply> Replies { get; set; } = new();
+
+    [NotMapped]
+    public string? Username { get; set; }
+
 }

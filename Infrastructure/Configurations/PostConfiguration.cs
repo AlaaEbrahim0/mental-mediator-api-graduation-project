@@ -16,6 +16,11 @@ public class PostConfiguration : IEntityTypeConfiguration<Post>
     }
     public void Configure(EntityTypeBuilder<Post> builder)
     {
+        builder
+            .HasMany(p => p.Comments)
+            .WithOne(c => c.Post)
+            .OnDelete(DeleteBehavior.Cascade);
+
         bool migrationsApplied = builder.Metadata.GetChangeTrackingStrategy() != ChangeTrackingStrategy.Snapshot;
 
         if (!migrationsApplied)
@@ -32,21 +37,17 @@ public class PostConfiguration : IEntityTypeConfiguration<Post>
             builder.HasData(posts);
         }
     }
+
     private string GenerateRandomPostTitle()
     {
-        // Possible words for the title
         string[] titleWords = { "Lorem", "Ipsum", "Random", "Post", "Title", "Generator" };
 
-        // Maximum length for the title
         const int maxLength = 255;
 
-        // Random object for generating indices
         Random random = new Random();
 
-        // StringBuilder for efficient string concatenation
         StringBuilder titleBuilder = new StringBuilder();
 
-        // Generate a random title with a random length
         while (titleBuilder.Length < maxLength)
         {
             string randomWord = titleWords[random.Next(titleWords.Length)];
@@ -65,19 +66,14 @@ public class PostConfiguration : IEntityTypeConfiguration<Post>
 
     private string GenerateRandomPostBody()
     {
-        // Possible sentences for the body
-        string[] bodySentences = { "This is a sample sentence.", "Lorem ipsum dolor sit amet.", "Random body text.", "C# is a powerful language." };
+        string[] bodySentences = { "This is a sample sentence.", "Lorem ipsum dolor sit amet.", "Random body text." };
 
-        // Maximum length for the body
         const int maxLength = 2047;
 
-        // Random object for generating indices
         Random random = new Random();
 
-        // StringBuilder for efficient string concatenation
         StringBuilder bodyBuilder = new StringBuilder();
 
-        // Generate a random body with a random length
         while (bodyBuilder.Length < maxLength)
         {
             string randomSentence = bodySentences[random.Next(bodySentences.Length)];

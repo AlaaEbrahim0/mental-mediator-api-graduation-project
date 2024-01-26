@@ -1,4 +1,6 @@
-﻿namespace Domain.Entities;
+﻿using System.ComponentModel.DataAnnotations.Schema;
+
+namespace Domain.Entities;
 
 public class Reply
 {
@@ -10,4 +12,7 @@ public class Reply
 
     public AppUser? AppUser { get; set; }
     public Comment? Comment { get; set; }
-}   
+
+    [NotMapped]
+    public string? Username { get; set; }
+}

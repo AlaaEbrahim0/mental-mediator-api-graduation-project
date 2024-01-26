@@ -1,10 +1,11 @@
-﻿using Application.Abstractions;
-using Application.Services;
+﻿using Application.Services;
 using AutoMapper;
 using Domain.Entities;
+using Domain.Errors;
 using Infrastructure.Contracts;
 using Microsoft.AspNetCore.Identity;
 using Shared;
+using Shared.PostsDto;
 
 namespace Infrastructure.Services;
 public class PostService : IPostService
@@ -20,25 +21,21 @@ public class PostService : IPostService
         _repos = repos;
     }
 
-    public async Task<Result<IEnumerable<ReadPostResponse>>> GetPosts()
+    public async Task<Result<IEnumerable<PostResponse>>> GetPosts()
     {
         var posts = await _repos.Posts.GetAllPosts(false);
-        if (!posts.Any())
-        {
-            return new Error("Posts.PostsNotFound", "No posts were found");
-        }
-        var postResponse = _mapper.Map<IEnumerable<ReadPostResponse>>(posts);
+        var postResponse = _mapper.Map<IEnumerable<PostResponse>>(posts);
         return postResponse.ToList();
     }
 
-    public async Task<Result<ReadPostResponse?>> GetPostById(int id)
+    public async Task<Result<PostResponse?>> GetPostById(int id)
     {
         var post = await _repos.Posts.GetPostById(id, false);
         if (post is null)
         {
-            return new Error("Posts.PostNotFound", "post doesn'st exist");
+            return PostErrors.NotFound(id);
         }
-        var postResponse = _mapper.Map<ReadPostResponse>(post);
+        var postResponse = _mapper.Map<PostResponse>(post);
         return postResponse;
     }
 
@@ -47,7 +44,7 @@ public class PostService : IPostService
         return _signInManager.Context.User.FindFirst("uid")?.Value!;
     }
 
-    public Result<CreatePostResponse> CreatePost(CreatePostRequest postRequest)
+    public async Task<Result<CreatePostResponse>> CreatePostAsync(CreatePostRequest postRequest)
     {
         var userId = GetUserId();
         var post = _mapper.Map<Post>(postRequest);
@@ -56,7 +53,7 @@ public class PostService : IPostService
         post.PostedOn = DateTime.UtcNow;
 
         _repos.Posts.CreatePost(post);
-        _repos.SaveAsync();
+        await _repos.SaveAsync();
 
         return new CreatePostResponse()
         {
@@ -65,18 +62,17 @@ public class PostService : IPostService
         };
     }
 
-
     public async Task<Result<string>> DeletePost(int id)
     {
         var userId = GetUserId();
         var post = await _repos.Posts.GetPostById(id, true);
         if (post is null)
         {
-            return new Error("Posts.NotFound", "post doesn't exist");
+            return PostErrors.NotFound(id);
         }
         if (!post.AppUserId!.Equals(userId))
         {
-            return new Error("Posts.UnauthorizedDeletion", "you can't delete a post that you didn't publish");
+            return PostErrors.Forbidden(post.Id);
         }
 
         _repos.Posts.DeletePost(post);
@@ -91,11 +87,11 @@ public class PostService : IPostService
 
         if (post is null)
         {
-            return new Error("Posts.NotFound", "post doesn't exist");
+            return PostErrors.NotFound(id);
         }
         if (!post.AppUserId!.Equals(userId))
         {
-            return new Error("Posts.UnauthorizedUpdation", "you can't update a post that you didn't publish");
+            return PostErrors.Forbidden(id);
         }
 
         _mapper.Map(updatePostRequest, post);
@@ -104,5 +100,8 @@ public class PostService : IPostService
 
         return "post has been updated successfully";
     }
+
+
+
 
 }

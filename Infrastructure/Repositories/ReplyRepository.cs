@@ -20,7 +20,7 @@ public class ReplyRepository : RepositoryBase<Reply>, IReplyRepository
         Delete(reply);
     }
 
-    public async Task<IEnumerable<Reply?>> GetRepliesByCommendId(int commendId, bool trackChanges)
+    public async Task<IEnumerable<Reply?>> GetRepliesByCommentId(int commendId, bool trackChanges)
     {
         var replies = await FindByCondition(c => c.CommentId == commendId, trackChanges)
             .Include(r => r.AppUser)
@@ -38,10 +38,15 @@ public class ReplyRepository : RepositoryBase<Reply>, IReplyRepository
         return replies;
     }
 
-    public async Task<Reply?> GetById(int commentId, int replyId, bool trackChanges)
+    public async Task<Reply?> GetById(int postId, int commentId, int replyId, bool trackChanges)
     {
-        return await FindByCondition(r => r.Id == replyId && r.CommentId == commentId, trackChanges)
+        return await
+            FindByCondition(
+                r => r.Id == replyId &&
+                r.CommentId == commentId &&
+                r.Comment!.PostId == postId, trackChanges)
             .Include(r => r.AppUser)
+            .Include(r => r.Comment)
             .Select(r => new Reply
             {
                 Id = r.Id,

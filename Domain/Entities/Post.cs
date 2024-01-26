@@ -1,4 +1,5 @@
 ﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace Domain.Entities;
 
@@ -17,6 +18,9 @@ public class Post
     [Required(ErrorMessage = "Content is required")]
     [MaxLength(2047, ErrorMessage = "Title cannot exceed 2048 characters")]
     public string Content { get; set; } = string.Empty;
+
+    [NotMapped]
+    public string? Username { get; set; }
 
     public DateTime PostedOn { get; set; }
     public List<Comment> Comments { get; set; } = new();
