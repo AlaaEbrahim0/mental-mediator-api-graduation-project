@@ -1,10 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Linq.Expressions;
-using System.Text;
-using System.Threading.Tasks;
-using Domain.Entities;
+﻿using Domain.Entities;
 using Infrastructure.Contracts;
 using Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
@@ -29,13 +23,36 @@ public class PostRepository : RepositoryBase<Post>, IPostRepository
 
     public async Task<IEnumerable<Post>> GetAllPosts(bool trackChanges)
     {
-        return await FindAll(trackChanges).ToListAsync();
+        return await 
+            FindAll(trackChanges)
+            .Include(p => p.AppUser)
+            .Select(p => new Post
+            {
+                Id = p.Id,
+                AppUserId = p.AppUserId,
+                Content = p.Content,
+                PostedOn = p.PostedOn,
+                Title = p.Title,
+                Username = $"{p.AppUser!.FirstName} {p.AppUser.LastName}"
+            })
+            .ToListAsync();
     }
 
     public async Task<Post?> GetPostById(int id, bool trackChanges)
     {
-        return await FindByCondition(p => p.Id == id, trackChanges)
-                    .SingleOrDefaultAsync();
+        return await 
+            FindByCondition(p => p.Id == id, trackChanges)
+            .Include(p => p.AppUser)
+            .Select(p => new Post
+            {
+                Id = p.Id,
+                AppUserId = p.AppUserId,
+                Content = p.Content,
+                PostedOn = p.PostedOn,
+                Title = p.Title,
+                Username = $"{p.AppUser!.FirstName} {p.AppUser.LastName}"
+            })
+            .SingleOrDefaultAsync();
     }
 
     public void UpdatePost(Post post)

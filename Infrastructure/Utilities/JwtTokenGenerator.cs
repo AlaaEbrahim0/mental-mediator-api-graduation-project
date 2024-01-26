@@ -1,7 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.IdentityModel.Tokens.Jwt;
-using System.Linq;
+﻿using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
 using Application.Options;
@@ -11,7 +8,7 @@ using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 
 namespace Infrastructure.Utilities;
-public class JwtTokenGenerator  
+public class JwtTokenGenerator
 {
     private readonly UserManager<AppUser> _userManager;
     private readonly JwtOptions _jwtOptions;
@@ -21,7 +18,7 @@ public class JwtTokenGenerator
         _userManager = userManager;
         _jwtOptions = jwtOptions.Value;
     }
-    
+
     public async Task<JwtSecurityToken> CreateJwtToken(AppUser user)
     {
         IEnumerable<Claim> jwtClaims = await GetUserJwtClaims(user);
@@ -60,7 +57,7 @@ public class JwtTokenGenerator
         }
         .Union(userClaims)
         .Union(roleClaims);
+
         return jwtClaims;
     }
 }
-   

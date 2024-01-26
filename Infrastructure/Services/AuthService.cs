@@ -1,15 +1,16 @@
 ﻿using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
-using Application.Abstractions;
 using Application.Services;
 using Application.Utilities;
 using AutoMapper;
-using Domain.Entities ;
+using Domain.Entities;
+using Domain.Errors;
 using Infrastructure.Utilities;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Identity;
 using Shared;
+using Shared.AuthDtos;
 
 namespace Infrastructure.Services;
 public class AuthService : IAuthService
@@ -19,10 +20,11 @@ public class AuthService : IAuthService
     private readonly JwtTokenGenerator _jwtTokenGenerator;
     private readonly IMailService _mailService;
     private readonly IMapper _mapper;
+
     public AuthService(
-        UserManager<AppUser> userManager, 
-        SignInManager<AppUser> signInManager, 
-        JwtTokenGenerator jwtTokenGenerator, 
+        UserManager<AppUser> userManager,
+        SignInManager<AppUser> signInManager,
+        JwtTokenGenerator jwtTokenGenerator,
         IMailService mailService,
         IMapper mapper)
     {
@@ -39,10 +41,7 @@ public class AuthService : IAuthService
 
         if (user is not null)
         {
-            return new Error(
-                "Registeration.EmailAlreadyExist",
-                 "User with the same email address already exists"
-                );
+            return UserErrors.EmailNotUnique(model.Email);
         }
 
         user = _mapper.Map<AppUser>(model);
@@ -55,7 +54,7 @@ public class AuthService : IAuthService
             {
                 sb.AppendLine(error.Code + " : " + error.Description);
             }
-            return new Error("Registration.IdentityErrors", sb.ToString());
+            return UserErrors.ValidationErrors(sb.ToString());
         }
 
         await _userManager.AddToRoleAsync(user, "User");
@@ -76,18 +75,12 @@ public class AuthService : IAuthService
 
         if (user is null || !await _userManager.CheckPasswordAsync(user, signInModel.Password))
         {
-            return new Error(
-                "Authentication.InvalidCredentials",
-                "Invalid Email Address or Password"
-            );
+            return UserErrors.InvalidCredentials();
         }
 
         if (!await _userManager.IsEmailConfirmedAsync(user))
         {
-            return new Error(
-                "Authentication.UnconfirmedEmail",
-                "Email has not been confirmed yet"
-            );
+            return UserErrors.EmailNotConfirmed();
         }
 
         var token = await _jwtTokenGenerator.CreateJwtToken(user);
@@ -122,8 +115,8 @@ public class AuthService : IAuthService
         var externalUserInfo = await _signInManager.GetExternalLoginInfoAsync();
         if (externalUserInfo is null)
         {
-            return new Error(
-         "ExternalAuthentication.RemoteError",
+            return Error.Validation(
+            "ExternalAuthentication.RemoteError",
               "Error loading external login information"
              );
         }
@@ -142,8 +135,11 @@ public class AuthService : IAuthService
             await _userManager.AddToRoleAsync(localUserAccount, "User");
             localUserAccount.EmailConfirmed = true;
         }
+        var token = await _jwtTokenGenerator.CreateJwtToken(localUserAccount);
 
         authModel.Email = localUserAccount.Email;
+        authModel.Token = new JwtSecurityTokenHandler().WriteToken(token);
+        authModel.ExpiresOn = token.ValidTo;
         authModel.Message = $"User: [{localUserAccount.Email}] has been created and confirmed succesfully";
 
         return authModel;
@@ -160,7 +156,7 @@ public class AuthService : IAuthService
 
         if (user == null)
         {
-            return new Error("EmailConfirmation", $"Unable to load user with ID '{id}'.");
+            return UserErrors.NotFound(id);
         }
 
         var result = await _userManager.ConfirmEmailAsync(user, token);
@@ -170,9 +166,9 @@ public class AuthService : IAuthService
             var sb = new StringBuilder();
             foreach (var error in result.Errors)
             {
-                sb.Append(error.Code + " : " + error.Description);
+                sb.AppendLine(error.Description);
             }
-            return new Error("EmailConfirmation.IdentityErrors", sb.ToString());
+            return UserErrors.InvalidToken(sb.ToString());
         }
 
         return new EmailConfirmationResponse()

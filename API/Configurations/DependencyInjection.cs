@@ -38,7 +38,32 @@ public static class DependencyInjection
             .AddEndpointsApiExplorer()
             .AddSwaggerGen(options =>
             {
-                c.SwaggerDoc("v1", new OpenApiInfo { Title = "TestApiJWT", Version = "v1" });
+                options.SwaggerDoc("v1", new OpenApiInfo { Title = "TestApiJWT", Version = "v1" });
+                options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
+                {
+                    Name = "Authorization",
+                    Type = SecuritySchemeType.ApiKey,
+                    Scheme = "Bearer",
+                    BearerFormat = "JWT",
+                    In = ParameterLocation.Header,
+                });
+                options.AddSecurityRequirement(new OpenApiSecurityRequirement
+                {
+                    {
+                        new OpenApiSecurityScheme
+                        {
+                            Reference = new OpenApiReference
+                            {
+                                Type = ReferenceType.SecurityScheme,
+                                Id = "Bearer"
+                            },
+                            Name = "Bearer",
+                            In = ParameterLocation.Header,
+
+                        },
+                        new List<string>()
+                    }
+                });
             });
 
         return services;
@@ -55,6 +80,7 @@ public static class DependencyInjection
     {
         services.AddScoped<IRepositoryManager, RepositoryManager>();
         services.AddScoped<IPostRepository, PostRepository>();
+        services.AddScoped<ICommentRepository, CommentRepository>();
         return services;
     }
 
@@ -73,6 +99,7 @@ public static class DependencyInjection
     public static IServiceCollection ConfigurePostService(this IServiceCollection services)
     {
         services.AddScoped<IPostService, PostService>();
+        services.AddScoped<ICommentService, CommentService>();
         services.AddScoped<ClaimsPrincipal>();
         return services;
     }
@@ -92,7 +119,7 @@ public static class DependencyInjection
             {
                 options.ClientId = configuration["GoogleAuthentication:Id"]!;
                 options.ClientSecret = configuration["GoogleAuthentication:Secret"]!;
-                
+
             })
             .AddJwtBearer(config =>
             {
@@ -107,7 +134,7 @@ public static class DependencyInjection
                     ValidateLifetime = true,
                 };
             });
-            
+
         return services;
     }
     public static IServiceCollection ConfigureAuthorization(this IServiceCollection services)
@@ -131,7 +158,7 @@ public static class DependencyInjection
     {
         var connectionString = configuration.GetConnectionString("constr");
         services.AddDbContext<AppDbContext>(config =>
-        {   
+        {
             config.UseSqlServer(connectionString, b => b.MigrationsAssembly(nameof(Infrastructure)));
         });
         return services;

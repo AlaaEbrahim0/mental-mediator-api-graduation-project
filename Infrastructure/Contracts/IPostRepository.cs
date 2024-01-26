@@ -10,4 +10,3 @@ public interface IPostRepository
     void UpdatePost(Post post);
     void DeletePost(Post post);
 }
-        

@@ -31,7 +31,7 @@ public class RepositoryBase<T> : IRepositoryBase<T> where T : class
             _dbContext.Set<T>().AsNoTracking();
     }
 
-    public IQueryable<T?> FindByCondition(Expression<Func<T, bool>> conition, bool trackChanges)
+    public IQueryable<T> FindByCondition(Expression<Func<T, bool>> conition, bool trackChanges)
     {
         return
             !trackChanges ?

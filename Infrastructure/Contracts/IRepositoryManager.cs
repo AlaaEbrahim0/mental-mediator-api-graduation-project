@@ -1,12 +1,8 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace Infrastructure.Contracts;
+﻿namespace Infrastructure.Contracts;
 public interface IRepositoryManager
 {
     IPostRepository Posts { get; }
+    ICommentRepository Comments { get; }
+    IReplyRepository Replies { get; }
     Task SaveAsync();
 }
