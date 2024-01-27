@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Identity;
+﻿using System.ComponentModel.DataAnnotations.Schema;
+using Microsoft.AspNetCore.Identity;
 
 namespace Domain.Entities;
 public class AppUser : IdentityUser
@@ -8,12 +9,13 @@ public class AppUser : IdentityUser
     public DateOnly BirthDate { get; set; }
     public string? Gender { get; set; }
 
+    [NotMapped]
     public string FullName => $"{FirstName} {LastName}";
 
     public override string? NormalizedEmail { get => base.Email!.ToUpper(); }
     public override string? NormalizedUserName { get => base.UserName!.ToUpper(); }
 
-    public override string? UserName => Email;
+    public override string? UserName => Email!.Split('@')[0];
 
     public List<Post> Posts { get; set; } = new();
 }

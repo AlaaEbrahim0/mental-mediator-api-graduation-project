@@ -35,17 +35,17 @@ public class AuthService : IAuthService
         _mailService = mailService;
     }
 
-    public async Task<Result<RegisterationResponse>> RegisterAsync(RegistrationRequest model, Func<string, string, string> callback)
+    public async Task<Result<RegisterationResponse>> RegisterAsync(RegistrationRequest request, Func<string, string, string> callback)
     {
-        var user = await _userManager.FindByEmailAsync(model.Email);
+        var user = await _userManager.FindByEmailAsync(request.Email);
 
         if (user is not null)
         {
-            return UserErrors.EmailNotUnique(model.Email);
+            return UserErrors.EmailNotUnique(request.Email);
         }
 
-        user = _mapper.Map<AppUser>(model);
-        var createUserResult = await _userManager.CreateAsync(user, model.Password);
+        user = _mapper.Map<AppUser>(request);
+        var createUserResult = await _userManager.CreateAsync(user, request.Password);
 
         var sb = new StringBuilder();
         if (!createUserResult.Succeeded)
@@ -61,8 +61,8 @@ public class AuthService : IAuthService
         await SendEmailConfirmationLink(user, callback);
 
         var response = new RegisterationResponse();
-        response.Message = $"User: [{model.Email}] has been created succesfully";
-        response.Email = model.Email;
+        response.Message = $"User: [{request.Email}] has been created succesfully";
+        response.Email = request.Email;
 
         return response;
     }
