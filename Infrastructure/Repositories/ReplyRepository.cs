@@ -44,9 +44,10 @@ public class ReplyRepository : RepositoryBase<Reply>, IReplyRepository
             FindByCondition(
                 r => r.Id == replyId &&
                 r.CommentId == commentId &&
-                r.Comment!.PostId == postId, trackChanges)
+                r.Comment!.PostId == postId,
+                trackChanges)
+            .Include(r => r.CommentId)
             .Include(r => r.AppUser)
-            .Include(r => r.Comment)
             .Select(r => new Reply
             {
                 Id = r.Id,

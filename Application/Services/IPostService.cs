@@ -8,6 +8,6 @@ public interface IPostService
     Task<Result<PostResponse?>> GetPostById(int id);
     Task<Result<string>> UpdatePost(int id, UpdatePostRequest updatePostRequest);
     Task<Result<string>> DeletePost(int id);
-    Task<Result<CreatePostResponse>> CreatePostAsync(CreatePostRequest postRequest);
+    Task<Result<PostResponse>> CreatePostAsync(CreatePostRequest postRequest);
 
 }

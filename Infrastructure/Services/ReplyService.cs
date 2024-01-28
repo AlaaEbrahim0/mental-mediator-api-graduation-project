@@ -1,4 +1,5 @@
-﻿using Application.Services;
+﻿using System.IdentityModel.Tokens.Jwt;
+using Application.Services;
 using AutoMapper;
 using Domain.Entities;
 using Domain.Errors;
@@ -26,8 +27,13 @@ public class ReplyService : IReplyService
     {
         return _signInManager.Context.User.FindFirst("uid")?.Value!;
     }
+    private string GetUserName()
+    {
+        var userName = _signInManager.Context.User.FindFirst(JwtRegisteredClaimNames.Name)!.Value;
+        return userName;
+    }
 
-    public async Task<Result<string>> CreateReply(int postId, int commentId, CreateReplyRequest createReplyRequest)
+    public async Task<Result<ReplyResponse>> CreateReply(int postId, int commentId, CreateReplyRequest createReplyRequest)
     {
         var comment = await _repos.Comments.GetById(postId, commentId, true);
         if (comment is null)
@@ -35,16 +41,19 @@ public class ReplyService : IReplyService
             return CommentErrors.NotFound(commentId);
         }
         var userId = GetUserId();
+        var userName = GetUserName();
 
         var reply = _mapper.Map<Reply>(createReplyRequest);
 
         reply.AppUserId = userId;
         reply.CommentId = comment.Id;
+        reply.Username = userName;
 
         _repos.Replies.CreateReply(reply);
         await _repos.SaveAsync();
 
-        return "reply created successfully";
+        var replyResponse = _mapper.Map<ReplyResponse>(reply);
+        return replyResponse;
     }
 
     public async Task<Result<string>> DeleteReply(int postId, int commentId, int replyId)
@@ -102,5 +111,17 @@ public class ReplyService : IReplyService
         await _repos.SaveAsync();
 
         return $"Reply with id = '{replyId}' has been updated successfully";
+    }
+
+    public async Task<Result<ReplyResponse>> GetReplyById(int postId, int commentId, int replyId)
+    {
+        var reply = await _repos.Replies.GetById(postId, commentId, replyId, false);
+        if (reply is null)
+        {
+            return ReplyErrors.NotFound(replyId);
+        }
+
+        var replyResponse = _mapper.Map<ReplyResponse>(reply);
+        return replyResponse;
     }
 }

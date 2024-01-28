@@ -64,7 +64,7 @@ public class PostController : ControllerBase
         return CreatedAtAction(
             nameof(GetPostById),
             new { id = result.Value.Id },
-            result.Value.Message);
+            result.Value);
     }
 
     [HttpPut("{id:int}")]

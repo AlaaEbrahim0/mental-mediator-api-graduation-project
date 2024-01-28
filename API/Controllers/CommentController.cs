@@ -16,6 +16,7 @@ public class CommentController : ControllerBase
         _commentService = commentService;
     }
 
+
     [HttpGet]
     public async Task<IActionResult> GetComments(int postId)
     {
@@ -26,6 +27,7 @@ public class CommentController : ControllerBase
         }
         return Ok(result.Value);
     }
+
     [HttpDelete("{commentId:int}")]
     [Authorize]
     public async Task<IActionResult> DeleteComment(int postId, int commentId)
@@ -37,6 +39,16 @@ public class CommentController : ControllerBase
         }
         return Ok(result.Value);
     }
+    [HttpGet("{commentId:int}")]
+    public async Task<IActionResult> GetCommentById(int postId, int commentId)
+    {
+        var response = await _commentService.GetCommentById(postId, commentId);
+        if (response.IsFailure)
+        {
+            return response.ToProblemDetails();
+        }
+        return Ok(response.Value);
+    }
 
     [HttpPost]
     [Authorize]
@@ -47,7 +59,11 @@ public class CommentController : ControllerBase
         {
             return result.ToProblemDetails();
         }
-        return Ok(result.Value);
+        return CreatedAtAction(
+            nameof(GetCommentById),
+            new { postId = postId, commentId = result.Value.Id },
+            result.Value);
+
     }
 
     [HttpPut("{commentId:int}")]

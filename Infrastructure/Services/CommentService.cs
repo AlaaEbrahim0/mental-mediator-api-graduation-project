@@ -1,4 +1,5 @@
-﻿using Application.Services;
+﻿using System.IdentityModel.Tokens.Jwt;
+using Application.Services;
 using AutoMapper;
 using Domain.Entities;
 using Domain.Errors;
@@ -29,7 +30,7 @@ public class CommentService : ICommentService
         return commentsResponse.ToList();
     }
 
-    public async Task<Result<string>> CreateComment(int postId, CreateCommentRequest createCommentRequest)
+    public async Task<Result<CommentResponse>> CreateComment(int postId, CreateCommentRequest createCommentRequest)
     {
         var post = await _repos.Posts.GetPostById(postId, true);
         if (post is null)
@@ -38,16 +39,19 @@ public class CommentService : ICommentService
         }
 
         string userId = GetUserId();
+        string userName = GetUserName();
         var comment = _mapper.Map<Comment>(createCommentRequest);
 
         comment.AppUserId = userId;
         comment.PostId = postId;
         comment.CommentedAt = DateTime.UtcNow;
+        comment.Username = userName;
 
         _repos.Comments.CreateComment(comment);
         await _repos.SaveAsync();
 
-        return "commment has been created successfully";
+        var commentResponse = _mapper.Map<CommentResponse>(comment);
+        return commentResponse;
     }
 
     public async Task<Result<string>> DeleteComment(int postId, int commentId)
@@ -95,6 +99,24 @@ public class CommentService : ICommentService
 
     private string GetUserId()
     {
-        return _signInManager.Context.User.FindFirst("uid")!.Value;
+        var userId = _signInManager.Context.User.FindFirst("uid")!.Value;
+        return userId;
+    }
+    private string GetUserName()
+    {
+        var userName = _signInManager.Context.User.FindFirst(JwtRegisteredClaimNames.Name)!.Value;
+        return userName;
+    }
+
+
+    public async Task<Result<CommentResponse>> GetCommentById(int postId, int commentId)
+    {
+        var comment = await _repos.Comments.GetById(postId, commentId, false);
+        if (comment is null)
+        {
+            return CommentErrors.NotFound(commentId);
+        }
+        var commentResponse = _mapper.Map<CommentResponse>(comment);
+        return commentResponse;
     }
 }

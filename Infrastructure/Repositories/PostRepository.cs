@@ -13,7 +13,7 @@ public class PostRepository : RepositoryBase<Post>, IPostRepository
     public void CreatePost(Post post)
     {
         Create(post);
-        
+
     }
 
     public void DeletePost(Post post)
@@ -23,9 +23,8 @@ public class PostRepository : RepositoryBase<Post>, IPostRepository
 
     public async Task<IEnumerable<Post>> GetAllPosts(bool trackChanges)
     {
-        return await 
+        return await
             FindAll(trackChanges)
-            .Include(p => p.AppUser)
             .Select(p => new Post
             {
                 Id = p.Id,
@@ -33,14 +32,13 @@ public class PostRepository : RepositoryBase<Post>, IPostRepository
                 Content = p.Content,
                 PostedOn = p.PostedOn,
                 Title = p.Title,
-                Username = $"{p.AppUser!.FirstName} {p.AppUser.LastName}"
             })
             .ToListAsync();
     }
 
     public async Task<Post?> GetPostById(int id, bool trackChanges)
     {
-        return await 
+        return await
             FindByCondition(p => p.Id == id, trackChanges)
             .Include(p => p.AppUser)
             .Select(p => new Post

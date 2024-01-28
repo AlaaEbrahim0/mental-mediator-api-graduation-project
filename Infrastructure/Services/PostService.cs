@@ -1,4 +1,5 @@
-﻿using Application.Services;
+﻿using System.IdentityModel.Tokens.Jwt;
+using Application.Services;
 using AutoMapper;
 using Domain.Entities;
 using Domain.Errors;
@@ -43,23 +44,27 @@ public class PostService : IPostService
     {
         return _signInManager.Context.User.FindFirst("uid")?.Value!;
     }
+    private string GetUserName()
+    {
+        var userName = _signInManager.Context.User.FindFirst(JwtRegisteredClaimNames.Name)!.Value;
+        return userName;
+    }
 
-    public async Task<Result<CreatePostResponse>> CreatePostAsync(CreatePostRequest postRequest)
+    public async Task<Result<PostResponse>> CreatePostAsync(CreatePostRequest postRequest)
     {
         var userId = GetUserId();
+        var userName = GetUserName();
         var post = _mapper.Map<Post>(postRequest);
 
         post.AppUserId = userId;
         post.PostedOn = DateTime.UtcNow;
+        post.Username = userName;
 
         _repos.Posts.CreatePost(post);
         await _repos.SaveAsync();
 
-        return new CreatePostResponse()
-        {
-            Id = post.Id,
-            Message = "post was created successfully"
-        };
+        var postResponse = _mapper.Map<PostResponse>(post);
+        return postResponse;
     }
 
     public async Task<Result<string>> DeletePost(int id)

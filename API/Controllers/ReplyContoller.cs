@@ -37,6 +37,21 @@ public class ReplyController : ControllerBase
         {
             return result.ToProblemDetails();
         }
+        return CreatedAtAction(
+            nameof(GetReplyById),
+            new { postId = postId, commentId = commentId, replyId = result.Value.Id },
+            result.Value);
+    }
+
+    [HttpGet("{replyId:int}")]
+    [AllowAnonymous]
+    public async Task<IActionResult> GetReplyById(int postId, int commentId, int replyId)
+    {
+        var result = await _replyService.GetReplyById(postId, commentId, replyId);
+        if (result.IsFailure)
+        {
+            return result.ToProblemDetails();
+        }
         return Ok(result.Value);
     }
 
