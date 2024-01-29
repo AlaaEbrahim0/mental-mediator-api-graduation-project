@@ -32,6 +32,7 @@ public class PostRepository : RepositoryBase<Post>, IPostRepository
                 Content = p.Content,
                 PostedOn = p.PostedOn,
                 Title = p.Title,
+                Username = p.AppUser!.FullName
             })
             .ToListAsync();
     }
@@ -48,7 +49,7 @@ public class PostRepository : RepositoryBase<Post>, IPostRepository
                 Content = p.Content,
                 PostedOn = p.PostedOn,
                 Title = p.Title,
-                Username = $"{p.AppUser!.FirstName} {p.AppUser.LastName}"
+                Username = p.AppUser!.FullName
             })
             .SingleOrDefaultAsync();
     }

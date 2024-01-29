@@ -176,7 +176,7 @@ public static class DependencyInjection
     }
     public static IServiceCollection ConfigureDbContext(this IServiceCollection services, IConfiguration configuration)
     {
-        var connectionString = configuration.GetConnectionString("constr_somee");
+        var connectionString = configuration.GetConnectionString("constr");
         services.AddDbContext<AppDbContext>(config =>
         {
             config.UseSqlServer(connectionString, b => b.MigrationsAssembly(nameof(Infrastructure)));

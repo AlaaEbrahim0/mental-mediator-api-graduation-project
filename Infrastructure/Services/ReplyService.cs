@@ -35,7 +35,7 @@ public class ReplyService : IReplyService
 
     public async Task<Result<ReplyResponse>> CreateReply(int postId, int commentId, CreateReplyRequest createReplyRequest)
     {
-        var comment = await _repos.Comments.GetById(postId, commentId, true);
+        var comment = await _repos.Comments.GetById(postId, commentId, false);
         if (comment is null)
         {
             return CommentErrors.NotFound(commentId);
@@ -48,6 +48,8 @@ public class ReplyService : IReplyService
         reply.AppUserId = userId;
         reply.CommentId = comment.Id;
         reply.Username = userName;
+        reply.RepliedAt = DateTime.UtcNow;
+
 
         _repos.Replies.CreateReply(reply);
         await _repos.SaveAsync();

@@ -31,7 +31,7 @@ public class ReplyRepository : RepositoryBase<Reply>, IReplyRepository
                 CommentId = r.CommentId,
                 Content = r.Content,
                 RepliedAt = r.RepliedAt,
-                Username = r.AppUser!.UserName
+                Username = r.AppUser!.FullName,
             })
             .ToListAsync();
 
@@ -55,7 +55,7 @@ public class ReplyRepository : RepositoryBase<Reply>, IReplyRepository
                 CommentId = r.CommentId,
                 Content = r.Content,
                 RepliedAt = r.RepliedAt,
-                Username = r.AppUser!.UserName
+                Username = r.AppUser!.FullName
             })
             .SingleOrDefaultAsync();
 

@@ -1,4 +1,5 @@
 using API.Configurations;
+using Infrastructure.Data;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -19,5 +20,7 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
+
+app.InitializeDatabase();
 
 app.Run();
