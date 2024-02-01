@@ -40,6 +40,7 @@ public class ReplyService : IReplyService
         {
             return CommentErrors.NotFound(commentId);
         }
+
         var userId = GetUserId();
         var userName = GetUserName();
 
@@ -49,7 +50,6 @@ public class ReplyService : IReplyService
         reply.CommentId = comment.Id;
         reply.Username = userName;
         reply.RepliedAt = DateTime.UtcNow;
-
 
         _repos.Replies.CreateReply(reply);
         await _repos.SaveAsync();
@@ -86,9 +86,10 @@ public class ReplyService : IReplyService
         {
             return CommentErrors.NotFound(commentId);
         }
+        var replies = await _repos.Replies.GetRepliesByCommentId(commentId, false);
 
-        var replies = _mapper.Map<IEnumerable<ReplyResponse>>(comment.Replies);
-        return replies.ToList();
+        var repliesResult = _mapper.Map<IEnumerable<ReplyResponse>>(replies);
+        return repliesResult.ToList();
 
     }
 

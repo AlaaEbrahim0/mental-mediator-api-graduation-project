@@ -18,23 +18,7 @@ namespace API.Configurations;
 
 public static class DependencyInjection
 {
-    public static void ConfigureServices(this IServiceCollection services, ConfigurationManager configuration)
-    {
-        services
-            .ConfigureControllers()
-            .ConfigureCors()
-            .ConfigureSwagger()
-            .ConfigureIdentity()
-            .ConfigureAuthentication(configuration)
-            .ConfigureAuthorization()
-            .ConfigureMailSettings(configuration)
-            .ConfigureMailService()
-            .ConfigureOptions(configuration)
-            .ConfigureEntityServices()
-            .ConfigureAutoMapper()
-            .ConfigureRepositores()
-            .ConfigureDbContext(configuration);
-    }
+
 
     public static IServiceCollection ConfigureCors(this IServiceCollection services)
     {
@@ -176,6 +160,7 @@ public static class DependencyInjection
     }
     public static IServiceCollection ConfigureDbContext(this IServiceCollection services, IConfiguration configuration)
     {
+
         var connectionString = configuration.GetConnectionString("constr");
         services.AddDbContext<AppDbContext>(config =>
         {

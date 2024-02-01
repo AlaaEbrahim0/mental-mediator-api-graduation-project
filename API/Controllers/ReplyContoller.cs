@@ -24,7 +24,7 @@ public class ReplyController : ControllerBase
         var result = await _replyService.GetRepliesForComment(postId, commentId);
         if (result.IsFailure)
         {
-            result.ToProblemDetails();
+            return result.ToProblemDetails();
         }
         return Ok(result.Value);
     }

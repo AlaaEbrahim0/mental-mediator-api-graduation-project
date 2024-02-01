@@ -3,7 +3,20 @@ using Infrastructure.Data;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.ConfigureServices(builder.Configuration);
+builder.Services
+    .ConfigureControllers()
+    .ConfigureCors()
+    .ConfigureSwagger()
+    .ConfigureIdentity()
+    .ConfigureAuthentication(builder.Configuration)
+    .ConfigureAuthorization()
+    .ConfigureMailSettings(builder.Configuration)
+    .ConfigureMailService()
+    .ConfigureOptions(builder.Configuration)
+    .ConfigureEntityServices()
+    .ConfigureAutoMapper()
+    .ConfigureRepositores()
+    .ConfigureDbContext(builder.Configuration);
 
 var app = builder.Build();
 

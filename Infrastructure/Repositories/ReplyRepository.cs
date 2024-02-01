@@ -46,7 +46,7 @@ public class ReplyRepository : RepositoryBase<Reply>, IReplyRepository
                 r.CommentId == commentId &&
                 r.Comment!.PostId == postId,
                 trackChanges)
-            .Include(r => r.CommentId)
+            .Include(r => r.Comment)
             .Include(r => r.AppUser)
             .Select(r => new Reply
             {
