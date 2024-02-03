@@ -1,4 +1,6 @@
-﻿namespace Infrastructure.Contracts;
+﻿using Domain.Repositories;
+
+namespace Infrastructure.Contracts;
 public interface IRepositoryManager
 {
     IPostRepository Posts { get; }

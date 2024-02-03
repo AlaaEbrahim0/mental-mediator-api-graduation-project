@@ -3,6 +3,7 @@ using System.Text;
 using Application.Options;
 using Application.Services;
 using Domain.Entities;
+using Domain.Repositories;
 using Infrastructure.Contracts;
 using Infrastructure.Data;
 using Infrastructure.Repositories;
@@ -161,7 +162,7 @@ public static class DependencyInjection
     public static IServiceCollection ConfigureDbContext(this IServiceCollection services, IConfiguration configuration)
     {
 
-        var connectionString = configuration.GetConnectionString("constr");
+        var connectionString = configuration.GetConnectionString("constr_somee");
         services.AddDbContext<AppDbContext>(config =>
         {
             config.UseSqlServer(connectionString, b => b.MigrationsAssembly(nameof(Infrastructure)));

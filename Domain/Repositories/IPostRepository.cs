@@ -1,10 +1,11 @@
 ﻿using Domain.Entities;
+using Shared;
 
-namespace Infrastructure.Contracts;
+namespace Domain.Repositories;
 
 public interface IPostRepository
 {
-    Task<IEnumerable<Post>> GetAllPosts(bool trackChanges);
+    Task<IEnumerable<Post>> GetAllPosts(RequestParameters parameters, bool trackChanges);
     Task<Post?> GetPostById(int id, bool trackChanges);
     void CreatePost(Post post);
     void UpdatePost(Post post);

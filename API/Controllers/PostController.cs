@@ -1,6 +1,7 @@
 ﻿using Application.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Shared;
 using Shared.PostsDto;
 
 namespace API.Controllers;
@@ -17,9 +18,9 @@ public class PostController : ControllerBase
     }
 
     [HttpGet]
-    public async Task<IActionResult> GetPosts()
+    public async Task<IActionResult> GetPosts([FromQuery] RequestParameters parameters)
     {
-        var result = await _postService.GetPosts();
+        var result = await _postService.GetPosts(parameters);
         if (result.IsFailure)
         {
             return result.ToProblemDetails();
@@ -49,6 +50,8 @@ public class PostController : ControllerBase
         }
         return Ok(result.Value);
     }
+
+
 
     [HttpPost]
     [Authorize]

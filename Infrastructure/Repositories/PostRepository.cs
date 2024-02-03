@@ -1,7 +1,8 @@
 ﻿using Domain.Entities;
-using Infrastructure.Contracts;
+using Domain.Repositories;
 using Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
+using Shared;
 
 namespace Infrastructure.Repositories;
 public class PostRepository : RepositoryBase<Post>, IPostRepository
@@ -21,10 +22,11 @@ public class PostRepository : RepositoryBase<Post>, IPostRepository
         Delete(post);
     }
 
-    public async Task<IEnumerable<Post>> GetAllPosts(bool trackChanges)
+    public async Task<IEnumerable<Post>> GetAllPosts(RequestParameters parameters, bool trackChanges)
     {
         return await
             FindAll(trackChanges)
+            .OrderByDescending(c => c.PostedOn)
             .Select(p => new Post
             {
                 Id = p.Id,
@@ -34,6 +36,7 @@ public class PostRepository : RepositoryBase<Post>, IPostRepository
                 Title = p.Title,
                 Username = p.AppUser!.FullName
             })
+            .Paginate(parameters.PageNumber, parameters.PageSize)
             .ToListAsync();
     }
 

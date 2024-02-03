@@ -1,4 +1,5 @@
-﻿using Infrastructure.Contracts;
+﻿using Domain.Repositories;
+using Infrastructure.Contracts;
 using Infrastructure.Data;
 
 namespace Infrastructure.Repositories;

@@ -1,6 +1,6 @@
 ﻿using Domain.Entities;
 
-namespace Infrastructure.Contracts;
+namespace Domain.Repositories;
 
 public interface IReplyRepository
 {

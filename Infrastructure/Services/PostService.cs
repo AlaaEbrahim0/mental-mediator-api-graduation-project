@@ -22,9 +22,10 @@ public class PostService : IPostService
         _repos = repos;
     }
 
-    public async Task<Result<IEnumerable<PostResponse>>> GetPosts()
+    public async Task<Result<IEnumerable<PostResponse>>> GetPosts(
+        RequestParameters parameters)
     {
-        var posts = await _repos.Posts.GetAllPosts(false);
+        var posts = await _repos.Posts.GetAllPosts(parameters, false);
         var postResponse = _mapper.Map<IEnumerable<PostResponse>>(posts);
         return postResponse.ToList();
     }
@@ -67,7 +68,7 @@ public class PostService : IPostService
         return postResponse;
     }
 
-    public async Task<Result<string>> DeletePost(int id)
+    public async Task<Result<PostResponse>> DeletePost(int id)
     {
         var userId = GetUserId();
         var post = await _repos.Posts.GetPostById(id, true);
@@ -82,10 +83,13 @@ public class PostService : IPostService
 
         _repos.Posts.DeletePost(post);
         await _repos.SaveAsync();
-        return "post has been deleted successfully";
+
+        var postResponse = _mapper.Map<PostResponse>(post);
+        return postResponse;
+
     }
 
-    public async Task<Result<string>> UpdatePost(int id, UpdatePostRequest updatePostRequest)
+    public async Task<Result<PostResponse>> UpdatePost(int id, UpdatePostRequest updatePostRequest)
     {
         var userId = GetUserId();
         var post = await _repos.Posts.GetPostById(id, true);
@@ -103,7 +107,8 @@ public class PostService : IPostService
         _repos.Posts.UpdatePost(post);
         await _repos.SaveAsync();
 
-        return "post has been updated successfully";
+        var postResponse = _mapper.Map<PostResponse>(post);
+        return postResponse;
     }
 
 
