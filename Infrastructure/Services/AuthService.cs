@@ -88,7 +88,8 @@ public class AuthService : IAuthService
 
         authModel.Token = new JwtSecurityTokenHandler().WriteToken(token);
         authModel.ExpiresOn = token.ValidTo;
-        authModel.Email = user!.Email;
+        authModel.Email = user.Email;
+        authModel.UserId = user.FullName;
         authModel.Roles = userRoles.ToList();
         authModel.Message = "User was authenticated successfully, We send an email confirmation link to your email address";
         authModel.UserId = user.Id;
@@ -148,6 +149,7 @@ public class AuthService : IAuthService
 
         authModel.Email = localUserAccount.Email;
         authModel.UserId = localUserAccount.Id;
+        authModel.UserName = localUserAccount.FullName;
         authModel.Token = new JwtSecurityTokenHandler().WriteToken(token);
         authModel.ExpiresOn = token.ValidTo;
         authModel.Roles = roles.ToList();

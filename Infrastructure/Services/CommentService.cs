@@ -54,7 +54,7 @@ public class CommentService : ICommentService
         return commentResponse;
     }
 
-    public async Task<Result<string>> DeleteComment(int postId, int commentId)
+    public async Task<Result<CommentResponse>> DeleteComment(int postId, int commentId)
     {
         var comment = await _repos.Comments.GetById(postId, commentId, true);
         if (comment is null)
@@ -71,10 +71,11 @@ public class CommentService : ICommentService
         _repos.Comments.DeleteComment(comment);
         await _repos.SaveAsync();
 
-        return "comment has been deleted successfully";
+        var commentResponse = _mapper.Map<CommentResponse>(comment);
+        return commentResponse;
     }
 
-    public async Task<Result<string>> UpdateComment(int postId, int commentId, UpdateCommentRequest updateCommentRequest)
+    public async Task<Result<CommentResponse>> UpdateComment(int postId, int commentId, UpdateCommentRequest updateCommentRequest)
     {
         var comment = await _repos.Comments.GetById(postId, commentId, true);
         if (comment is null)
@@ -94,7 +95,8 @@ public class CommentService : ICommentService
         _repos.Comments.UpdateComment(comment);
         await _repos.SaveAsync();
 
-        return "comment has been updated successfully";
+        var commentResponse = _mapper.Map<CommentResponse>(comment);
+        return commentResponse;
     }
 
     private string GetUserId()

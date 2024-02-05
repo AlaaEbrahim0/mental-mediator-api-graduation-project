@@ -6,4 +6,5 @@ public class CommentResponse
     public string? Content { get; set; }
     public DateTime CommentedAt { get; set; }
     public string? Username { get; set; }
+    public string? AppUserId { get; set; }
 }

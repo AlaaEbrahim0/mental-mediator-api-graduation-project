@@ -5,4 +5,5 @@ public class ReplyResponse
     public string? Content { get; set; }
     public DateTime RepliedAt { get; set; }
     public string? Username { get; set; }
+    public string? AppUserId { get; set; }
 }

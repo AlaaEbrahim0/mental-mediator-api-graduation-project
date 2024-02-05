@@ -58,7 +58,7 @@ public class ReplyService : IReplyService
         return replyResponse;
     }
 
-    public async Task<Result<string>> DeleteReply(int postId, int commentId, int replyId)
+    public async Task<Result<ReplyResponse>> DeleteReply(int postId, int commentId, int replyId)
     {
         var reply = await _repos.Replies.GetById(postId, commentId, replyId, true);
 
@@ -76,7 +76,8 @@ public class ReplyService : IReplyService
         _repos.Replies.DeleteReply(reply);
         await _repos.SaveAsync();
 
-        return $"Reply with id = '{replyId}' has been deleted successfully";
+        var replyResponse = _mapper.Map<ReplyResponse>(reply);
+        return replyResponse;
     }
 
     public async Task<Result<IEnumerable<ReplyResponse>>> GetRepliesForComment(int postId, int commentId)
@@ -93,7 +94,7 @@ public class ReplyService : IReplyService
 
     }
 
-    public async Task<Result<string>> UpdateReply(int postId, int commentId, int replyId, UpdateReplyRequest updateReplyRequest)
+    public async Task<Result<ReplyResponse>> UpdateReply(int postId, int commentId, int replyId, UpdateReplyRequest updateReplyRequest)
     {
         var reply = await _repos.Replies.GetById(postId, commentId, replyId, true);
 
@@ -113,7 +114,8 @@ public class ReplyService : IReplyService
         _repos.Replies.UpdateReply(reply);
         await _repos.SaveAsync();
 
-        return $"Reply with id = '{replyId}' has been updated successfully";
+        var replyResponse = _mapper.Map<ReplyResponse>(reply);
+        return replyResponse;
     }
 
     public async Task<Result<ReplyResponse>> GetReplyById(int postId, int commentId, int replyId)
