@@ -89,7 +89,7 @@ public class AuthService : IAuthService
         authModel.Token = new JwtSecurityTokenHandler().WriteToken(token);
         authModel.ExpiresOn = token.ValidTo;
         authModel.Email = user.Email;
-        authModel.UserId = user.FullName;
+        authModel.UserName = user.FullName;
         authModel.Roles = userRoles.ToList();
         authModel.Message = "User was authenticated successfully, We send an email confirmation link to your email address";
         authModel.UserId = user.Id;

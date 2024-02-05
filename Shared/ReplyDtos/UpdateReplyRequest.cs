@@ -1,7 +1,8 @@
 ﻿using System.ComponentModel.DataAnnotations;
 
-namespace Shared.CommentsDtos;
-public class CreateCommentRequest
+namespace Shared.ReplyDtos;
+
+public class UpdateReplyRequest
 {
     [Required(ErrorMessage = "Content is required")]
     [MaxLength(2047, ErrorMessage = "Content cannot exceed 2047 characters")]

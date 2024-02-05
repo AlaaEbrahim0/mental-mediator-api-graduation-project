@@ -1,6 +1,6 @@
 ﻿using Domain.Repositories;
 
-namespace Infrastructure.Contracts;
+namespace Application.Contracts;
 public interface IRepositoryManager
 {
     IPostRepository Posts { get; }

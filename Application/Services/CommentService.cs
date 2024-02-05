@@ -1,27 +1,25 @@
-﻿using System.IdentityModel.Tokens.Jwt;
-using Application.Services;
+﻿using Application.Contracts;
 using AutoMapper;
 using Domain.Entities;
 using Domain.Errors;
-using Infrastructure.Contracts;
-using Microsoft.AspNetCore.Identity;
 using Shared;
 using Shared.CommentsDtos;
 
-namespace Infrastructure.Services;
+namespace Application.Services;
 
 public class CommentService : ICommentService
 {
     private readonly IRepositoryManager _repos;
-    private readonly SignInManager<AppUser> _signInManager;
     private readonly IMapper _mapper;
+    private readonly IUserClaimsService _userClaimsService;
 
-    public CommentService(IMapper mapper, SignInManager<AppUser> signInManager, IRepositoryManager repos)
+    public CommentService(IRepositoryManager repos, IMapper mapper, IUserClaimsService userClaimsService)
     {
-        _mapper = mapper;
-        _signInManager = signInManager;
         _repos = repos;
+        _mapper = mapper;
+        _userClaimsService = userClaimsService;
     }
+
 
     public async Task<Result<IEnumerable<CommentResponse>>> GetCommentsByPostId(int postId)
     {
@@ -38,8 +36,9 @@ public class CommentService : ICommentService
             return PostErrors.NotFound(postId);
         }
 
-        string userId = GetUserId();
-        string userName = GetUserName();
+        string userId = _userClaimsService.GetUserId();
+        var userName = _userClaimsService.GetUserName();
+
         var comment = _mapper.Map<Comment>(createCommentRequest);
 
         comment.AppUserId = userId;
@@ -62,7 +61,7 @@ public class CommentService : ICommentService
             return CommentErrors.NotFound(commentId);
         }
 
-        var userId = GetUserId();
+        var userId = _userClaimsService.GetUserId();
         if (!comment.AppUserId!.Equals(userId))
         {
             return CommentErrors.Forbidden(commentId);
@@ -83,7 +82,7 @@ public class CommentService : ICommentService
             return CommentErrors.NotFound(commentId);
         }
 
-        var userId = GetUserId();
+        var userId = _userClaimsService.GetUserId();
 
         if (!comment.AppUserId!.Equals(userId))
         {
@@ -99,16 +98,7 @@ public class CommentService : ICommentService
         return commentResponse;
     }
 
-    private string GetUserId()
-    {
-        var userId = _signInManager.Context.User.FindFirst("uid")!.Value;
-        return userId;
-    }
-    private string GetUserName()
-    {
-        var userName = _signInManager.Context.User.FindFirst(JwtRegisteredClaimNames.Name)!.Value;
-        return userName;
-    }
+
 
 
     public async Task<Result<CommentResponse>> GetCommentById(int postId, int commentId)

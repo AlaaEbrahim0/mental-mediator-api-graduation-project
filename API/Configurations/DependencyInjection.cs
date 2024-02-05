@@ -1,10 +1,10 @@
 ﻿using System.Security.Claims;
 using System.Text;
+using Application.Contracts;
 using Application.Options;
 using Application.Services;
 using Domain.Entities;
 using Domain.Repositories;
-using Infrastructure.Contracts;
 using Infrastructure.Data;
 using Infrastructure.Repositories;
 using Infrastructure.Services;
@@ -105,6 +105,7 @@ public static class DependencyInjection
         services.AddScoped<IPostService, PostService>();
         services.AddScoped<ICommentService, CommentService>();
         services.AddScoped<IReplyService, ReplyService>();
+        services.AddScoped<IUserClaimsService, UserClaimsService>();
         services.AddScoped<ClaimsPrincipal>();
         return services;
     }

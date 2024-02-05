@@ -1,37 +1,25 @@
-﻿using System.IdentityModel.Tokens.Jwt;
-using Application.Services;
+﻿using Application.Contracts;
 using AutoMapper;
 using Domain.Entities;
 using Domain.Errors;
-using Infrastructure.Contracts;
-using Microsoft.AspNetCore.Identity;
 using Shared;
 using Shared.ReplyDtos;
 
-namespace Infrastructure.Services;
+namespace Application.Services;
 
 public class ReplyService : IReplyService
 {
     private readonly IRepositoryManager _repos;
-    private readonly SignInManager<AppUser> _signInManager;
     private readonly IMapper _mapper;
+    private readonly IUserClaimsService _userClaimsService;
 
-    public ReplyService(IMapper mapper, SignInManager<AppUser> signInManager, IRepositoryManager repos)
+    public ReplyService(IRepositoryManager repos, IMapper mapper, IUserClaimsService userClaimsService)
     {
-        _mapper = mapper;
-        _signInManager = signInManager;
         _repos = repos;
+        _mapper = mapper;
+        _userClaimsService = userClaimsService;
     }
 
-    private string GetUserId()
-    {
-        return _signInManager.Context.User.FindFirst("uid")?.Value!;
-    }
-    private string GetUserName()
-    {
-        var userName = _signInManager.Context.User.FindFirst(JwtRegisteredClaimNames.Name)!.Value;
-        return userName;
-    }
 
     public async Task<Result<ReplyResponse>> CreateReply(int postId, int commentId, CreateReplyRequest createReplyRequest)
     {
@@ -41,8 +29,8 @@ public class ReplyService : IReplyService
             return CommentErrors.NotFound(commentId);
         }
 
-        var userId = GetUserId();
-        var userName = GetUserName();
+        var userId = _userClaimsService.GetUserId();
+        var userName = _userClaimsService.GetUserName();
 
         var reply = _mapper.Map<Reply>(createReplyRequest);
 
@@ -67,7 +55,7 @@ public class ReplyService : IReplyService
             return ReplyErrors.NotFound(replyId);
         }
 
-        var userId = GetUserId();
+        var userId = _userClaimsService.GetUserId();
         if (!reply.AppUserId!.Equals(userId))
         {
             return ReplyErrors.Forbidden(replyId);
@@ -103,7 +91,7 @@ public class ReplyService : IReplyService
             return ReplyErrors.NotFound(replyId);
         }
 
-        var userId = GetUserId();
+        var userId = _userClaimsService.GetUserId();
         if (!reply.AppUserId!.Equals(userId))
         {
             return ReplyErrors.Forbidden(replyId);

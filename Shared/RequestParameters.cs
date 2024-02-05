@@ -17,19 +17,3 @@ public class RequestParameters
         }
     }
 }
-
-public static class PagingExtensions
-{
-    //used by LINQ to SQL
-    public static IQueryable<TSource> Paginate<TSource>(this IQueryable<TSource> source, int page, int pageSize)
-    {
-        return source.Skip((page - 1) * pageSize).Take(pageSize);
-    }
-
-    //used by LINQ
-    public static IEnumerable<TSource> Paginate<TSource>(this IEnumerable<TSource> source, int page, int pageSize)
-    {
-        return source.Skip((page - 1) * pageSize).Take(pageSize);
-    }
-
-}

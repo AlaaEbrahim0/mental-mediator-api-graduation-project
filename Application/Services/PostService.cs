@@ -1,25 +1,24 @@
-﻿using System.IdentityModel.Tokens.Jwt;
-using Application.Services;
+﻿using Application.Contracts;
 using AutoMapper;
 using Domain.Entities;
 using Domain.Errors;
-using Infrastructure.Contracts;
-using Microsoft.AspNetCore.Identity;
 using Shared;
 using Shared.PostsDto;
 
-namespace Infrastructure.Services;
+namespace Application.Services;
 public class PostService : IPostService
 {
     private readonly IRepositoryManager _repos;
-    private readonly SignInManager<AppUser> _signInManager;
     private readonly IMapper _mapper;
+    private readonly IUserClaimsService _userClaimsService;
 
-    public PostService(IMapper mapper, SignInManager<AppUser> signInManager, IRepositoryManager repos)
+
+    public PostService(IRepositoryManager repos, IMapper mapper, IUserClaimsService userClaimsService)
     {
-        _mapper = mapper;
-        _signInManager = signInManager;
         _repos = repos;
+        _mapper = mapper;
+        _userClaimsService = userClaimsService;
+
     }
 
     public async Task<Result<IEnumerable<PostResponse>>> GetPosts(
@@ -41,20 +40,13 @@ public class PostService : IPostService
         return postResponse;
     }
 
-    private string GetUserId()
-    {
-        return _signInManager.Context.User.FindFirst("uid")?.Value!;
-    }
-    private string GetUserName()
-    {
-        var userName = _signInManager.Context.User.FindFirst(JwtRegisteredClaimNames.Name)!.Value;
-        return userName;
-    }
+
 
     public async Task<Result<PostResponse>> CreatePostAsync(CreatePostRequest postRequest)
     {
-        var userId = GetUserId();
-        var userName = GetUserName();
+        var userId = _userClaimsService.GetUserId();
+        var userName = _userClaimsService.GetUserName();
+
         var post = _mapper.Map<Post>(postRequest);
 
         post.AppUserId = userId;
@@ -70,7 +62,8 @@ public class PostService : IPostService
 
     public async Task<Result<PostResponse>> DeletePost(int id)
     {
-        var userId = GetUserId();
+        var userId = _userClaimsService.GetUserId();
+
         var post = await _repos.Posts.GetPostById(id, true);
         if (post is null)
         {
@@ -91,7 +84,8 @@ public class PostService : IPostService
 
     public async Task<Result<PostResponse>> UpdatePost(int id, UpdatePostRequest updatePostRequest)
     {
-        var userId = GetUserId();
+        var userId = _userClaimsService.GetUserId();
+
         var post = await _repos.Posts.GetPostById(id, true);
 
         if (post is null)
