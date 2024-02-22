@@ -20,6 +20,7 @@ Nexus is a comprehensive project developed as part of my final year in computer 
 ## Class Diagram
 ![Uploading MentalMediator2.drawio.png…]()
 
+
 ## Technologies Used:
 - ASP.NET Core 8
 - SQL Server
