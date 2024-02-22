@@ -17,9 +17,17 @@ Nexus is a comprehensive project developed as part of my final year in computer 
 - Implemented pagination for efficient data retrieval.
 - Integrated Google SMTP server for mailing services to enhance communication capabilities.
 
+![classDiagram](C:\Users\DELL\OneDrive\Desktop\New folder (2)\Diagrams\MentalMediator2.drawio.png)
+
 ## Technologies Used:
 - ASP.NET Core 8
 - SQL Server
+- EF Core
+- React
+- Flutter
+- Flask
+- Docker
+- Postman
 
 This project showcases my ability to architect, develop, and optimize robust backend solutions, demonstrating proficiency in a range of modern technologies and best practices in software engineering.
 
