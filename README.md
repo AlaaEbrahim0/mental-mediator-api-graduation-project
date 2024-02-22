@@ -17,8 +17,8 @@ Nexus is a comprehensive project developed as part of my final year in computer 
 - Implemented pagination for efficient data retrieval.
 - Integrated Google SMTP server for mailing services to enhance communication capabilities.
 
+## Class Diagram
 ![Uploading MentalMediator2.drawio.png…]()
-![Update Reply Sequence diagram](https://github.com/AlaaEbrahim0/mental-mediator-api-graduation-project/assets/100428952/c03f2217-63a5-4d2d-b1f7-71d30f4d6004)
 
 ## Technologies Used:
 - ASP.NET Core 8
