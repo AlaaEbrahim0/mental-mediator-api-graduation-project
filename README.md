@@ -25,9 +25,8 @@ Nexus is a comprehensive project developed as part of my final year in computer 
 - ASP.NET Core 8
 - SQL Server
 - EF Core
-- React
-- Flutter
-- Flask
+- Automapper
+- Bogus
 - Docker
 - Postman
 
