@@ -1,4 +1,6 @@
 using API.Configurations;
+using Application.Contracts;
+using Application.Utilities;
 using Infrastructure.Data;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -15,6 +17,8 @@ builder.Services
     .ConfigureOptions(builder.Configuration)
     .ConfigureEntityServices()
     .ConfigureAutoMapper()
+    .AddScoped<NotificationMessageTemplates>()
+    .AddScoped<IWebRootFileProvider, WebRootFileProvider>()
     .ConfigureRepositores()
     .ConfigureDbContext(builder.Configuration);
 
@@ -25,6 +29,8 @@ app.UseSwagger();
 app.UseSwaggerUI(c => c.SwaggerEndpoint("/swagger/v1/swagger.json", "TestApiJWT v1"));
 
 app.UseHttpsRedirection();
+
+app.UseStaticFiles();
 
 app.UseCors("CorsPolicy");
 
