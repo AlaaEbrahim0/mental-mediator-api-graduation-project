@@ -1,4 +1,5 @@
 ﻿using System.IdentityModel.Tokens.Jwt;
+using System.Net;
 using System.Security.Claims;
 using System.Text;
 using Application.Services;
@@ -18,6 +19,7 @@ public class AuthService : IAuthService
     private readonly UserManager<AppUser> _userManager;
     private readonly SignInManager<AppUser> _signInManager;
     private readonly JwtTokenGenerator _jwtTokenGenerator;
+    private readonly NotificationMessageTemplates _notificationMessageTemplates;
     private readonly IMailService _mailService;
     private readonly IMapper _mapper;
 
@@ -26,45 +28,15 @@ public class AuthService : IAuthService
         SignInManager<AppUser> signInManager,
         JwtTokenGenerator jwtTokenGenerator,
         IMailService mailService,
-        IMapper mapper)
+        IMapper mapper,
+        NotificationMessageTemplates notificationMessageTemplates)
     {
         _userManager = userManager;
         _mapper = mapper;
         _signInManager = signInManager;
         _jwtTokenGenerator = jwtTokenGenerator;
         _mailService = mailService;
-    }
-
-    public async Task<Result<RegisterationResponse>> RegisterAsync(RegistrationRequest request, Func<string, string, string> callback)
-    {
-        var user = await _userManager.FindByEmailAsync(request.Email);
-
-        if (user is not null)
-        {
-            return UserErrors.EmailNotUnique(request.Email);
-        }
-
-        user = _mapper.Map<AppUser>(request);
-        var createUserResult = await _userManager.CreateAsync(user, request.Password);
-
-        var sb = new StringBuilder();
-        if (!createUserResult.Succeeded)
-        {
-            foreach (var error in createUserResult.Errors)
-            {
-                sb.AppendLine(error.Code + " : " + error.Description);
-            }
-            return UserErrors.ValidationErrors(sb.ToString());
-        }
-
-        await _userManager.AddToRoleAsync(user, "User");
-        await SendEmailConfirmationLink(user, callback);
-
-        var response = new RegisterationResponse();
-        response.Message = $"User: [{request.Email}] has been created succesfully";
-        response.Email = request.Email;
-
-        return response;
+        _notificationMessageTemplates = notificationMessageTemplates;
     }
 
     public async Task<Result<AuthResponse>> SignInAsync(SignInRequest signInModel)
@@ -91,23 +63,96 @@ public class AuthService : IAuthService
         authModel.Email = user.Email;
         authModel.UserName = user.FullName;
         authModel.Roles = userRoles.ToList();
-        authModel.Message = "User was authenticated successfully, We send an email confirmation link to your email address";
+        authModel.Message = "User was authenticated successfully";
         authModel.UserId = user.Id;
 
         return authModel;
     }
 
-    private async Task SendEmailConfirmationLink(AppUser user, Func<string, string, string> callback)
+    public async Task<Result<EmailConfirmationResponse>> SendEmailConfirmationLink(string email)
     {
+        var user = await _userManager.FindByEmailAsync(email);
+
+        if (user is null)
+        {
+            return UserErrors.NotFoundByEmail(email);
+        }
+        if (user.EmailConfirmed)
+        {
+            return UserErrors.EmailAlreadyConfirmed(email);
+        }
+
         var token = await _userManager.GenerateEmailConfirmationTokenAsync(user);
-        var confirmationLink = callback.Invoke(user.Id, token);
+        var confirmationLink = generateEmailConfirmationLink(user.Id, token);
 
         await _mailService.SendEmailAsync(new MailRequest()
         {
             ToEmail = user.Email,
             Subject = "EMAIL CONFIRMATION",
-            Body = NotificationMessageTemplates.EmailConfirmationMessage(user.UserName!, confirmationLink)
+            Body = _notificationMessageTemplates.EmailConfirmation(user.FullName, confirmationLink)
         });
+
+        return new EmailConfirmationResponse
+        {
+            Email = email,
+            Message = "An email confirmation link has been sent to the provided email address"
+        };
+    }
+
+    private string generateEmailConfirmationLink(string id, string token)
+    {
+        return
+            $"{_signInManager.Context.Request.Scheme}://" +
+            $"{_signInManager.Context.Request.Host}" +
+            $"/api/auth/confirm-email?" +
+            $"id={id}&" +
+            $"token={WebUtility.UrlEncode(token)}";
+    }
+
+    private string generateResetPasswordLink(string email, string token)
+    {
+        return
+            $"{_signInManager.Context.Request.Scheme}://" +
+            $"{_signInManager.Context.Request.Host}/resetPasswordDemo.html?" +
+            $"email={WebUtility.UrlEncode(email)}&" +
+            $"token={WebUtility.UrlEncode(token)}";
+    }
+
+    public async Task<Result<RegisterationResponse>> RegisterAsync(RegistrationRequest request)
+    {
+        var user = await _userManager.FindByEmailAsync(request.Email);
+
+        if (user is not null)
+        {
+            return UserErrors.EmailNotUnique(request.Email);
+        }
+
+        user = _mapper.Map<AppUser>(request);
+        var createUserResult = await _userManager.CreateAsync(user, request.Password);
+
+        var sb = new StringBuilder();
+        if (!createUserResult.Succeeded)
+        {
+            foreach (var error in createUserResult.Errors)
+            {
+                sb.AppendLine(error.Code + " : " + error.Description);
+            }
+            return UserErrors.ValidationErrors(sb.ToString());
+        }
+
+        await _userManager.AddToRoleAsync(user, request.Role);
+        var sendEmailConfirmationResult = await SendEmailConfirmationLink(user.Email!);
+
+        if (sendEmailConfirmationResult.IsFailure)
+        {
+            return sendEmailConfirmationResult.Error;
+        }
+
+        var response = new RegisterationResponse();
+        response.Message = $"User: [{request.Email}] has been created successfully\n";
+        response.Message += sendEmailConfirmationResult.Value;
+
+        return response;
     }
 
     public async Task<Result<AuthResponse>> ExternalLoginAsync()
@@ -167,9 +212,14 @@ public class AuthService : IAuthService
     {
         var user = await _userManager.FindByIdAsync(id);
 
-        if (user == null)
+        if (user is null)
         {
             return UserErrors.NotFound(id);
+        }
+
+        if (user.EmailConfirmed)
+        {
+            return UserErrors.EmailAlreadyConfirmed(user.Email!);
         }
 
         var result = await _userManager.ConfirmEmailAsync(user, token);
@@ -191,4 +241,47 @@ public class AuthService : IAuthService
         };
     }
 
+    public async Task<Result<string>> SendResetPasswordLink(string email)
+    {
+        var user = await _userManager.FindByEmailAsync(email);
+        if (user is null)
+        {
+            return UserErrors.NotFound(user!.Id);
+        }
+
+        var token = await _userManager.GeneratePasswordResetTokenAsync(user);
+        var resetPasswordLink = generateResetPasswordLink(email, token);
+
+        await _mailService.SendEmailAsync(new MailRequest
+        {
+            Subject = "RESET PASSWORD",
+            ToEmail = email,
+            Body = _notificationMessageTemplates.ResetPassword(resetPasswordLink)
+        });
+
+        return "An email with reset password link has been sent to your email address";
+    }
+
+    public async Task<Result<string>> ResetPassword(ResetPasswordRequest request)
+    {
+        var user = await _userManager.FindByEmailAsync(request.Email);
+        if (user is null)
+        {
+            return UserErrors.NotFoundByEmail(request.Email);
+        }
+
+        var result = await _userManager.ResetPasswordAsync(user, request.Token, request.NewPassword);
+
+        var sb = new StringBuilder();
+        if (!result.Succeeded)
+        {
+            foreach (var error in result.Errors)
+            {
+                sb.AppendLine(error.Code + " : " + error.Description);
+            }
+            return UserErrors.ValidationErrors(sb.ToString());
+        }
+
+        return "Your password has been reset successfully";
+    }
 }

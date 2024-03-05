@@ -23,5 +23,8 @@ public static class UserErrors
 
     public static Error ValidationErrors(string description) => Error.Validation(
         "Users.ValidationErrors", description);
+
+    public static Error EmailAlreadyConfirmed(string email) => Error.Conflict(
+        "Users.EmailAlreadyConfirmed", $"email [{email}] has been already confirmed");
 }
 

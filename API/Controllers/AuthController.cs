@@ -1,4 +1,6 @@
 ﻿using Application.Services;
+using Domain.Entities;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Shared.AuthDtos;
 
@@ -9,10 +11,12 @@ namespace API.Controllers;
 public class AuthController : ControllerBase
 {
     private readonly IAuthService _authService;
+    private readonly SignInManager<AppUser> _signInManager;
 
-    public AuthController(IAuthService authService)
+    public AuthController(IAuthService authService, SignInManager<AppUser> signInManager)
     {
         _authService = authService;
+        _signInManager = signInManager;
     }
 
     [HttpPost("register")]
@@ -22,16 +26,7 @@ public class AuthController : ControllerBase
         {
             return UnprocessableEntity(ModelState);
         }
-        var result = await _authService.RegisterAsync(model, (id, token) =>
-        {
-            var confirmationLink = Url.Action(
-                "ConfirmEmail",
-                "Auth",
-                new { id = id, token = token },
-                Request.Scheme);
-
-            return confirmationLink!;
-        });
+        var result = await _authService.RegisterAsync(model);
         if (result.IsFailure)
         {
             return result.ToProblemDetails();
@@ -77,19 +72,54 @@ public class AuthController : ControllerBase
         return Ok(result.Value);
     }
 
+    [HttpPost("send-email-confirmation-link")]
+    public async Task<IActionResult> SendEmailConfirmationLink([FromQuery] string email)
+    {
+        var result = await _authService.SendEmailConfirmationLink(email);
+
+        if (result.IsFailure)
+        {
+            return result.ToProblemDetails();
+        }
+
+        return Ok(result.Value);
+    }
+
+    [HttpPost("send-reset-password-link")]
+    public async Task<IActionResult> SendResetPasswordLink([FromQuery] string email)
+    {
+        var result = await _authService.SendResetPasswordLink(email);
+        if (result.IsFailure)
+        {
+            return result.ToProblemDetails();
+        }
+        return Ok(result.Value);
+    }
+
+    [HttpPost("reset-password")]
+    public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordRequest request)
+    {
+        var result = await _authService.ResetPassword(request);
+        if (result.IsFailure)
+        {
+            return result.ToProblemDetails();
+        }
+        return Ok(result.Value);
+    }
+
     [HttpGet("confirm-email")]
     public async Task<IActionResult> ConfirmEmail(string id, string token)
     {
         if (string.IsNullOrEmpty(id) || string.IsNullOrEmpty(token))
         {
-            BadRequest("Null or empty values for either id or token");
+            return BadRequest("Null or empty values for either id or token");
         }
         var result = await _authService.ConfirmEmailAsync(id, token);
         if (result.IsFailure)
         {
             return result.ToProblemDetails();
         }
-        return Ok(result.Value);
+        return Redirect($"{Request.Scheme}://{Request.Host}/static/successfulEmailConfirmation.html");
     }
 
 }

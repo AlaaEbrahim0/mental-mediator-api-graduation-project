@@ -16,10 +16,11 @@ public record RegistrationRequest
     public string? LastName { get; set; }
 
     [Required(ErrorMessage = "Email is required.")]
-    [EmailAddress(ErrorMessage = "Invalid email address.")]
+    [EmailAddress(ErrorMessage = "Invalid email address format")]
+
     [MaxLength(byte.MaxValue, ErrorMessage = "Email cannot be greater than 255 character")]
     [MinLength(12, ErrorMessage = "Email cannot be less than 3 characters")]
-    public string Email { get; init; } = string.Empty;
+    public string? Email { get; init; }
 
     [Required(ErrorMessage = "Password is required.")]
     [StringLength(100, MinimumLength = 8, ErrorMessage = "Password must be at least 8 characters.")]
@@ -33,6 +34,10 @@ public record RegistrationRequest
     public string? Gender { get; set; }
 
     public string Username => Email.Split('@')[0];
+
+    [Required(ErrorMessage = "Role is required")]
+    [AllowedValues("customer", "doctor", "admin")]
+    public string Role { get; set; } = string.Empty;
 
 
 }

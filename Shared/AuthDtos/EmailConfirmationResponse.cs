@@ -1,6 +1,4 @@
-﻿using System.ComponentModel;
-
-namespace Shared.AuthDtos;
+﻿namespace Shared.AuthDtos;
 
 public class EmailConfirmationResponse
 {
