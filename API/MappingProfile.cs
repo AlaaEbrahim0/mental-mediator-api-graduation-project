@@ -5,6 +5,7 @@ using Shared.AuthDtos;
 using Shared.CommentsDtos;
 using Shared.PostsDto;
 using Shared.ReplyDtos;
+using Shared.UserDtos;
 
 public class MappingProfile : Profile
 {
@@ -23,5 +24,8 @@ public class MappingProfile : Profile
         CreateMap<Reply, ReplyResponse>();
         CreateMap<CreateReplyRequest, Reply>();
         CreateMap<UpdateReplyRequest, Reply>();
+
+        CreateMap<UpdateUserInfoRequest, AppUser>();
+        CreateMap<AppUser, UserInfoResponse>();
     }
 }

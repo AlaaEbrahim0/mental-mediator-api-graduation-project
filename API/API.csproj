@@ -37,4 +37,11 @@
     <None Remove="..\.dockerignore" />
   </ItemGroup>
 
+
+  <ItemGroup>
+    <None Update=".env">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
 </Project>

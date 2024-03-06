@@ -2,8 +2,10 @@ using API.Configurations;
 using Application.Contracts;
 using Application.Utilities;
 using Infrastructure.Data;
+using Infrastructure.Services;
 
 var builder = WebApplication.CreateBuilder(args);
+
 
 builder.Services
     .ConfigureControllers()
@@ -18,6 +20,8 @@ builder.Services
     .ConfigureEntityServices()
     .ConfigureAutoMapper()
     .AddScoped<NotificationMessageTemplates>()
+    .AddScoped<IUserService, UserService>()
+    .AddScoped<IStorageService, StorageService>()
     .AddScoped<IWebRootFileProvider, WebRootFileProvider>()
     .ConfigureRepositores()
     .ConfigureDbContext(builder.Configuration);

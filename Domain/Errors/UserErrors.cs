@@ -26,5 +26,6 @@ public static class UserErrors
 
     public static Error EmailAlreadyConfirmed(string email) => Error.Conflict(
         "Users.EmailAlreadyConfirmed", $"email [{email}] has been already confirmed");
+
 }
 

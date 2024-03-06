@@ -143,6 +143,7 @@ public static class DependencyInjection
 
         return services;
     }
+
     public static IServiceCollection ConfigureAuthorization(this IServiceCollection services)
     {
         services.AddAuthorizationBuilder();
