@@ -364,3 +364,5 @@ FodyWeavers.xsd
 /API/appsettings.Development.json
 /API/.config
 /API/appsettings.Production.json
+/API/google_secret.json
+/API/.env
