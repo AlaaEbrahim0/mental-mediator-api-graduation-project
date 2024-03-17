@@ -67,6 +67,7 @@ public static class DependencyInjection
                         new List<string>()
                     }
                 });
+
             });
 
         return services;
@@ -161,10 +162,19 @@ public static class DependencyInjection
 
         return services;
     }
-    public static IServiceCollection ConfigureDbContext(this IServiceCollection services, IConfiguration configuration)
+    public static IServiceCollection ConfigureDbContext(this IServiceCollection services, IConfiguration configuration, IWebHostEnvironment env)
     {
 
-        var connectionString = configuration.GetConnectionString("constr");
+        var connectionString = string.Empty;
+        if (env.IsDevelopment())
+        {
+            connectionString = configuration.GetConnectionString("constr");
+        }
+        else
+        {
+            connectionString = configuration.GetConnectionString("constr_somee");
+        }
+
         services.AddDbContext<AppDbContext>(config =>
         {
             config.UseSqlServer(connectionString, b => b.MigrationsAssembly(nameof(Infrastructure)));

@@ -7,27 +7,34 @@ using Microsoft.Extensions.DependencyInjection;
 namespace Infrastructure.Data;
 public static class DbInitializer
 {
-    public static void InitializeDatabase(this IApplicationBuilder app)
+    public static void InitializeDatabase(this IApplicationBuilder app, bool isProductionEnv)
     {
+
         using (var serviceScope = app.ApplicationServices.CreateScope())
         {
             var context = serviceScope.ServiceProvider.GetService<AppDbContext>()!;
 
-            if (context.Posts.Any() ||
-                context.Users.Any() ||
-                context.UserRoles.Any())
-            {
-                Console.WriteLine("already seeded");
-                return;
-            }
 
-            SeedData(context);
+            SeedData(context, isProductionEnv);
         }
 
     }
 
-    private static void SeedData(AppDbContext context)
+    private static void SeedData(AppDbContext context, bool isProductionEnv)
     {
+        //if (isProductionEnv)
+        //{
+        //    context.Database.Migrate();
+        //}
+
+        if (context.Posts.Any() ||
+            context.Users.Any() ||
+            context.UserRoles.Any())
+        {
+            Console.WriteLine("already seeded");
+            return;
+        }
+
         var rolesIds = Enumerable.Range(1, 3).Select(x => Guid.NewGuid().ToString()).ToArray();
         var roles = new List<IdentityRole>()
         {

@@ -29,7 +29,7 @@ public class UserProfileController : ControllerBase
     }
 
     [HttpPut("{id}")]
-    public async Task<IActionResult> UpdateUserProfile(string id, UpdateUserInfoRequest request)
+    public async Task<IActionResult> UpdateUserProfile(string id, [FromForm] UpdateUserInfoRequest request)
     {
         var result = await _userService.UpdateUserInfo(id, request);
         if (result.IsFailure)

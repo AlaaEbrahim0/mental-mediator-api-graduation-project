@@ -6,4 +6,5 @@ public class UserInfoResponse
     public string? Email { get; init; }
     public DateOnly BirthDate { get; set; }
     public string? Gender { get; set; }
+    public string? PhotoUrl { get; set; }
 }

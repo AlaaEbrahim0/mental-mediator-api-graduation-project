@@ -1,4 +1,5 @@
 ﻿using System.ComponentModel.DataAnnotations;
+using Microsoft.AspNetCore.Http;
 
 namespace Shared.UserDtos;
 public class UpdateUserInfoRequest
@@ -19,4 +20,6 @@ public class UpdateUserInfoRequest
     [Required(ErrorMessage = "Gender is required")]
     [AllowedValues("male", "female", ErrorMessage = "Gender must have a value of [male, female]")]
     public string? Gender { get; set; }
+
+    public IFormFile? Photo { get; set; }
 }

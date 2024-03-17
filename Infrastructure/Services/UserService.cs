@@ -11,13 +11,15 @@ public class UserService : IUserService
 {
     private readonly UserManager<AppUser> _userManager;
     private readonly IUserClaimsService _userClaimsService;
+    private readonly IStorageService _storageService;
     private readonly IMapper _mapper;
 
-    public UserService(UserManager<AppUser> userManager, IUserClaimsService userClaimsService, IMapper mapper)
+    public UserService(UserManager<AppUser> userManager, IUserClaimsService userClaimsService, IMapper mapper, IStorageService storageService)
     {
         _userManager = userManager;
         _userClaimsService = userClaimsService;
         _mapper = mapper;
+        _storageService = storageService;
     }
 
     public async Task<Result<UserInfoResponse>> GetUserInfo(string id)
@@ -47,10 +49,17 @@ public class UserService : IUserService
             return UserErrors.NotFound(id);
         }
 
+        var uploadResult = await _storageService.UploadPhoto(updateRequest.Photo);
+        if (uploadResult.IsFailure)
+        {
+            return uploadResult.Error;
+        }
+
         _mapper.Map(updateRequest, user);
         await _userManager.UpdateAsync(user);
 
         var response = _mapper.Map<UserInfoResponse>(user);
+        response.PhotoUrl = uploadResult.Value;
 
         return response;
     }

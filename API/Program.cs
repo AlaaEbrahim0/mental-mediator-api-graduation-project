@@ -24,7 +24,7 @@ builder.Services
     .AddScoped<IStorageService, StorageService>()
     .AddScoped<IWebRootFileProvider, WebRootFileProvider>()
     .ConfigureRepositores()
-    .ConfigureDbContext(builder.Configuration);
+    .ConfigureDbContext(builder.Configuration, builder.Environment);
 
 var app = builder.Build();
 
@@ -44,6 +44,6 @@ app.UseAuthorization();
 
 app.MapControllers();
 
-app.InitializeDatabase();
+app.InitializeDatabase(builder.Environment.IsProduction());
 
 app.Run();
