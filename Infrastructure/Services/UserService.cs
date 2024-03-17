@@ -49,6 +49,7 @@ public class UserService : IUserService
             return UserErrors.NotFound(id);
         }
 
+
         var uploadResult = await _storageService.UploadPhoto(updateRequest.Photo);
         if (uploadResult.IsFailure)
         {
@@ -56,10 +57,11 @@ public class UserService : IUserService
         }
 
         _mapper.Map(updateRequest, user);
+        user.PhotoUrl = uploadResult.Value;
+
         await _userManager.UpdateAsync(user);
 
         var response = _mapper.Map<UserInfoResponse>(user);
-        response.PhotoUrl = uploadResult.Value;
 
         return response;
     }

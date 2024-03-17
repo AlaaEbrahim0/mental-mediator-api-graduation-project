@@ -62,6 +62,7 @@ public class AuthService : IAuthService
         authModel.ExpiresOn = token.ValidTo;
         authModel.Email = user.Email;
         authModel.UserName = user.FullName;
+        authModel.PhotoUrl = user.PhotoUrl;
         authModel.Roles = userRoles.ToList();
         authModel.Message = "User was authenticated successfully";
         authModel.UserId = user.Id;
