@@ -247,7 +247,7 @@ public class AuthService : IAuthService
         var user = await _userManager.FindByEmailAsync(email);
         if (user is null)
         {
-            return UserErrors.NotFound(user!.Id);
+            return UserErrors.NotFoundByEmail(email);
         }
 
         var token = await _userManager.GeneratePasswordResetTokenAsync(user);
