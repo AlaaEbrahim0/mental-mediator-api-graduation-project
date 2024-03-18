@@ -50,19 +50,21 @@ public class UserService : IUserService
         }
 
 
-        var uploadResult = await _storageService.UploadPhoto(updateRequest.Photo);
-        if (uploadResult.IsFailure)
+        if (updateRequest.Photo is not null)
         {
-            return uploadResult.Error;
+            var uploadResult = await _storageService.UploadPhoto(updateRequest.Photo);
+            if (uploadResult.IsFailure)
+            {
+                return uploadResult.Error;
+            }
+            user.PhotoUrl = uploadResult.Value;
         }
 
         _mapper.Map(updateRequest, user);
-        user.PhotoUrl = uploadResult.Value;
-
         await _userManager.UpdateAsync(user);
 
         var response = _mapper.Map<UserInfoResponse>(user);
-
         return response;
+
     }
 }

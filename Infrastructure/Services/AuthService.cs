@@ -114,7 +114,7 @@ public class AuthService : IAuthService
     {
         return
             $"{_signInManager.Context.Request.Scheme}://" +
-            $"{_signInManager.Context.Request.Host}/resetPasswordDemo.html?" +
+            $"mental-health-ochre.vercel.app/forgetpassword/resetpassword?" +
             $"email={WebUtility.UrlEncode(email)}&" +
             $"token={WebUtility.UrlEncode(token)}";
     }

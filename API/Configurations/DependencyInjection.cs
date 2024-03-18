@@ -164,7 +164,6 @@ public static class DependencyInjection
     }
     public static IServiceCollection ConfigureDbContext(this IServiceCollection services, IConfiguration configuration, IWebHostEnvironment env)
     {
-
         var connectionString = string.Empty;
         if (env.IsDevelopment())
         {
@@ -181,6 +180,7 @@ public static class DependencyInjection
         });
         return services;
     }
+
     public static IServiceCollection ConfigureOptions(this IServiceCollection services, IConfiguration configuration)
     {
         services.Configure<JwtOptions>(configuration.GetSection("JwtSettings"));

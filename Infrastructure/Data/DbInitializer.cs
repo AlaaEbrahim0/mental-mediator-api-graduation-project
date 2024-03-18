@@ -24,6 +24,7 @@ public static class DbInitializer
     {
         //if (isProductionEnv)
         //{
+        //    Console.WriteLine("Applying pending migrations");
         //    context.Database.Migrate();
         //}
 
@@ -72,6 +73,7 @@ public static class DbInitializer
 
 
         var users = userFaker.Generate(25);
+
         context.AddRange(users);
 
         id = 0;

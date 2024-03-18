@@ -17,7 +17,7 @@ public record RegistrationRequest
 
     [Required(ErrorMessage = "Email is required.")]
     [EmailAddress(ErrorMessage = "Invalid email address format")]
-    public string? Email { get; init; }
+    public string Email { get; init; }
 
     [Required(ErrorMessage = "Password is required.")]
     [StringLength(100, MinimumLength = 8, ErrorMessage = "Password must be at least 8 characters.")]

@@ -51,8 +51,6 @@ public class PostController : ControllerBase
         return Ok(result.Value);
     }
 
-
-
     [HttpPost]
     [Authorize]
     public async Task<IActionResult> CreatePost(CreatePostRequest request)
