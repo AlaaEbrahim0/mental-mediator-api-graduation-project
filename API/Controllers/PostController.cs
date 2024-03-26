@@ -53,9 +53,9 @@ public class PostController : ControllerBase
 
     [HttpPost]
     [Authorize]
-    public async Task<IActionResult> CreatePost(CreatePostRequest request)
+    public async Task<IActionResult> CreatePost([FromQuery] bool isAnonymous, [FromBody] CreatePostRequest request)
     {
-        var result = await _postService.CreatePostAsync(request);
+        var result = await _postService.CreatePostAsync(request, isAnonymous);
 
         if (result.IsFailure)
         {

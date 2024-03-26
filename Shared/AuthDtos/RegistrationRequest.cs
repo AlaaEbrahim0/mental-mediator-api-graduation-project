@@ -33,7 +33,7 @@ public record RegistrationRequest
     public string Username => Email.Split('@')[0];
 
     [Required(ErrorMessage = "Role is required")]
-    [AllowedValues("customer", "doctor", "admin")]
+    [AllowedValues("User", "Admin", "Doctor")]
     public string Role { get; set; } = string.Empty;
 
 

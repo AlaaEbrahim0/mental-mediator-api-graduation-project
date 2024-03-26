@@ -19,6 +19,8 @@ public class Post
     [MaxLength(2047, ErrorMessage = "Title cannot exceed 2048 characters")]
     public string Content { get; set; } = string.Empty;
 
+    public bool IsAnonymous { get; set; }
+
     [NotMapped]
     public string? Username { get; set; }
 

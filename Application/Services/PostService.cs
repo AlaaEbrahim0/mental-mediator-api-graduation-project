@@ -42,16 +42,20 @@ public class PostService : IPostService
 
 
 
-    public async Task<Result<PostResponse>> CreatePostAsync(CreatePostRequest postRequest)
+    public async Task<Result<PostResponse>> CreatePostAsync(CreatePostRequest postRequest, bool isAnonymous)
     {
         var userId = _userClaimsService.GetUserId();
-        var userName = _userClaimsService.GetUserName();
 
         var post = _mapper.Map<Post>(postRequest);
 
         post.AppUserId = userId;
         post.PostedOn = DateTime.UtcNow;
-        post.Username = userName;
+
+        if (!isAnonymous)
+        {
+            var userName = _userClaimsService.GetUserName();
+            post.Username = userName;
+        }
 
         _repos.Posts.CreatePost(post);
         await _repos.SaveAsync();
@@ -59,6 +63,7 @@ public class PostService : IPostService
         var postResponse = _mapper.Map<PostResponse>(post);
         return postResponse;
     }
+
 
     public async Task<Result<PostResponse>> DeletePost(int id)
     {

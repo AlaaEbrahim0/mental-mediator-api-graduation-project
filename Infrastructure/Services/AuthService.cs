@@ -142,16 +142,16 @@ public class AuthService : IAuthService
         }
 
         await _userManager.AddToRoleAsync(user, request.Role);
-        var sendEmailConfirmationResult = await SendEmailConfirmationLink(user.Email!);
+        var EmailConfirmationResult = await SendEmailConfirmationLink(user.Email!);
 
-        if (sendEmailConfirmationResult.IsFailure)
+        if (EmailConfirmationResult.IsFailure)
         {
-            return sendEmailConfirmationResult.Error;
+            return EmailConfirmationResult.Error;
         }
 
         var response = new RegisterationResponse();
         response.Message = $"User: [{request.Email}] has been created successfully\n";
-        response.Message += sendEmailConfirmationResult.Value;
+        response.Message += EmailConfirmationResult.Value.Message;
 
         return response;
     }

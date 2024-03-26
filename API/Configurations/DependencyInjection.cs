@@ -121,6 +121,7 @@ public static class DependencyInjection
             {
                 options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
                 options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+
             })
             .AddGoogle(options =>
             {

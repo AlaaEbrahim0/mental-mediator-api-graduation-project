@@ -1,6 +1,7 @@
 ﻿namespace API;
 using AutoMapper;
 using Domain.Entities;
+using Shared.AuthDtos;
 using Shared.CommentsDtos;
 using Shared.PostsDto;
 using Shared.ReplyDtos;
@@ -26,5 +27,7 @@ public class MappingProfile : Profile
 
         CreateMap<UpdateUserInfoRequest, AppUser>();
         CreateMap<AppUser, UserInfoResponse>();
+
+        CreateMap<RegistrationRequest, AppUser>();
     }
 }
