@@ -2,7 +2,7 @@
 
 public class HostingRefresher : BackgroundService
 {
-	private readonly static TimeSpan period = TimeSpan.FromSeconds(5);
+	private readonly static TimeSpan period = TimeSpan.FromMinutes(3);
 	private readonly IHttpClientFactory _httpClientFactory;
 
 	public HostingRefresher(IHttpClientFactory httpClientFactory)
