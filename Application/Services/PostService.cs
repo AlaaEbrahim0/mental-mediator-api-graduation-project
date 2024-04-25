@@ -42,7 +42,7 @@ public class PostService : IPostService
 
 
 
-    public async Task<Result<PostResponse>> CreatePostAsync(CreatePostRequest postRequest, bool isAnonymous)
+    public async Task<Result<PostResponse>> CreatePostAsync(CreatePostRequest postRequest)
     {
         var userId = _userClaimsService.GetUserId();
 
@@ -51,7 +51,7 @@ public class PostService : IPostService
         post.AppUserId = userId;
         post.PostedOn = DateTime.UtcNow;
 
-        if (!isAnonymous)
+        if (!postRequest.IsAnonymous)
         {
             var userName = _userClaimsService.GetUserName();
             post.Username = userName;

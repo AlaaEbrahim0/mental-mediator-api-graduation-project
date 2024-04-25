@@ -1,3 +1,4 @@
+using API;
 using API.Configurations;
 using Application.Contracts;
 using Application.Utilities;
@@ -8,23 +9,30 @@ var builder = WebApplication.CreateBuilder(args);
 
 
 builder.Services
-    .ConfigureControllers()
-    .ConfigureCors()
-    .ConfigureSwagger()
-    .ConfigureIdentity()
-    .ConfigureAuthentication(builder.Configuration)
-    .ConfigureAuthorization()
-    .ConfigureMailSettings(builder.Configuration)
-    .ConfigureMailService()
-    .ConfigureOptions(builder.Configuration)
-    .ConfigureEntityServices()
-    .ConfigureAutoMapper()
-    .AddScoped<NotificationMessageTemplates>()
-    .AddScoped<IUserService, UserService>()
-    .AddScoped<IStorageService, StorageService>()
-    .AddScoped<IWebRootFileProvider, WebRootFileProvider>()
-    .ConfigureRepositores()
-    .ConfigureDbContext(builder.Configuration, builder.Environment);
+	.ConfigureControllers()
+	.ConfigureCors()
+	.ConfigureSwagger()
+	.ConfigureIdentity()
+	.ConfigureAuthentication(builder.Configuration)
+	.ConfigureAuthorization()
+	.ConfigureMailSettings(builder.Configuration)
+	.ConfigureMailService()
+	.ConfigureOptions(builder.Configuration)
+	.ConfigureEntityServices()
+	.ConfigureAutoMapper()
+	.AddScoped<NotificationMessageTemplates>()
+	.AddScoped<IUserService, UserService>()
+	.AddScoped<IStorageService, StorageService>()
+	.AddScoped<IWebRootFileProvider, WebRootFileProvider>()
+	.AddHostedService<HostingRefresher>()
+	.ConfigureRepositores()
+	.ConfigureDbContext(builder.Configuration, builder.Environment);
+
+builder.Services.AddHttpClient<HostingRefresher>("self", config =>
+{
+	var baseAddress = builder.Configuration["BaseAddress"];
+	config.BaseAddress = new Uri(baseAddress!);
+});
 
 var app = builder.Build();
 
@@ -44,6 +52,6 @@ app.UseAuthorization();
 
 app.MapControllers();
 
-app.InitializeDatabase(builder.Environment.IsProduction());
+app.InitializeDatabase();
 
 app.Run();

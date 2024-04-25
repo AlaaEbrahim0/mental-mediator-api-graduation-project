@@ -12,6 +12,8 @@ public class PostResponse
     public string? AppUserId { get; set; }
 
     public string Username { get; set; } = string.Empty;
+
+    public bool IsAnonymous { get; set; }
 }
 
 

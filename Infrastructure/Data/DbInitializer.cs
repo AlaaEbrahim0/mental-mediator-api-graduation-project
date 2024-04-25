@@ -7,7 +7,7 @@ using Microsoft.Extensions.DependencyInjection;
 namespace Infrastructure.Data;
 public static class DbInitializer
 {
-    public static void InitializeDatabase(this IApplicationBuilder app, bool isProductionEnv)
+    public static void InitializeDatabase(this IApplicationBuilder app)
     {
 
         using (var serviceScope = app.ApplicationServices.CreateScope())
@@ -15,12 +15,12 @@ public static class DbInitializer
             var context = serviceScope.ServiceProvider.GetService<AppDbContext>()!;
 
 
-            SeedData(context, isProductionEnv);
+            SeedData(context);
         }
 
     }
 
-    private static void SeedData(AppDbContext context, bool isProductionEnv)
+    private static void SeedData(AppDbContext context)
     {
         //if (isProductionEnv)
         //{
