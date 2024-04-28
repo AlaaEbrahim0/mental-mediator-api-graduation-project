@@ -6,20 +6,31 @@ using Microsoft.IdentityModel.JsonWebTokens;
 namespace Infrastructure.Services;
 public class UserClaimsService : IUserClaimsService
 {
-    private readonly SignInManager<AppUser> _signInManager;
+	private readonly SignInManager<AppUser> _signInManager;
 
-    public UserClaimsService(SignInManager<AppUser> signInManager)
-    {
-        _signInManager = signInManager;
-    }
+	public UserClaimsService(SignInManager<AppUser> signInManager)
+	{
+		_signInManager = signInManager;
+	}
 
-    public string GetUserId()
-    {
-        return _signInManager.Context.User.FindFirst("uid")!.Value;
-    }
+	public string GetUserId()
+	{
+		return _signInManager.Context.User.FindFirst("uid")!.Value;
+	}
 
-    public string GetUserName()
-    {
-        return _signInManager.Context.User.FindFirst(JwtRegisteredClaimNames.Name)!.Value;
-    }
+	public string GetUserName()
+	{
+		return _signInManager.Context.User.FindFirst(JwtRegisteredClaimNames.Name)!.Value;
+	}
+
+	public string GetRole()
+	{
+		var role = _signInManager.Context.User.Claims.FirstOrDefault(c => c.Type == "http://schemas.microsoft.com/ws/2008/06/identity/claims/role")!.Value;
+
+		return role;
+
+
+	}
+
+
 }

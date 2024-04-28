@@ -34,7 +34,27 @@ public class PostRepository : RepositoryBase<Post>, IPostRepository
 				Content = p.Content,
 				PostedOn = p.PostedOn,
 				Title = p.Title,
-				Username = p.AppUser!.FullName
+				Username = p.IsAnonymous ? null : p.AppUser!.FullName,
+				IsAnonymous = p.IsAnonymous,
+			})
+			.Paginate(parameters.PageNumber, parameters.PageSize)
+			.ToListAsync();
+	}
+
+	public async Task<IEnumerable<Post>> GetPostsByUserId(string userId, RequestParameters parameters, bool trackChanges)
+	{
+		return await
+			FindByCondition(p => p.AppUserId == userId, trackChanges)
+			.OrderByDescending(c => c.PostedOn)
+			.Select(p => new Post
+			{
+				Id = p.Id,
+				AppUserId = p.AppUserId,
+				Content = p.Content,
+				PostedOn = p.PostedOn,
+				Title = p.Title,
+				Username = p.IsAnonymous ? null : p.AppUser!.FullName,
+				IsAnonymous = p.IsAnonymous,
 			})
 			.Paginate(parameters.PageNumber, parameters.PageSize)
 			.ToListAsync();
@@ -63,5 +83,3 @@ public class PostRepository : RepositoryBase<Post>, IPostRepository
 		Update(post);
 	}
 }
-
-

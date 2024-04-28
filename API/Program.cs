@@ -1,5 +1,6 @@
-using API;
+using API.BackgroundJobs;
 using API.Configurations;
+using API.Hubs;
 using Application.Contracts;
 using Application.Utilities;
 using Infrastructure.Data;
@@ -24,15 +25,22 @@ builder.Services
 	.AddScoped<IUserService, UserService>()
 	.AddScoped<IStorageService, StorageService>()
 	.AddScoped<IWebRootFileProvider, WebRootFileProvider>()
-	.AddHostedService<HostingRefresher>()
 	.ConfigureRepositores()
 	.ConfigureDbContext(builder.Configuration, builder.Environment);
 
-builder.Services.AddHttpClient<HostingRefresher>("self", config =>
+builder.Services.AddSignalR();
+
+if (!builder.Environment.IsDevelopment())
 {
-	var baseAddress = builder.Configuration["BaseAddress"];
-	config.BaseAddress = new Uri(baseAddress!);
-});
+	builder.Services.AddHostedService<HostingRefresher>();
+
+	builder.Services.AddHttpClient<HostingRefresher>("self", config =>
+	{
+		var baseAddress = builder.Configuration["BaseAddress"];
+		config.BaseAddress = new Uri(baseAddress!);
+	});
+}
+
 
 var app = builder.Build();
 
@@ -44,7 +52,7 @@ app.UseHttpsRedirection();
 
 app.UseStaticFiles();
 
-app.UseCors("CorsPolicy");
+app.UseCors("AllowAll");
 
 app.UseAuthentication();
 
@@ -52,6 +60,9 @@ app.UseAuthorization();
 
 app.MapControllers();
 
+app.MapHub<NotificationHub>("notification-hub");
+
 app.InitializeDatabase();
+
 
 app.Run();

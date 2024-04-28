@@ -10,55 +10,56 @@ using Microsoft.IdentityModel.Tokens;
 namespace Infrastructure.Utilities;
 public class JwtTokenGenerator
 {
-    private readonly UserManager<AppUser> _userManager;
-    private readonly JwtOptions _jwtOptions;
+	private readonly UserManager<AppUser> _userManager;
+	private readonly JwtOptions _jwtOptions;
 
-    public JwtTokenGenerator(UserManager<AppUser> userManager, IOptions<JwtOptions> jwtOptions)
-    {
-        _userManager = userManager;
-        _jwtOptions = jwtOptions.Value;
-    }
+	public JwtTokenGenerator(UserManager<AppUser> userManager, IOptions<JwtOptions> jwtOptions)
+	{
+		_userManager = userManager;
+		_jwtOptions = jwtOptions.Value;
+	}
 
-    public async Task<JwtSecurityToken> CreateJwtToken(AppUser user)
-    {
-        IEnumerable<Claim> jwtClaims = await GetUserJwtClaims(user);
+	public async Task<JwtSecurityToken> CreateJwtToken(AppUser user)
+	{
+		IEnumerable<Claim> jwtClaims = await GetUserJwtClaims(user);
 
-        var symmetricSecurityKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_jwtOptions.Key!)); ;
-        var signingCredentials = new SigningCredentials(symmetricSecurityKey, SecurityAlgorithms.HmacSha256);
+		var symmetricSecurityKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_jwtOptions.Key!)); ;
 
-        var token = new JwtSecurityToken
-        (
-            issuer: _jwtOptions.Issuer,
-            audience: _jwtOptions.Audience,
-            claims: jwtClaims,
-            expires: DateTime.Now.AddDays(_jwtOptions.Duration),
-            signingCredentials: signingCredentials
-        );
+		var signingCredentials = new SigningCredentials(symmetricSecurityKey, SecurityAlgorithms.HmacSha256);
 
-        return token;
-    }
+		var token = new JwtSecurityToken
+		(
+			issuer: _jwtOptions.Issuer,
+			audience: _jwtOptions.Audience,
+			claims: jwtClaims,
+			expires: DateTime.Now.AddDays(_jwtOptions.Duration),
+			signingCredentials: signingCredentials
+		);
 
-    private async Task<IEnumerable<Claim>> GetUserJwtClaims(AppUser user)
-    {
-        var userClaims = await _userManager.GetClaimsAsync(user);
-        var roles = await _userManager.GetRolesAsync(user);
-        var roleClaims = new List<Claim>();
+		return token;
+	}
 
-        foreach (var role in roles)
-        {
-            roleClaims.Add(new Claim("roles", role));
-        }
+	private async Task<IEnumerable<Claim>> GetUserJwtClaims(AppUser user)
+	{
+		var userClaims = await _userManager.GetClaimsAsync(user);
+		var roles = await _userManager.GetRolesAsync(user);
+		var roleClaims = new List<Claim>();
 
-        var jwtClaims = new[]
-        {
-            new Claim("uid", user.Id!),
-            new Claim(JwtRegisteredClaimNames.Email, user.Email!),
-            new Claim(JwtRegisteredClaimNames.Name, user.FullName!),
-            new Claim(JwtRegisteredClaimNames.Jti, user.Email!, Guid.NewGuid().ToString()),
-        }
-        .Union(userClaims)
-        .Union(roleClaims);
+		foreach (var role in roles)
+		{
+			roleClaims.Add(new Claim("roles", role));
+		}
 
-        return jwtClaims;
-    }
+		var jwtClaims = new[]
+		{
+			new Claim("uid", user.Id!),
+			new Claim(JwtRegisteredClaimNames.Email, user.Email!),
+			new Claim(JwtRegisteredClaimNames.Name, user.FullName!),
+			new Claim(JwtRegisteredClaimNames.Jti, user.Email!, Guid.NewGuid().ToString()),
+		}
+		.Union(userClaims)
+		.Union(roleClaims);
+
+		return jwtClaims;
+	}
 }

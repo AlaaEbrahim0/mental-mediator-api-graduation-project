@@ -2,6 +2,7 @@
 
 public interface IUserClaimsService
 {
-    string GetUserId();
-    string GetUserName();
+	string GetUserId();
+	string GetUserName();
+	string GetRole();
 }
