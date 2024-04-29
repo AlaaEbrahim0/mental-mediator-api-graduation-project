@@ -1,5 +1,5 @@
-﻿using API.Hubs;
-using Application.Services;
+﻿using Application.Services;
+using Infrastructure.Hubs;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.SignalR;

@@ -1,9 +1,9 @@
 using API.BackgroundJobs;
 using API.Configurations;
-using API.Hubs;
 using Application.Contracts;
 using Application.Utilities;
 using Infrastructure.Data;
+using Infrastructure.Hubs;
 using Infrastructure.Services;
 
 var builder = WebApplication.CreateBuilder(args);

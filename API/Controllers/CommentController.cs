@@ -1,5 +1,5 @@
-﻿using API.Hubs;
-using Application.Services;
+﻿using Application.Services;
+using Infrastructure.Hubs;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.SignalR;
@@ -52,9 +52,6 @@ public class CommentController : ControllerBase
 			return response.ToProblemDetails();
 		}
 
-		await _hubContext.Clients.All.ReceiveNotification("fskjfelwf");
-
-
 		return Ok(response.Value);
 	}
 
@@ -67,6 +64,7 @@ public class CommentController : ControllerBase
 		{
 			return result.ToProblemDetails();
 		}
+
 
 
 		return CreatedAtAction(

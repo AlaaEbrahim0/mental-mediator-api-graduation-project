@@ -91,6 +91,7 @@ public static class DependencyInjection
 		services.AddScoped<IPostRepository, PostRepository>();
 		services.AddScoped<ICommentRepository, CommentRepository>();
 		services.AddScoped<IReplyRepository, ReplyRepository>();
+		services.AddScoped<INotificationRepository, NotificationRepository>();
 		return services;
 	}
 
@@ -112,6 +113,8 @@ public static class DependencyInjection
 		services.AddScoped<ICommentService, CommentService>();
 		services.AddScoped<IReplyService, ReplyService>();
 		services.AddScoped<IUserClaimsService, UserClaimsService>();
+		services.AddScoped<INotificationService, NotificationService>();
+
 		services.AddScoped<ClaimsPrincipal>();
 		return services;
 	}
