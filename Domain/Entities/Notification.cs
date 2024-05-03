@@ -1,8 +1,11 @@
 ﻿using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using Domain.Enums;
+using Newtonsoft.Json;
 
 namespace Domain.Entities;
+
+
 
 public class Notification
 {
@@ -21,8 +24,8 @@ public class Notification
 
 	public bool IsRead { get; set; }
 
-	[Required]
-	public int ResourceId { get; set; }
+	[StringLength(1000, ErrorMessage = "Type length can't be more than 1000.")]
+	public string Resources { get; set; } = string.Empty;
 
 	[Required]
 	[StringLength(100, ErrorMessage = "Type length can't be more than 20.")]
@@ -41,18 +44,33 @@ public class Notification
 		}
 	}
 
-	public static Notification CreateNotification(string message, NotificationType type, string userId, int resourceId)
+	[NotMapped]
+	public Dictionary<string, int> ResourcesObject
 	{
-		return new Notification
+		get
 		{
-			Message = message,
-			TypeEnum = type,
-			DateCreated = DateTime.UtcNow,
-			AppUserId = userId,
-			ResourceId = resourceId
-		};
+			return JsonConvert.DeserializeObject<Dictionary<string, int>>(Resources)!;
+		}
+		set
+		{
+			Resources = JsonConvert.SerializeObject(value);
+		}
 	}
-}
+	public static Notification CreateNotification(string userId, string message, Dictionary<string, int> resource, NotificationType type)
+	{
+		var notification = new Notification()
+		{
+			AppUserId = userId,
+			DateCreated = DateTime.UtcNow,
+			Message = message,
+			ResourcesObject = resource,
+			TypeEnum = type
+		};
 
+		return notification;
+
+	}
+
+}
 
 

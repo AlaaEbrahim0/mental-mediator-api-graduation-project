@@ -1,6 +1,7 @@
 ﻿using Application.Contracts;
 using AutoMapper;
 using Domain.Entities;
+using Domain.Enums;
 using Domain.Errors;
 using Shared;
 using Shared.ReplyDtos;
@@ -9,112 +10,133 @@ namespace Application.Services;
 
 public class ReplyService : IReplyService
 {
-    private readonly IRepositoryManager _repos;
-    private readonly IMapper _mapper;
-    private readonly IUserClaimsService _userClaimsService;
+	private readonly IRepositoryManager _repos;
+	private readonly IMapper _mapper;
+	private readonly IUserClaimsService _userClaimsService;
+	private readonly INotificationService _notificationService;
 
-    public ReplyService(IRepositoryManager repos, IMapper mapper, IUserClaimsService userClaimsService)
-    {
-        _repos = repos;
-        _mapper = mapper;
-        _userClaimsService = userClaimsService;
-    }
+	public ReplyService(IRepositoryManager repos, IMapper mapper, IUserClaimsService userClaimsService, INotificationService notificationService)
+	{
+		_repos = repos;
+		_mapper = mapper;
+		_userClaimsService = userClaimsService;
+		_notificationService = notificationService;
+	}
 
 
-    public async Task<Result<ReplyResponse>> CreateReply(int postId, int commentId, CreateReplyRequest createReplyRequest)
-    {
-        var comment = await _repos.Comments.GetById(postId, commentId, false);
-        if (comment is null)
-        {
-            return CommentErrors.NotFound(commentId);
-        }
+	public async Task<Result<ReplyResponse>> CreateReply(int postId, int commentId, CreateReplyRequest createReplyRequest)
+	{
+		var comment = await _repos.Comments.GetById(postId, commentId, false);
+		if (comment is null)
+		{
+			return CommentErrors.NotFound(commentId);
+		}
 
-        var userId = _userClaimsService.GetUserId();
-        var userName = _userClaimsService.GetUserName();
+		var userId = _userClaimsService.GetUserId();
+		var userName = _userClaimsService.GetUserName();
 
-        var reply = _mapper.Map<Reply>(createReplyRequest);
+		var reply = _mapper.Map<Reply>(createReplyRequest);
 
-        reply.AppUserId = userId;
-        reply.CommentId = comment.Id;
-        reply.Username = userName;
-        reply.RepliedAt = DateTime.UtcNow;
+		reply.AppUserId = userId;
+		reply.CommentId = comment.Id;
+		reply.Username = userName;
+		reply.RepliedAt = DateTime.UtcNow;
 
-        _repos.Replies.CreateReply(reply);
-        await _repos.SaveAsync();
+		_repos.Replies.CreateReply(reply);
+		await _repos.SaveAsync();
 
-        var replyResponse = _mapper.Map<ReplyResponse>(reply);
-        return replyResponse;
-    }
+		var replyResources = new Dictionary<string, int>()
+		{
+			{ "postId", postId },
+			{ "commentId", comment.Id },
+			{ "replyId", reply.Id },
+		};
 
-    public async Task<Result<ReplyResponse>> DeleteReply(int postId, int commentId, int replyId)
-    {
-        var reply = await _repos.Replies.GetById(postId, commentId, replyId, true);
+		var notification = Notification.CreateNotification(
+			comment.AppUserId!,
+			$"{userName} has replied to your comment",
+			replyResources,
+			NotificationType.Reply
+			);
 
-        if (reply is null)
-        {
-            return ReplyErrors.NotFound(replyId);
-        }
+		_repos.Notifications.CreateNotification(notification);
+		await _repos.SaveAsync();
 
-        var userId = _userClaimsService.GetUserId();
-        if (!reply.AppUserId!.Equals(userId))
-        {
-            return ReplyErrors.Forbidden(replyId);
-        }
+		await _notificationService.SendNotificationAsync(notification);
 
-        _repos.Replies.DeleteReply(reply);
-        await _repos.SaveAsync();
+		var replyResponse = _mapper.Map<ReplyResponse>(reply);
+		return replyResponse;
+	}
 
-        var replyResponse = _mapper.Map<ReplyResponse>(reply);
-        return replyResponse;
-    }
+	public async Task<Result<ReplyResponse>> DeleteReply(int postId, int commentId, int replyId)
+	{
+		var reply = await _repos.Replies.GetById(postId, commentId, replyId, true);
 
-    public async Task<Result<IEnumerable<ReplyResponse>>> GetRepliesForComment(int postId, int commentId)
-    {
-        var comment = await _repos.Comments.GetById(postId, commentId, false);
-        if (comment is null)
-        {
-            return CommentErrors.NotFound(commentId);
-        }
-        var replies = await _repos.Replies.GetRepliesByCommentId(commentId, false);
+		if (reply is null)
+		{
+			return ReplyErrors.NotFound(replyId);
+		}
 
-        var repliesResult = _mapper.Map<IEnumerable<ReplyResponse>>(replies);
-        return repliesResult.ToList();
+		var userId = _userClaimsService.GetUserId();
+		if (!reply.AppUserId!.Equals(userId))
+		{
+			return ReplyErrors.Forbidden(replyId);
+		}
 
-    }
+		_repos.Replies.DeleteReply(reply);
+		await _repos.SaveAsync();
 
-    public async Task<Result<ReplyResponse>> UpdateReply(int postId, int commentId, int replyId, UpdateReplyRequest updateReplyRequest)
-    {
-        var reply = await _repos.Replies.GetById(postId, commentId, replyId, true);
+		var replyResponse = _mapper.Map<ReplyResponse>(reply);
+		return replyResponse;
+	}
 
-        if (reply is null)
-        {
-            return ReplyErrors.NotFound(replyId);
-        }
+	public async Task<Result<IEnumerable<ReplyResponse>>> GetRepliesForComment(int postId, int commentId)
+	{
+		var comment = await _repos.Comments.GetById(postId, commentId, false);
+		if (comment is null)
+		{
+			return CommentErrors.NotFound(commentId);
+		}
+		var replies = await _repos.Replies.GetRepliesByCommentId(commentId, false);
 
-        var userId = _userClaimsService.GetUserId();
-        if (!reply.AppUserId!.Equals(userId))
-        {
-            return ReplyErrors.Forbidden(replyId);
-        }
+		var repliesResult = _mapper.Map<IEnumerable<ReplyResponse>>(replies);
+		return repliesResult.ToList();
 
-        _mapper.Map(updateReplyRequest, reply);
+	}
 
-        _repos.Replies.UpdateReply(reply);
-        await _repos.SaveAsync();
+	public async Task<Result<ReplyResponse>> UpdateReply(int postId, int commentId, int replyId, UpdateReplyRequest updateReplyRequest)
+	{
+		var reply = await _repos.Replies.GetById(postId, commentId, replyId, true);
 
-        var replyResponse = _mapper.Map<ReplyResponse>(reply);
-        return replyResponse;
-    }
+		if (reply is null)
+		{
+			return ReplyErrors.NotFound(replyId);
+		}
 
-    public async Task<Result<ReplyResponse>> GetReplyById(int postId, int commentId, int replyId)
-    {
-        var reply = await _repos.Replies.GetById(postId, commentId, replyId, false);
-        if (reply is null)
-        {
-            return ReplyErrors.NotFound(replyId);
-        }
+		var userId = _userClaimsService.GetUserId();
+		if (!reply.AppUserId!.Equals(userId))
+		{
+			return ReplyErrors.Forbidden(replyId);
+		}
 
-        var replyResponse = _mapper.Map<ReplyResponse>(reply);
-        return replyResponse;
-    }
+		_mapper.Map(updateReplyRequest, reply);
+
+		_repos.Replies.UpdateReply(reply);
+		await _repos.SaveAsync();
+
+		var replyResponse = _mapper.Map<ReplyResponse>(reply);
+		return replyResponse;
+	}
+
+	public async Task<Result<ReplyResponse>> GetReplyById(int postId, int commentId, int replyId)
+	{
+		var reply = await _repos.Replies.GetById(postId, commentId, replyId, false);
+		if (reply is null)
+		{
+			return ReplyErrors.NotFound(replyId);
+		}
+
+		var replyResponse = _mapper.Map<ReplyResponse>(reply);
+		return replyResponse;
+	}
 }

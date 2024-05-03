@@ -63,13 +63,21 @@ public class CommentService : ICommentService
 		}
 
 		_repos.Comments.CreateComment(comment);
+		await _repos.SaveAsync();
+
+		var notificationResources = new Dictionary<string, int>()
+		{
+			{ "postId", postId },
+			{ "commentId", comment.Id }
+		};
 
 		var notification = Notification.CreateNotification(
-			$"{userName} has commented on your post",
-			NotificationType.Comment,
 			post.AppUserId!,
-			post.Id
+		$"{userName} has commented on your post",
+			notificationResources,
+			NotificationType.Comment
 		);
+
 
 		_repos.Notifications.CreateNotification(notification);
 		await _repos.SaveAsync();

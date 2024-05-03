@@ -2,134 +2,134 @@
 using Domain.Entities;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Infrastructure.Data;
 public static class DbInitializer
 {
-    public static void InitializeDatabase(this IApplicationBuilder app)
-    {
+	public static void InitializeDatabase(this IApplicationBuilder app)
+	{
 
-        using (var serviceScope = app.ApplicationServices.CreateScope())
-        {
-            var context = serviceScope.ServiceProvider.GetService<AppDbContext>()!;
+		using (var serviceScope = app.ApplicationServices.CreateScope())
+		{
+			var context = serviceScope.ServiceProvider.GetService<AppDbContext>()!;
+			context.Notifications.ExecuteDelete();
+			SeedData(context);
+		}
 
+	}
 
-            SeedData(context);
-        }
+	private static void SeedData(AppDbContext context)
+	{
+		//if (isProductionEnv)
+		//{
+		//    Console.WriteLine("Applying pending migrations");
+		//    context.Database.Migrate();
+		//}
 
-    }
+		if (context.Posts.Any() ||
+			context.Users.Any() ||
+			context.UserRoles.Any())
+		{
+			Console.WriteLine("already seeded");
+			return;
+		}
 
-    private static void SeedData(AppDbContext context)
-    {
-        //if (isProductionEnv)
-        //{
-        //    Console.WriteLine("Applying pending migrations");
-        //    context.Database.Migrate();
-        //}
+		var rolesIds = Enumerable.Range(1, 3).Select(x => Guid.NewGuid().ToString()).ToArray();
+		var roles = new List<IdentityRole>()
+		{
+			new IdentityRole() { Id = rolesIds[0], Name = "User", NormalizedName = "USER"},
 
-        if (context.Posts.Any() ||
-            context.Users.Any() ||
-            context.UserRoles.Any())
-        {
-            Console.WriteLine("already seeded");
-            return;
-        }
+			new IdentityRole() { Id = rolesIds[1], Name = "Admin", NormalizedName = "ADMIN"},
 
-        var rolesIds = Enumerable.Range(1, 3).Select(x => Guid.NewGuid().ToString()).ToArray();
-        var roles = new List<IdentityRole>()
-        {
-            new IdentityRole() { Id = rolesIds[0], Name = "User", NormalizedName = "USER"},
+			new IdentityRole() { Id = rolesIds[2], Name = "Doctor", NormalizedName = "DOCTOR"},
+		};
 
-            new IdentityRole() { Id = rolesIds[1], Name = "Admin", NormalizedName = "ADMIN"},
+		context.Roles.AddRange(roles);
 
-            new IdentityRole() { Id = rolesIds[2], Name = "Doctor", NormalizedName = "DOCTOR"},
-        };
+		var userIds = Enumerable
+			.Range(1, 25)
+			.Select(x => Guid.NewGuid().ToString())
+			.ToArray();
 
-        context.Roles.AddRange(roles);
-
-        var userIds = Enumerable
-            .Range(1, 25)
-            .Select(x => Guid.NewGuid().ToString())
-            .ToArray();
-
-        int id = 0;
-
-
-
-        var userFaker = new Faker<AppUser>()
-            .RuleFor(u => u.Id, set => userIds[id++])
-            .RuleFor(u => u.FirstName, set => set.Person.FirstName)
-            .RuleFor(u => u.LastName, set => set.Person.LastName)
-            .RuleFor(u => u.BirthDate, set => set.Date.BetweenDateOnly(new DateOnly(1950, 1, 1), new DateOnly(2003, 1, 1)))
-            .RuleFor(u => u.Email, set => set.Person.Email)
-            .RuleFor(u => u.UserName, set => set.Person.UserName)
-            .RuleFor(u => u.NormalizedUserName, set => set.Person.UserName.ToUpper())
-            .RuleFor(u => u.NormalizedEmail, set => set.Person.Email.ToUpper())
-            .RuleFor(u => u.Gender, set => set.PickRandom("male", "female"))
-            .RuleFor(u => u.PasswordHash, set => set.Internet.Password(10))
-            .RuleFor(u => u.EmailConfirmed, set => true);
+		int id = 0;
 
 
 
-        var users = userFaker.Generate(25);
+		var userFaker = new Faker<AppUser>()
+			.RuleFor(u => u.Id, set => userIds[id++])
+			.RuleFor(u => u.FirstName, set => set.Person.FirstName)
+			.RuleFor(u => u.LastName, set => set.Person.LastName)
+			.RuleFor(u => u.BirthDate, set => set.Date.BetweenDateOnly(new DateOnly(1950, 1, 1), new DateOnly(2003, 1, 1)))
+			.RuleFor(u => u.Email, set => set.Person.Email)
+			.RuleFor(u => u.UserName, set => set.Person.UserName)
+			.RuleFor(u => u.NormalizedUserName, set => set.Person.UserName.ToUpper())
+			.RuleFor(u => u.NormalizedEmail, set => set.Person.Email.ToUpper())
+			.RuleFor(u => u.Gender, set => set.PickRandom("male", "female"))
+			.RuleFor(u => u.PasswordHash, set => set.Internet.Password(10))
+			.RuleFor(u => u.EmailConfirmed, set => true);
 
-        context.AddRange(users);
 
-        id = 0;
 
-        foreach (var user in users)
-        {
-            context.UserRoles.Add(new IdentityUserRole<string>()
-            { UserId = user.Id, RoleId = rolesIds[0] });
-        }
+		var users = userFaker.Generate(25);
 
-        var postFaker = new Faker<Post>();
+		context.AddRange(users);
 
-        var faker = new Faker();
+		id = 0;
 
-        string postTitle = faker.Lorem.Text();
-        string postBody = faker.Lorem.Sentences(faker.PickRandom(1, 2, 3, 4, 5, 6, 7, 8, 9, 10));
+		foreach (var user in users)
+		{
+			context.UserRoles.Add(new IdentityUserRole<string>()
+			{ UserId = user.Id, RoleId = rolesIds[0] });
+		}
 
-        postTitle = postTitle.Substring(0, Math.Min(postTitle.Length, 255));
-        postBody = postBody.Substring(0, Math.Min(postBody.Length, 2047));
+		var postFaker = new Faker<Post>();
 
-        postFaker
-        .RuleFor(x => x.PostedOn, set => set.Date.Past())
-        .RuleFor(x => x.Title, postTitle)
-        .RuleFor(x => x.Content, postBody)
-        .RuleFor(x => x.AppUserId, set => set.Random.ArrayElement(userIds));
+		var faker = new Faker();
 
-        var posts = postFaker.Generate(100);
-        context.AddRange(posts);
-        var postIds = Enumerable.Range(1, 100).ToArray();
+		string postTitle = faker.Lorem.Text();
+		string postBody = faker.Lorem.Sentences(faker.PickRandom(1, 2, 3, 4, 5, 6, 7, 8, 9, 10));
 
-        context.SaveChanges();
+		postTitle = postTitle.Substring(0, Math.Min(postTitle.Length, 255));
+		postBody = postBody.Substring(0, Math.Min(postBody.Length, 2047));
 
-        var commentFaker = new Faker<Comment>()
-            .RuleFor(c => c.AppUserId, set => set.Random.ArrayElement(userIds))
-            .RuleFor(c => c.CommentedAt, set => set.Date.Past())
-            .RuleFor(c => c.Content, set => set.Lorem.Sentences(set.PickRandom(1, 2, 3)))
-            .RuleFor(c => c.PostId, set => set.Random.ArrayElement(postIds));
+		postFaker
+		.RuleFor(x => x.PostedOn, set => set.Date.Past())
+		.RuleFor(x => x.Title, postTitle)
+		.RuleFor(x => x.Content, postBody)
+		.RuleFor(x => x.AppUserId, set => set.Random.ArrayElement(userIds));
 
-        var comments = commentFaker.Generate(250);
-        context.AddRange(comments);
-        var commentIds = Enumerable.Range(1, 250).ToArray();
+		var posts = postFaker.Generate(100);
+		context.AddRange(posts);
+		var postIds = Enumerable.Range(1, 100).ToArray();
 
-        context.SaveChanges();
+		context.SaveChanges();
 
-        var replyFaker = new Faker<Reply>()
-            .RuleFor(c => c.AppUserId, set => set.Random.ArrayElement(userIds))
-            .RuleFor(c => c.RepliedAt, set => set.Date.Past())
-            .RuleFor(c => c.Content, set => set.Lorem.Sentences(set.PickRandom(1, 2, 3)))
-            .RuleFor(c => c.CommentId, set => set.Random.ArrayElement(commentIds));
+		var commentFaker = new Faker<Comment>()
+			.RuleFor(c => c.AppUserId, set => set.Random.ArrayElement(userIds))
+			.RuleFor(c => c.CommentedAt, set => set.Date.Past())
+			.RuleFor(c => c.Content, set => set.Lorem.Sentences(set.PickRandom(1, 2, 3)))
+			.RuleFor(c => c.PostId, set => set.Random.ArrayElement(postIds));
 
-        var replies = replyFaker.Generate(500);
+		var comments = commentFaker.Generate(250);
+		context.AddRange(comments);
+		var commentIds = Enumerable.Range(1, 250).ToArray();
 
-        context.Replies.AddRange(replies);
+		context.SaveChanges();
 
-        context.SaveChanges();
+		var replyFaker = new Faker<Reply>()
+			.RuleFor(c => c.AppUserId, set => set.Random.ArrayElement(userIds))
+			.RuleFor(c => c.RepliedAt, set => set.Date.Past())
+			.RuleFor(c => c.Content, set => set.Lorem.Sentences(set.PickRandom(1, 2, 3)))
+			.RuleFor(c => c.CommentId, set => set.Random.ArrayElement(commentIds));
 
-        Console.WriteLine("database was seeded successfully");
-    }
+		var replies = replyFaker.Generate(500);
+
+		context.Replies.AddRange(replies);
+
+		context.SaveChanges();
+
+		Console.WriteLine("database was seeded successfully");
+	}
 }

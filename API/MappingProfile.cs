@@ -31,6 +31,8 @@ public class MappingProfile : Profile
 
 		CreateMap<RegistrationRequest, AppUser>();
 
-		CreateMap<Notification, NotificationResponse>();
+		CreateMap<Notification, NotificationResponse>()
+			.ForMember(dest => dest.Resources, src =>
+				src.MapFrom(m => m.ResourcesObject));
 	}
 }

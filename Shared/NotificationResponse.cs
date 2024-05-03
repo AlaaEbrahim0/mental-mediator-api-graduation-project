@@ -9,7 +9,7 @@ public record NotificationResponse
 
 	public bool IsRead { get; set; }
 
-	public int ResourceId { get; set; }
+	public Dictionary<string, int> Resources { get; set; } = new();
 
 	public string? Type { get; set; }
 }
