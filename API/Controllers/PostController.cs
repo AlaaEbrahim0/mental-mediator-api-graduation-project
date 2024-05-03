@@ -20,6 +20,11 @@ public class PostController : ControllerBase
 		_postService = postService;
 		_hubContext = hubContext;
 	}
+	[HttpGet("/dummy")]
+	public async Task<IActionResult> DummyEndpointForTesting()
+	{
+		return Ok("dummy response");
+	}
 
 	[HttpGet]
 	public async Task<IActionResult> GetPosts([FromQuery] RequestParameters parameters)
