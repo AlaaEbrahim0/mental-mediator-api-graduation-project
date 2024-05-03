@@ -16,7 +16,7 @@ jobs:
       - name: Setup .NET Core SDK
         uses: actions/setup-dotnet@v1
         with:
-          dotnet-version: '3.1' # Update to your .NET Core version
+          dotnet-version: '8' # Update to your .NET Core version
 
       - name: Build
         run: dotnet build --configuration Release
