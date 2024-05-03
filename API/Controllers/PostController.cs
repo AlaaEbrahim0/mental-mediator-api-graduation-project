@@ -1,8 +1,6 @@
 ﻿using Application.Services;
-using Infrastructure.Hubs;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.SignalR;
 using Shared;
 using Shared.PostsDto;
 
@@ -13,17 +11,10 @@ namespace API.Controllers;
 public class PostController : ControllerBase
 {
 	private readonly IPostService _postService;
-	private readonly IHubContext<NotificationHub, INotificationClient> _hubContext;
 
-	public PostController(IPostService postService, IHubContext<NotificationHub, INotificationClient> hubContext)
+	public PostController(IPostService postService)
 	{
 		_postService = postService;
-		_hubContext = hubContext;
-	}
-	[HttpGet("/dummy")]
-	public IActionResult DummyEndpointForTesting()
-	{
-		return Ok("dummy response");
 	}
 
 	[HttpGet]
