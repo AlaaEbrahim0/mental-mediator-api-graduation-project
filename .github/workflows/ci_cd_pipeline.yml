@@ -37,7 +37,7 @@ jobs:
         with:
           context: .
           push: true
-          tags: render/<your-container-name>:latest
+          tags: systematic_mess/nexus_api:latest
         env:
           DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
           DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
