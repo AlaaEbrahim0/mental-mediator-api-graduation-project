@@ -65,24 +65,27 @@ public class CommentService : ICommentService
 		_repos.Comments.CreateComment(comment);
 		await _repos.SaveAsync();
 
-		var notificationResources = new Dictionary<string, int>()
+		if (!post.AppUserId!.Equals(userId))
 		{
-			{ "postId", postId },
-			{ "commentId", comment.Id }
-		};
+			var notificationResources = new Dictionary<string, int>()
+			{
+				{ "postId", postId },
+				{ "commentId", comment.Id }
+			};
 
-		var notification = Notification.CreateNotification(
-			post.AppUserId!,
-		$"{userName} has commented on your post",
-			notificationResources,
-			NotificationType.Comment
-		);
+			var notification = Notification.CreateNotification(
+				post.AppUserId!,
+			$"{userName} has commented on your post",
+				notificationResources,
+				NotificationType.Comment
+			);
 
 
-		_repos.Notifications.CreateNotification(notification);
-		await _repos.SaveAsync();
+			_repos.Notifications.CreateNotification(notification);
+			await _repos.SaveAsync();
 
-		await _notificationService.SendNotificationAsync(notification);
+			await _notificationService.SendNotificationAsync(notification);
+		}
 
 		var commentResponse = _mapper.Map<CommentResponse>(comment);
 		return commentResponse;

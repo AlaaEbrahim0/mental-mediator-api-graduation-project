@@ -45,24 +45,28 @@ public class ReplyService : IReplyService
 		_repos.Replies.CreateReply(reply);
 		await _repos.SaveAsync();
 
-		var replyResources = new Dictionary<string, int>()
+		if (!comment.AppUserId!.Equals(userId))
 		{
-			{ "postId", postId },
-			{ "commentId", comment.Id },
-			{ "replyId", reply.Id },
-		};
+			var replyResources = new Dictionary<string, int>()
+			{
+				{ "postId", postId },
+				{ "commentId", comment.Id },
+				{ "replyId", reply.Id },
+			};
 
-		var notification = Notification.CreateNotification(
-			comment.AppUserId!,
-			$"{userName} has replied to your comment",
-			replyResources,
-			NotificationType.Reply
-			);
+			var notification = Notification.CreateNotification(
+				comment.AppUserId!,
+				$"{userName} has replied to your comment",
+				replyResources,
+				NotificationType.Reply
+				);
 
-		_repos.Notifications.CreateNotification(notification);
-		await _repos.SaveAsync();
+			_repos.Notifications.CreateNotification(notification);
+			await _repos.SaveAsync();
 
-		await _notificationService.SendNotificationAsync(notification);
+			await _notificationService.SendNotificationAsync(notification);
+		}
+
 
 		var replyResponse = _mapper.Map<ReplyResponse>(reply);
 		return replyResponse;
