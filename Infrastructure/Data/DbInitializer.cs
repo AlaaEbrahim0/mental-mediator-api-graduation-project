@@ -2,7 +2,6 @@
 using Domain.Entities;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Identity;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Infrastructure.Data;
@@ -14,7 +13,6 @@ public static class DbInitializer
 		using (var serviceScope = app.ApplicationServices.CreateScope())
 		{
 			var context = serviceScope.ServiceProvider.GetService<AppDbContext>()!;
-			context.Notifications.ExecuteDelete();
 			SeedData(context);
 		}
 
