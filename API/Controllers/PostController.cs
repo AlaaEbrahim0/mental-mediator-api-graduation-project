@@ -21,7 +21,7 @@ public class PostController : ControllerBase
 		_hubContext = hubContext;
 	}
 	[HttpGet("/dummy")]
-	public async Task<IActionResult> DummyEndpointForTesting()
+	public IActionResult DummyEndpointForTesting()
 	{
 		return Ok("dummy response");
 	}
