@@ -1,7 +1,7 @@
 ﻿using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
 
-namespace Shared.AuthDtos;
+namespace Application.Dtos.AuthDtos;
 public record SignInRequest
 {
 	[Required(ErrorMessage = "Email is required")]

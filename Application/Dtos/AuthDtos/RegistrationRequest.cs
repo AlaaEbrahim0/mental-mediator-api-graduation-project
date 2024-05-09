@@ -1,9 +1,9 @@
 ﻿using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
 
-namespace Shared.AuthDtos;
+namespace Application.Dtos.AuthDtos;
 
-public record RegistrationRequest
+public record RegisterationRequest
 {
 
 	[Required(ErrorMessage = "First name is required.")]
@@ -21,7 +21,7 @@ public record RegistrationRequest
 	[Required(ErrorMessage = "Email is required.")]
 	[RegularExpression("[A-Za-z0-9]+@[A-Za-z]+\\.[A-Za-z]+", ErrorMessage = "Invalid email address format")]
 	[DefaultValue("test@example.com")]
-	public string? Email { get; init; }
+	public string Email { get; init; } = string.Empty;
 
 	[Required(ErrorMessage = "Password is required.")]
 	[StringLength(100, MinimumLength = 8, ErrorMessage = "Password must be at least 8 characters.")]
@@ -30,7 +30,7 @@ public record RegistrationRequest
 
 	[Required(ErrorMessage = "Birthdate is required")]
 	[FutureDateTimeValidation()]
-	[DefaultValue("2000-1-1")]
+	[DefaultValue("2000-01-01")]
 	public DateOnly BirthDate { get; set; }
 
 	[Required(ErrorMessage = "Gender is required")]
@@ -45,24 +45,7 @@ public record RegistrationRequest
 	[DefaultValue("User")]
 	public string Role { get; set; } = string.Empty;
 
-}
 
-public class FutureDateTimeValidationAttribute : ValidationAttribute
-{
-	public DateOnly MaxDate { get; set; }
-		= DateOnly.FromDateTime(new DateTime(2014, 1, 1));
-	public DateOnly MinDate { get; set; }
-		= DateOnly.FromDateTime(new DateTime(1950, 1, 1));
-
-	public override bool IsValid(object? obj)
-	{
-		var value = (DateOnly)obj!;
-		if (!(value > MinDate && value < MaxDate))
-		{
-			ErrorMessage = "Date cannot be before 1950 or after 2014";
-			return false;
-		};
-		return true;
-	}
+	public string Specialization { get; set; }
 
 }
