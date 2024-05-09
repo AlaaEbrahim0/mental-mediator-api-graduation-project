@@ -92,6 +92,8 @@ public static class DependencyInjection
 		services.AddScoped<ICommentRepository, CommentRepository>();
 		services.AddScoped<IReplyRepository, ReplyRepository>();
 		services.AddScoped<INotificationRepository, NotificationRepository>();
+		services.AddScoped<IDoctorRepository, DoctorRepository>();
+		services.AddScoped<IUserRepository, UserRepository>();
 		return services;
 	}
 
@@ -186,6 +188,7 @@ public static class DependencyInjection
 		services.AddDbContext<AppDbContext>(config =>
 		{
 			config.UseSqlServer(connectionString, b => b.MigrationsAssembly(nameof(Infrastructure)));
+
 		});
 		return services;
 	}

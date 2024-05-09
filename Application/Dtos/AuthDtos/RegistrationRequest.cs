@@ -45,8 +45,6 @@ public record RegisterationRequest
 	[AllowedValues("User", "Admin", "Doctor", ErrorMessage = "Allowed roles are [User, Doctor, Admin]")]
 	[DefaultValue("User")]
 	public string Role { get; set; } = string.Empty;
-
-
-	public string? Specialization { get; set; }
-
 }
+
+

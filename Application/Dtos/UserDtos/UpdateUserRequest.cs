@@ -2,7 +2,7 @@
 using Microsoft.AspNetCore.Http;
 
 namespace Shared.UserDtos;
-public class UpdateUserInfoRequest
+public class BaseUpdateUserInfoRequest
 {
 	[Required(ErrorMessage = "First name is required.")]
 	[MinLength(3, ErrorMessage = "First name cannot be less than 3 characters")]
@@ -25,8 +25,15 @@ public class UpdateUserInfoRequest
 }
 
 
+public class UpdateUserInfoRequest : BaseUpdateUserInfoRequest
+{
+
+}
+
 public class UpdateDoctorInfoRequest : UpdateUserInfoRequest
 {
 	public string? Biography { get; set; }
+
+	//public DoctorSpecialization Specialization { get; set; }
 }
 

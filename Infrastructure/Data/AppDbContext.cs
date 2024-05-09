@@ -24,6 +24,7 @@ public class AppDbContext : IdentityDbContext<BaseUser>
 	public DbSet<Notification> Notifications { get; set; }
 	public DbSet<User> AppUsers { get; set; }
 	public DbSet<Doctor> Doctors { get; set; }
+	public DbSet<User> Clients { get; set; }
 	//public DbSet<Appointment> Appointments { get; set; }
 	//public DbSet<TimeSlot> TimeSlots { get; set; }
 	//public DbSet<WeeklySchedule> WeeklySchedules { get; set; }

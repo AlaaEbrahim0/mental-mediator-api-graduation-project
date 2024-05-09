@@ -7,5 +7,7 @@ public interface IRepositoryManager
 	ICommentRepository Comments { get; }
 	IReplyRepository Replies { get; }
 	INotificationRepository Notifications { get; }
+	IDoctorRepository Doctors { get; }
+	IUserRepository Users { get; }
 	Task SaveAsync();
 }

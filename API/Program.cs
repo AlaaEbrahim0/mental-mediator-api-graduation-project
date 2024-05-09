@@ -21,6 +21,7 @@ builder.Services
 	.ConfigureMailService()
 	.ConfigureOptions(builder.Configuration)
 	.ConfigureEntityServices()
+	.AddScoped<IDoctorService, DoctorService>()
 	.ConfigureAutoMapper()
 	.AddScoped<MailTemplates>()
 	.AddScoped<IUserService, UserService>()
@@ -30,6 +31,15 @@ builder.Services
 	.ConfigureDbContext(builder.Configuration, builder.Environment);
 
 builder.Services.AddSignalR();
+
+
+builder.Services.AddHttpClient<HateSpeechDetectorClient>("ml-client", config =>
+{
+	var baseAddress = builder.Configuration["MLServerAddress"];
+	config.BaseAddress = new Uri(baseAddress!);
+});
+
+builder.Services.AddScoped<IHateSpeechDetector, HateSpeechDetectorClient>();
 
 if (!builder.Environment.IsDevelopment())
 {
@@ -42,14 +52,6 @@ if (!builder.Environment.IsDevelopment())
 	});
 
 }
-builder.Services.AddHttpClient<HateSpeechDetectorClient>("ml-client", config =>
-{
-	var baseAddress = builder.Configuration["MLServerAddress"];
-	config.BaseAddress = new Uri(baseAddress!);
-});
-
-builder.Services.AddScoped<IHateSpeechDetector, HateSpeechDetectorClient>();
-
 
 var app = builder.Build();
 

@@ -25,7 +25,6 @@ public class MailTemplates
 		string htmlTemplate = _fileProvider.ReadFromWebRoot("successfulEmailConfirmation.html");
 		return htmlTemplate;
 	}
-
 	public string ResetPassword(string resetPasswordLink)
 	{
 		string htmlTemplate = _fileProvider.ReadFromWebRoot("resetPasswordTemplate.html");

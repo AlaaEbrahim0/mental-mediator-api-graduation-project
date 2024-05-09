@@ -1,6 +1,7 @@
 ﻿namespace API;
 
 using Application.Dtos.AuthDtos;
+using Application.Dtos.UserDtos;
 using AutoMapper;
 using Domain.Entities;
 using Shared;
@@ -27,8 +28,14 @@ public class MappingProfile : Profile
 		CreateMap<CreateReplyRequest, Reply>();
 		CreateMap<UpdateReplyRequest, Reply>();
 
-		CreateMap<UpdateUserInfoRequest, BaseUser>();
-		CreateMap<BaseUser, UserInfoResponse>();
+		CreateMap<UpdateUserInfoRequest, User>();
+		CreateMap<UpdateDoctorInfoRequest, Doctor>();
+
+		CreateMap<BaseUser, DoctorInfoResponse>()
+			.IncludeAllDerived();
+
+		CreateMap<User, UserInfoResponse>();
+		CreateMap<Doctor, DoctorInfoResponse>();
 
 		CreateMap<Notification, NotificationResponse>()
 		.ForMember(dest => dest.Resources, src =>
