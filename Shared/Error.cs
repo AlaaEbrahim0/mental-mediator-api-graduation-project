@@ -31,6 +31,9 @@ public record Error
     public static Error Conflict(string code, string description) =>
         new Error(code, description, ErrorType.Conflict);
 
+    public static Error ServiceUnavailable(string code, string description) =>
+        new Error(code, description, ErrorType.ServiceUnavailable);
+
     public static Error Forbidden(string code, string description) =>
         new Error(code, description, ErrorType.Forbidden);
 

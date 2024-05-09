@@ -7,7 +7,7 @@ public class Comment
 	public int PostId { get; set; }
 	public string? AppUserId { get; set; }
 	public Post? Post { get; set; }
-	public AppUser? AppUser { get; set; }
+	public BaseUser? AppUser { get; set; }
 
 	public string? Content { get; set; }
 	public DateTime CommentedAt { get; set; }

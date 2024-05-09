@@ -6,14 +6,13 @@ using Newtonsoft.Json;
 namespace Domain.Entities;
 
 
-
 public class Notification
 {
 	public int Id { get; set; }
 
 	public string? AppUserId { get; set; }
 
-	public AppUser? AppUser { get; set; }
+	public BaseUser? AppUser { get; set; }
 
 	[Required]
 	[StringLength(500, ErrorMessage = "Message length can't be more than 500.")]
@@ -72,5 +71,3 @@ public class Notification
 	}
 
 }
-
-

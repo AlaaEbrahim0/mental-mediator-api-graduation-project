@@ -9,7 +9,7 @@ public class Post
     [Required(ErrorMessage = "AppUserId is required")]
 
     public string? AppUserId { get; set; }
-    public AppUser? AppUser { get; set; }
+    public BaseUser? AppUser { get; set; }
 
     [Required(ErrorMessage = "Title is required")]
     [MaxLength(255, ErrorMessage = "Title cannot exceed 255 characters")]
