@@ -4,12 +4,12 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace Infrastructure.Configurations;
 
-public class AppUserConfiguration : IEntityTypeConfiguration<AppUser>
+public class AppUserConfiguration : IEntityTypeConfiguration<BaseUser>
 {
 
-    public void Configure(EntityTypeBuilder<AppUser> builder)
-    {
+	public void Configure(EntityTypeBuilder<BaseUser> builder)
+	{
 
 
-    }
+	}
 }

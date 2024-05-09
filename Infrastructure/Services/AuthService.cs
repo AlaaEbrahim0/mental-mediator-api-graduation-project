@@ -2,6 +2,8 @@
 using System.Net;
 using System.Security.Claims;
 using System.Text;
+using Application.Dtos.AuthDtos;
+using Application.Dtos.NotificationDtos;
 using Application.Services;
 using Application.Utilities;
 using AutoMapper;
@@ -11,32 +13,32 @@ using Infrastructure.Utilities;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Identity;
 using Shared;
-using Shared.AuthDtos;
 
 namespace Infrastructure.Services;
 public class AuthService : IAuthService
 {
-	private readonly UserManager<AppUser> _userManager;
-	private readonly SignInManager<AppUser> _signInManager;
+	private readonly UserManager<BaseUser> _userManager;
+
+	private readonly SignInManager<BaseUser> _signInManager;
 	private readonly JwtTokenGenerator _jwtTokenGenerator;
-	private readonly NotificationMessageTemplates _notificationMessageTemplates;
+	private readonly MailTemplates _MailTemplates;
 	private readonly IMailService _mailService;
 	private readonly IMapper _mapper;
 
 	public AuthService(
-		UserManager<AppUser> userManager,
-		SignInManager<AppUser> signInManager,
+		UserManager<BaseUser> userManager,
+		SignInManager<BaseUser> signInManager,
 		JwtTokenGenerator jwtTokenGenerator,
 		IMailService mailService,
 		IMapper mapper,
-		NotificationMessageTemplates notificationMessageTemplates)
+		MailTemplates MailTemplates)
 	{
 		_userManager = userManager;
 		_mapper = mapper;
 		_signInManager = signInManager;
 		_jwtTokenGenerator = jwtTokenGenerator;
 		_mailService = mailService;
-		_notificationMessageTemplates = notificationMessageTemplates;
+		_MailTemplates = MailTemplates;
 	}
 
 	public async Task<Result<AuthResponse>> SignInAsync(SignInRequest signInModel)
@@ -90,7 +92,7 @@ public class AuthService : IAuthService
 		{
 			ToEmail = user.Email,
 			Subject = "EMAIL CONFIRMATION",
-			Body = _notificationMessageTemplates.EmailConfirmation(user.FullName, confirmationLink)
+			Body = _MailTemplates.EmailConfirmation(user.FullName, confirmationLink)
 		});
 
 		return new EmailConfirmationResponse
@@ -119,16 +121,17 @@ public class AuthService : IAuthService
 			$"token={WebUtility.UrlEncode(token)}";
 	}
 
-	public async Task<Result<RegisterationResponse>> RegisterAsync(RegistrationRequest request)
+	public async Task<Result<RegisterationResponse>> RegisterAsync(RegisterationRequest request)
 	{
-		var user = await _userManager.FindByEmailAsync(request.Email);
+		var user = await _userManager.FindByEmailAsync(request.Email!);
 
 		if (user is not null)
 		{
 			return UserErrors.EmailNotUnique(request.Email);
 		}
 
-		user = _mapper.Map<AppUser>(request);
+		user = UserFactory.CreateUser(request, _mapper);
+
 		var createUserResult = await _userManager.CreateAsync(user, request.Password);
 
 		var sb = new StringBuilder();
@@ -177,7 +180,7 @@ public class AuthService : IAuthService
 			var username = externalUserEmail!.Split('@')[0];
 			var name = externalUserInfo.Principal.Identity?.Name;
 
-			localUserAccount = new AppUser()
+			localUserAccount = new User()
 			{
 				Email = externalUserEmail,
 				UserName = username,
@@ -256,7 +259,7 @@ public class AuthService : IAuthService
 		{
 			Subject = "RESET PASSWORD",
 			ToEmail = email,
-			Body = _notificationMessageTemplates.ResetPassword(resetPasswordLink)
+			Body = _MailTemplates.ResetPassword(resetPasswordLink)
 		});
 
 		return "An email with reset password link has been sent to your email address";

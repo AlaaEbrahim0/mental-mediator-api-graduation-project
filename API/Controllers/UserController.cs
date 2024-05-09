@@ -1,5 +1,4 @@
 ﻿using Application.Contracts;
-using Application.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Shared.UserDtos;
@@ -9,15 +8,13 @@ namespace API.Controllers;
 [ApiController]
 [Route("api/users")]
 [Authorize]
-public class UserController : ControllerBase
+public class UserController<T> : ControllerBase
 {
 	private readonly IUserService _userService;
-	private readonly IPostService _postService;
 
-	public UserController(IUserService userService, IPostService postService)
+	public UserController(IUserService userService)
 	{
 		_userService = userService;
-		_postService = postService;
 	}
 
 	[HttpGet("{id}")]

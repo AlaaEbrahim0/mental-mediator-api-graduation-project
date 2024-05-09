@@ -6,9 +6,9 @@ using Microsoft.IdentityModel.JsonWebTokens;
 namespace Infrastructure.Services;
 public class UserClaimsService : IUserClaimsService
 {
-	private readonly SignInManager<AppUser> _signInManager;
+	private readonly SignInManager<BaseUser> _signInManager;
 
-	public UserClaimsService(SignInManager<AppUser> signInManager)
+	public UserClaimsService(SignInManager<BaseUser> signInManager)
 	{
 		_signInManager = signInManager;
 	}

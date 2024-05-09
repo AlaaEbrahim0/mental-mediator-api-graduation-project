@@ -1,4 +1,5 @@
-﻿using Application.Contracts;
+﻿
+using Application.Contracts;
 using AutoMapper;
 using Domain.Entities;
 using Domain.Enums;
@@ -8,22 +9,23 @@ using Shared;
 using Shared.CommentsDtos;
 
 namespace Application.Services;
-
 public class CommentService : ICommentService
 {
 	private readonly IRepositoryManager _repos;
 	private readonly IMapper _mapper;
 	private readonly IUserClaimsService _userClaimsService;
-	private readonly UserManager<AppUser> _userManager;
+	private readonly UserManager<BaseUser> _userManager;
 	private readonly INotificationService _notificationService;
+	private readonly IHateSpeechDetector _hateSpeechDetector;
 
-	public CommentService(IRepositoryManager repos, IMapper mapper, IUserClaimsService userClaimsService, UserManager<AppUser> userManager, INotificationService notificationService)
+	public CommentService(IRepositoryManager repos, IMapper mapper, IUserClaimsService userClaimsService, UserManager<BaseUser> userManager, INotificationService notificationService, IHateSpeechDetector hateSpeechDetector)
 	{
 		_repos = repos;
 		_mapper = mapper;
 		_userClaimsService = userClaimsService;
 		_userManager = userManager;
 		_notificationService = notificationService;
+		_hateSpeechDetector = hateSpeechDetector;
 	}
 
 
@@ -36,7 +38,19 @@ public class CommentService : ICommentService
 
 	public async Task<Result<CommentResponse>> CreateComment(int postId, CreateCommentRequest createCommentRequest)
 	{
+		var isHateSpeechResult = await _hateSpeechDetector.IsHateSpeech(createCommentRequest.Content!);
+
+		if (isHateSpeechResult.IsFailure)
+		{
+			return isHateSpeechResult.Error;
+		}
+		if (isHateSpeechResult.Value)
+		{
+			return Error.Forbidden("Content.Forbidden", "Your comment violates our policy against hate speech and could not be published");
+		}
+
 		var post = await _repos.Posts.GetPostById(postId, true);
+
 		if (post is null)
 		{
 			return PostErrors.NotFound(postId);
@@ -45,7 +59,6 @@ public class CommentService : ICommentService
 		var userId = _userClaimsService.GetUserId();
 		var userName = _userClaimsService.GetUserName();
 		var userRole = _userClaimsService.GetRole();
-
 		if (!AllowedToComment(post, userId, userRole))
 		{
 			return Error.Forbidden("Users.Forbidden", "Only doctors and post author are allowed to comment on anonymous posts");

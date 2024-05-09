@@ -1,12 +1,8 @@
-﻿using Domain.Entities;
-using Shared;
+﻿using Shared;
 
 namespace Application.Contracts;
-public interface INotificationService
+public interface INotificationService : INotificationSender
 {
-	Task SendNotificationAsync(Notification notification);
 	Task<Result<IEnumerable<NotificationResponse>>> GetNotificationByUserId(string userId);
 	Task<Result<NotificationResponse>> GetNotificationById(int id);
-
-
 }

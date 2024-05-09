@@ -1,5 +1,6 @@
 ﻿using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
+using Shared;
 
 namespace Application.Dtos.AuthDtos;
 
@@ -46,6 +47,6 @@ public record RegisterationRequest
 	public string Role { get; set; } = string.Empty;
 
 
-	public string Specialization { get; set; }
+	public string? Specialization { get; set; }
 
 }

@@ -12,15 +12,17 @@ public class PostService : IPostService
 	private readonly IRepositoryManager _repos;
 	private readonly IMapper _mapper;
 	private readonly IUserClaimsService _userClaimsService;
-	private readonly UserManager<AppUser> _userManager;
+	private readonly UserManager<BaseUser> _userManager;
+	private readonly IHateSpeechDetector _hateSpeechDetector;
 
 
-	public PostService(IRepositoryManager repos, IMapper mapper, IUserClaimsService userClaimsService, UserManager<AppUser> userManager)
+	public PostService(IRepositoryManager repos, IMapper mapper, IUserClaimsService userClaimsService, UserManager<BaseUser> userManager, IHateSpeechDetector hateSpeechDetector)
 	{
 		_repos = repos;
 		_mapper = mapper;
 		_userClaimsService = userClaimsService;
 		_userManager = userManager;
+		_hateSpeechDetector = hateSpeechDetector;
 	}
 
 	public async Task<Result<IEnumerable<PostResponse>>> GetPosts(
@@ -46,10 +48,19 @@ public class PostService : IPostService
 
 	public async Task<Result<PostResponse>> CreatePostAsync(CreatePostRequest postRequest)
 	{
-		var userId = _userClaimsService.GetUserId();
+		var isHateSpeechResult = await _hateSpeechDetector.IsHateSpeech($"{postRequest.Title} {postRequest.Content}"!);
 
+		if (isHateSpeechResult.IsFailure)
+		{
+			return isHateSpeechResult.Error;
+		}
+		if (isHateSpeechResult.Value)
+		{
+			return Error.Forbidden("Content.Forbidden", "Your post violates our policy against hate speech and could not be published");
+		}
 		var post = _mapper.Map<Post>(postRequest);
 
+		var userId = _userClaimsService.GetUserId();
 		post.AppUserId = userId;
 		post.PostedOn = DateTime.UtcNow;
 

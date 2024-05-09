@@ -1,4 +1,5 @@
-﻿using Application.Options;
+﻿using Application.Dtos.NotificationDtos;
+using Application.Options;
 using Application.Services;
 using MailKit.Net.Smtp;
 using MailKit.Security;

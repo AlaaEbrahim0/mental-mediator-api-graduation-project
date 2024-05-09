@@ -114,7 +114,7 @@ public static class DependencyInjection
 		services.AddScoped<IReplyService, ReplyService>();
 		services.AddScoped<IUserClaimsService, UserClaimsService>();
 		services.AddScoped<INotificationService, NotificationService>();
-
+		services.AddScoped<INotificationSender, NotificationSender>();
 		services.AddScoped<ClaimsPrincipal>();
 		return services;
 	}
@@ -162,7 +162,7 @@ public static class DependencyInjection
 	public static IServiceCollection ConfigureIdentity(this IServiceCollection services)
 	{
 		services
-			.AddIdentity<AppUser, IdentityRole>(options =>
+			.AddIdentity<BaseUser, IdentityRole>(options =>
 			{
 				options.SignIn.RequireConfirmedEmail = true;
 			})

@@ -7,50 +7,56 @@ using Microsoft.AspNetCore.Http;
 using Shared;
 
 namespace Infrastructure.Services;
-public class StorageService : IStorageService
+public class CloudinaryStorageService : IStorageService
 {
-    private readonly Cloudinary cloudinary;
-    private readonly List<string> allowedPhotoExtensions =
-    [
-        ".png",
-        ".jpg",
-        ".jpeg",
-    ];
-    private const long MaxPhotoSizeInBytes = 5 * 1024 * 1024;
+	private readonly Cloudinary cloudinary;
+	private readonly List<string> allowedPhotoExtensions =
+	[
+		".png",
+		".jpg",
+		".jpeg",
+	];
+	private const long MaxPhotoSizeInBytes = 5 * 1024 * 1024;
 
-    public StorageService()
-    {
-        DotEnv.Load(options: new DotEnvOptions(probeForEnv: true));
-        cloudinary = new Cloudinary(Environment.GetEnvironmentVariable("CLOUDINARY_URL"));
-        cloudinary.Api.Secure = true;
-    }
-    public async Task<Result<string>> UploadPhoto(IFormFile photo)
-    {
-        var photoExtension = Path.GetExtension(photo.FileName);
-        if (!allowedPhotoExtensions.Contains(photoExtension))
-        {
-            return StorageErrors.UnsupportedPhotoExtension(photoExtension);
-        }
+	public CloudinaryStorageService()
+	{
+		DotEnv.Load(options: new DotEnvOptions(probeForEnv: true));
+		cloudinary = new Cloudinary(Environment.GetEnvironmentVariable("CLOUDINARY_URL"));
+		cloudinary.Api.Secure = true;
+	}
+	public async Task<Result<string>> UploadPhoto(IFormFile photo)
+	{
+		var photoExtension = Path.GetExtension(photo.FileName);
+		if (!allowedPhotoExtensions.Contains(photoExtension))
+		{
+			return StorageErrors.UnsupportedPhotoExtension(photoExtension);
+		}
 
-        if (photo.Length > MaxPhotoSizeInBytes)
-        {
-            return StorageErrors.FileSizeExceededMaximumSize();
-        }
+		if (photo.Length > MaxPhotoSizeInBytes)
+		{
+			return StorageErrors.FileSizeExceededMaximumSize();
+		}
 
-        using var stream = photo.OpenReadStream();
+		using var stream = photo.OpenReadStream();
 
-        var uploadParams = new ImageUploadParams()
-        {
-            File = new FileDescription()
-            {
-                FileName = Guid.NewGuid().ToString(),
-                Stream = stream
-            },
-            Overwrite = true
-        };
+		var uploadParams = new ImageUploadParams()
+		{
+			File = new FileDescription()
+			{
+				FileName = Guid.NewGuid().ToString(),
+				Stream = stream
+			},
+			Overwrite = true
+		};
 
-        var uploadResult = await cloudinary.UploadAsync(uploadParams);
+		ImageUploadResult uploadResult;
+		uploadResult = await cloudinary.UploadAsync(uploadParams);
+		if (uploadResult.Error != null)
+		{
+			return Shared.Error.ServiceUnavailable("ExternalServices.StorageServiceUnavailable", "failed to upload image");
 
-        return uploadResult.Url.ToString();
-    }
+		}
+
+		return uploadResult.Url.ToString();
+	}
 }

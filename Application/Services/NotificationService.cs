@@ -2,24 +2,23 @@
 using AutoMapper;
 using Domain.Entities;
 using Domain.Errors;
-using Infrastructure.Hubs;
-using Microsoft.AspNetCore.SignalR;
 using Shared;
 
-namespace Infrastructure.Services;
+namespace Application.Services;
+
 public class NotificationService : INotificationService
 {
-	private readonly IHubContext<NotificationHub, INotificationClient> _hubContext;
 	private readonly IRepositoryManager _repos;
 	private readonly IUserClaimsService _userClaimsService;
+	private readonly INotificationSender _notificationSender;
 	private readonly IMapper _mapper;
 
-	public NotificationService(IHubContext<NotificationHub, INotificationClient> hubContext, IRepositoryManager repos, IUserClaimsService userClaimsService, IMapper mapper)
+	public NotificationService(IRepositoryManager repos, IUserClaimsService userClaimsService, IMapper mapper, INotificationSender notificationSender)
 	{
-		_hubContext = hubContext;
 		_repos = repos;
 		_userClaimsService = userClaimsService;
 		_mapper = mapper;
+		_notificationSender = notificationSender;
 	}
 
 
@@ -34,6 +33,11 @@ public class NotificationService : INotificationService
 		return notificationReponse;
 	}
 
+	public async Task SendNotificationAsync(Notification notification)
+	{
+		await _notificationSender.SendNotificationAsync(notification);
+	}
+
 	public async Task<Result<IEnumerable<NotificationResponse>>> GetNotificationByUserId(string userId)
 	{
 		var currentUserId = _userClaimsService.GetUserId();
@@ -46,12 +50,6 @@ public class NotificationService : INotificationService
 		return notificationReponse.ToList();
 	}
 
-	public async Task SendNotificationAsync(Notification notification)
-	{
-		var notificationResponse = _mapper.Map<NotificationResponse>(notification);
-		await _hubContext.Clients.All.ReceiveNotification(notificationResponse);
-
-	}
 
 
 }

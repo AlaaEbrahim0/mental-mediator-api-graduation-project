@@ -9,12 +9,12 @@ using Shared.UserDtos;
 namespace Infrastructure.Services;
 public class UserService : IUserService
 {
-    private readonly UserManager<AppUser> _userManager;
+    private readonly UserManager<BaseUser> _userManager;
     private readonly IUserClaimsService _userClaimsService;
     private readonly IStorageService _storageService;
     private readonly IMapper _mapper;
 
-    public UserService(UserManager<AppUser> userManager, IUserClaimsService userClaimsService, IMapper mapper, IStorageService storageService)
+    public UserService(UserManager<BaseUser> userManager, IUserClaimsService userClaimsService, IMapper mapper, IStorageService storageService)
     {
         _userManager = userManager;
         _userClaimsService = userClaimsService;

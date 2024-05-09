@@ -14,15 +14,16 @@ public class ReplyService : IReplyService
 	private readonly IMapper _mapper;
 	private readonly IUserClaimsService _userClaimsService;
 	private readonly INotificationService _notificationService;
+	private readonly IHateSpeechDetector _hateSpeechDetector;
 
-	public ReplyService(IRepositoryManager repos, IMapper mapper, IUserClaimsService userClaimsService, INotificationService notificationService)
+	public ReplyService(IRepositoryManager repos, IMapper mapper, IUserClaimsService userClaimsService, INotificationService notificationService, IHateSpeechDetector hateSpeechDetector)
 	{
 		_repos = repos;
 		_mapper = mapper;
 		_userClaimsService = userClaimsService;
 		_notificationService = notificationService;
+		_hateSpeechDetector = hateSpeechDetector;
 	}
-
 
 	public async Task<Result<ReplyResponse>> CreateReply(int postId, int commentId, CreateReplyRequest createReplyRequest)
 	{
@@ -30,6 +31,17 @@ public class ReplyService : IReplyService
 		if (comment is null)
 		{
 			return CommentErrors.NotFound(commentId);
+		}
+
+		var isHateSpeechResult = await _hateSpeechDetector.IsHateSpeech(createReplyRequest.Content!);
+
+		if (isHateSpeechResult.IsFailure)
+		{
+			return isHateSpeechResult.Error;
+		}
+		if (isHateSpeechResult.Value)
+		{
+			return Error.Forbidden("Content.Forbidden", "Your reply violates our policy against hate speech and could not be published");
 		}
 
 		var userId = _userClaimsService.GetUserId();

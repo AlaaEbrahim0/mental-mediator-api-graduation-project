@@ -2,6 +2,7 @@ using API.BackgroundJobs;
 using API.Configurations;
 using Application.Contracts;
 using Application.Utilities;
+using Infrastructure.Clients;
 using Infrastructure.Data;
 using Infrastructure.Hubs;
 using Infrastructure.Services;
@@ -21,9 +22,9 @@ builder.Services
 	.ConfigureOptions(builder.Configuration)
 	.ConfigureEntityServices()
 	.ConfigureAutoMapper()
-	.AddScoped<NotificationMessageTemplates>()
+	.AddScoped<MailTemplates>()
 	.AddScoped<IUserService, UserService>()
-	.AddScoped<IStorageService, StorageService>()
+	.AddScoped<IStorageService, CloudinaryStorageService>()
 	.AddScoped<IWebRootFileProvider, WebRootFileProvider>()
 	.ConfigureRepositores()
 	.ConfigureDbContext(builder.Configuration, builder.Environment);
@@ -39,7 +40,15 @@ if (!builder.Environment.IsDevelopment())
 		var baseAddress = builder.Configuration["BaseAddress"];
 		config.BaseAddress = new Uri(baseAddress!);
 	});
+
 }
+builder.Services.AddHttpClient<HateSpeechDetectorClient>("ml-client", config =>
+{
+	var baseAddress = builder.Configuration["MLServerAddress"];
+	config.BaseAddress = new Uri(baseAddress!);
+});
+
+builder.Services.AddScoped<IHateSpeechDetector, HateSpeechDetectorClient>();
 
 
 var app = builder.Build();

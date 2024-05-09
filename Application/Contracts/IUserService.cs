@@ -4,7 +4,13 @@ using Shared.UserDtos;
 namespace Application.Contracts;
 public interface IUserService
 {
-    Task<Result<UserInfoResponse>> GetUserInfo(string id);
-    Task<Result<UserInfoResponse>> UpdateUserInfo(string id, UpdateUserInfoRequest request);
+	Task<Result<UserInfoResponse>> GetUserInfo(string id);
+	Task<Result<UserInfoResponse>> UpdateUserInfo(string id, UpdateUserInfoRequest request);
+}
+
+public interface IDoctorService
+{
+	Task<Result<UserInfoResponse>> GetDoctorInfo(string id);
+	Task<Result<UserInfoResponse>> UpdateDoctorInfo(string id, UpdateUserInfoRequest request);
 
 }

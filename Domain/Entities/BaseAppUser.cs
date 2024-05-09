@@ -2,7 +2,7 @@
 using Microsoft.AspNetCore.Identity;
 
 namespace Domain.Entities;
-public class AppUser : IdentityUser
+public class BaseUser : IdentityUser
 {
 	public string? FirstName { get; set; }
 	public string? LastName { get; set; }
@@ -21,7 +21,5 @@ public class AppUser : IdentityUser
 
 	public List<Post> Posts { get; set; } = new();
 	public List<Notification> Notifications { get; set; } = new();
+
 }
-
-
-

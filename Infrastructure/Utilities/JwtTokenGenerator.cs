@@ -10,16 +10,16 @@ using Microsoft.IdentityModel.Tokens;
 namespace Infrastructure.Utilities;
 public class JwtTokenGenerator
 {
-	private readonly UserManager<AppUser> _userManager;
+	private readonly UserManager<BaseUser> _userManager;
 	private readonly JwtOptions _jwtOptions;
 
-	public JwtTokenGenerator(UserManager<AppUser> userManager, IOptions<JwtOptions> jwtOptions)
+	public JwtTokenGenerator(UserManager<BaseUser> userManager, IOptions<JwtOptions> jwtOptions)
 	{
 		_userManager = userManager;
 		_jwtOptions = jwtOptions.Value;
 	}
 
-	public async Task<JwtSecurityToken> CreateJwtToken(AppUser user)
+	public async Task<JwtSecurityToken> CreateJwtToken(BaseUser user)
 	{
 		IEnumerable<Claim> jwtClaims = await GetUserJwtClaims(user);
 
@@ -39,7 +39,7 @@ public class JwtTokenGenerator
 		return token;
 	}
 
-	private async Task<IEnumerable<Claim>> GetUserJwtClaims(AppUser user)
+	private async Task<IEnumerable<Claim>> GetUserJwtClaims(BaseUser user)
 	{
 		var userClaims = await _userManager.GetClaimsAsync(user);
 		var roles = await _userManager.GetRolesAsync(user);

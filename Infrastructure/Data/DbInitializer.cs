@@ -55,7 +55,7 @@ public static class DbInitializer
 
 
 
-		var userFaker = new Faker<AppUser>()
+		var userFaker = new Faker<BaseUser>()
 			.RuleFor(u => u.Id, set => userIds[id++])
 			.RuleFor(u => u.FirstName, set => set.Person.FirstName)
 			.RuleFor(u => u.LastName, set => set.Person.LastName)
