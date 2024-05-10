@@ -26,18 +26,17 @@ public static class DependencyInjection
 			config.AddPolicy("AllowAll", policy =>
 			{
 				policy
-					.AllowAnyOrigin()
+					.WithOrigins(
+					  "https://mental-health-ochre.vercel.app",
+						"https://localhost:7221",
+						"http://localhost:5068",
+						"http://localhost:5500")
 					.AllowAnyHeader()
-					.AllowAnyMethod();
+					.AllowAnyMethod()
+					.AllowCredentials();
+
 			});
 
-			config.AddPolicy("Restricted", policy =>
-			{
-				policy
-					.WithOrigins("http://127.0.0.1:5500")
-					.AllowAnyHeader()
-					.AllowAnyMethod();
-			});
 		});
 		return services;
 	}
