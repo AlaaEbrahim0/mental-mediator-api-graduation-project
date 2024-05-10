@@ -14,22 +14,36 @@ public class PostService : IPostService
 	private readonly IUserClaimsService _userClaimsService;
 	private readonly UserManager<BaseUser> _userManager;
 	private readonly IHateSpeechDetector _hateSpeechDetector;
+	private readonly ICacheService _cacheService;
 
 
-	public PostService(IRepositoryManager repos, IMapper mapper, IUserClaimsService userClaimsService, UserManager<BaseUser> userManager, IHateSpeechDetector hateSpeechDetector)
+	public PostService(IRepositoryManager repos, IMapper mapper, IUserClaimsService userClaimsService, UserManager<BaseUser> userManager, IHateSpeechDetector hateSpeechDetector, ICacheService cacheService)
 	{
 		_repos = repos;
 		_mapper = mapper;
 		_userClaimsService = userClaimsService;
 		_userManager = userManager;
 		_hateSpeechDetector = hateSpeechDetector;
+		_cacheService = cacheService;
 	}
 
 	public async Task<Result<IEnumerable<PostResponse>>> GetPosts(
 		RequestParameters parameters)
 	{
+		string postPageKey = $"posts_{parameters.PageNumber}_{parameters.PageSize}";
+
+		var cachedPosts = await _cacheService.GetAsync<List<PostResponse>>(postPageKey);
+
+		if (cachedPosts is not null)
+		{
+			return cachedPosts;
+		}
 		var posts = await _repos.Posts.GetAllPosts(parameters, false);
+
 		var postResponse = _mapper.Map<IEnumerable<PostResponse>>(posts);
+
+		await _cacheService.SetAsync(postPageKey, postResponse, TimeSpan.FromMinutes(1));
+
 		return postResponse.ToList();
 	}
 

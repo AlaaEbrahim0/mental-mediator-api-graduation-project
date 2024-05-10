@@ -6,41 +6,42 @@ using Microsoft.EntityFrameworkCore;
 namespace Infrastructure.Repositories;
 public class RepositoryBase<T> : IRepositoryBase<T> where T : class
 {
-    private readonly AppDbContext _dbContext;
 
-    public RepositoryBase(AppDbContext dbContext)
-    {
-        _dbContext = dbContext;
-    }
+	private readonly AppDbContext _dbContext;
 
-    public void Create(T entity)
-    {
-        _dbContext.Set<T>().Add(entity);
-    }
+	public RepositoryBase(AppDbContext dbContext)
+	{
+		_dbContext = dbContext;
+	}
 
-    public void Delete(T entity)
-    {
-        _dbContext.Set<T>().Remove(entity);
-    }
+	public void Create(T entity)
+	{
+		_dbContext.Set<T>().Add(entity);
+	}
 
-    public IQueryable<T> FindAll(bool trackChanges)
-    {
-        return
-            !trackChanges ?
-            _dbContext.Set<T>() :
-            _dbContext.Set<T>().AsNoTracking();
-    }
+	public void Delete(T entity)
+	{
+		_dbContext.Set<T>().Remove(entity);
+	}
 
-    public IQueryable<T> FindByCondition(Expression<Func<T, bool>> conition, bool trackChanges)
-    {
-        return
-            !trackChanges ?
-            _dbContext.Set<T>().Where(conition) :
-            _dbContext.Set<T>().Where(conition).AsNoTracking();
-    }
+	public IQueryable<T> FindAll(bool trackChanges)
+	{
+		return
+			!trackChanges ?
+			_dbContext.Set<T>() :
+			_dbContext.Set<T>().AsNoTracking();
+	}
 
-    public void Update(T entity)
-    {
-        _dbContext.Set<T>().Update(entity);
-    }
+	public IQueryable<T> FindByCondition(Expression<Func<T, bool>> conition, bool trackChanges)
+	{
+		return
+			!trackChanges ?
+			_dbContext.Set<T>().Where(conition) :
+			_dbContext.Set<T>().Where(conition).AsNoTracking();
+	}
+
+	public void Update(T entity)
+	{
+		_dbContext.Set<T>().Update(entity);
+	}
 }

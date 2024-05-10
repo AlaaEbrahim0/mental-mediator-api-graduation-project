@@ -2,6 +2,7 @@ using API.BackgroundJobs;
 using API.Configurations;
 using Application.Contracts;
 using Application.Utilities;
+using Infrastructure.Caching;
 using Infrastructure.Clients;
 using Infrastructure.Data;
 using Infrastructure.Hubs;
@@ -27,10 +28,13 @@ builder.Services
 	.AddScoped<IUserService, UserService>()
 	.AddScoped<IStorageService, CloudinaryStorageService>()
 	.AddScoped<IWebRootFileProvider, WebRootFileProvider>()
+	.AddDistributedMemoryCache()
 	.ConfigureRepositores()
 	.ConfigureDbContext(builder.Configuration, builder.Environment);
 
 builder.Services.AddSignalR();
+
+builder.Services.AddSingleton<ICacheService, InMemoryCacheService>();
 
 
 builder.Services.AddHttpClient<HateSpeechDetectorClient>("ml-client", config =>

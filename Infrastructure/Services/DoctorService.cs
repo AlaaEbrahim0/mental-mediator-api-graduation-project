@@ -68,6 +68,7 @@ public class DoctorService : IDoctorService
 
 		_mapper.Map(request, user);
 		_repoManager.Doctors.UpdateDoctor(user);
+		await _repoManager.SaveAsync();
 
 		var response = _mapper.Map<DoctorInfoResponse>(user);
 		return response;

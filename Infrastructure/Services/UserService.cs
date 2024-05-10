@@ -61,6 +61,7 @@ public class UserService : IUserService
 
 		_mapper.Map(updateRequest, user);
 		_repos.Users.UpdateUserInfo(user);
+		await _repos.SaveAsync();
 
 		var response = _mapper.Map<UserInfoResponse>(user);
 		return response;

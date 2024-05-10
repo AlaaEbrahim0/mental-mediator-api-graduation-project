@@ -15,14 +15,16 @@ public class ReplyService : IReplyService
 	private readonly IUserClaimsService _userClaimsService;
 	private readonly INotificationService _notificationService;
 	private readonly IHateSpeechDetector _hateSpeechDetector;
+	private readonly ICacheService _cacheService;
 
-	public ReplyService(IRepositoryManager repos, IMapper mapper, IUserClaimsService userClaimsService, INotificationService notificationService, IHateSpeechDetector hateSpeechDetector)
+	public ReplyService(IRepositoryManager repos, IMapper mapper, IUserClaimsService userClaimsService, INotificationService notificationService, IHateSpeechDetector hateSpeechDetector, ICacheService cacheService)
 	{
 		_repos = repos;
 		_mapper = mapper;
 		_userClaimsService = userClaimsService;
 		_notificationService = notificationService;
 		_hateSpeechDetector = hateSpeechDetector;
+		_cacheService = cacheService;
 	}
 
 	public async Task<Result<ReplyResponse>> CreateReply(int postId, int commentId, CreateReplyRequest createReplyRequest)
@@ -108,6 +110,8 @@ public class ReplyService : IReplyService
 
 	public async Task<Result<IEnumerable<ReplyResponse>>> GetRepliesForComment(int postId, int commentId)
 	{
+		var cachedReplies = await _cacheService.GetAsync<List<ReplyResponse>>("replies");
+
 		var comment = await _repos.Comments.GetById(postId, commentId, false);
 		if (comment is null)
 		{
@@ -116,6 +120,8 @@ public class ReplyService : IReplyService
 		var replies = await _repos.Replies.GetRepliesByCommentId(commentId, false);
 
 		var repliesResult = _mapper.Map<IEnumerable<ReplyResponse>>(replies);
+		//await _cacheService.SetAsync("replies", repliesResult);
+
 		return repliesResult.ToList();
 
 	}

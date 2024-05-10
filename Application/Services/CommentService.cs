@@ -17,8 +17,9 @@ public class CommentService : ICommentService
 	private readonly UserManager<BaseUser> _userManager;
 	private readonly INotificationService _notificationService;
 	private readonly IHateSpeechDetector _hateSpeechDetector;
+	private readonly ICacheService _cacheService;
 
-	public CommentService(IRepositoryManager repos, IMapper mapper, IUserClaimsService userClaimsService, UserManager<BaseUser> userManager, INotificationService notificationService, IHateSpeechDetector hateSpeechDetector)
+	public CommentService(IRepositoryManager repos, IMapper mapper, IUserClaimsService userClaimsService, UserManager<BaseUser> userManager, INotificationService notificationService, IHateSpeechDetector hateSpeechDetector, ICacheService cacheService)
 	{
 		_repos = repos;
 		_mapper = mapper;
@@ -26,13 +27,27 @@ public class CommentService : ICommentService
 		_userManager = userManager;
 		_notificationService = notificationService;
 		_hateSpeechDetector = hateSpeechDetector;
+		_cacheService = cacheService;
 	}
 
 
 	public async Task<Result<IEnumerable<CommentResponse>>> GetCommentsByPostId(int postId)
 	{
-		var comments = await _repos.Comments.GetAllCommentsByPostId(postId, false);
+		var cachedComments = await _cacheService
+			.GetAsync<List<CommentResponse>>("comments");
+
+		if (cachedComments is not null)
+		{
+			return cachedComments;
+		}
+
+		var comments = await _repos.Comments
+			.GetAllCommentsByPostId(postId, false);
+
 		var commentsResponse = _mapper.Map<IEnumerable<CommentResponse>>(comments);
+
+		//await _cacheService.SetAsync("comments", commentsResponse);
+
 		return commentsResponse.ToList();
 	}
 
