@@ -20,7 +20,6 @@ public class NotificationSender : INotificationSender
 	public async Task SendNotificationAsync(Notification notification)
 	{
 		var notificationResponse = _mapper.Map<NotificationResponse>(notification);
-		//await _hubContext.Clients.All.ReceiveNotification(notificationResponse);
 
 		await _hubContext.Clients.User(notification.AppUserId).ReceiveNotification(notificationResponse);
 
