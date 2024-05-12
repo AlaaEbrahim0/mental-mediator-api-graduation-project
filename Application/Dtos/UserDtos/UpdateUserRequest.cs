@@ -1,7 +1,8 @@
 ﻿using System.ComponentModel.DataAnnotations;
+using Domain.Enums;
 using Microsoft.AspNetCore.Http;
 
-namespace Shared.UserDtos;
+namespace Application.Dtos.UserDtos;
 public class BaseUpdateUserInfoRequest
 {
 	[Required(ErrorMessage = "First name is required.")]
@@ -34,6 +35,6 @@ public class UpdateDoctorInfoRequest : UpdateUserInfoRequest
 {
 	public string? Biography { get; set; }
 
-	//public DoctorSpecialization Specialization { get; set; }
+	public DoctorSpecialization Specialization { get; set; }
 }
 

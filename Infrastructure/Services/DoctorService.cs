@@ -3,7 +3,6 @@ using Application.Dtos.UserDtos;
 using AutoMapper;
 using Domain.Errors;
 using Shared;
-using Shared.UserDtos;
 
 namespace Infrastructure.Services;
 

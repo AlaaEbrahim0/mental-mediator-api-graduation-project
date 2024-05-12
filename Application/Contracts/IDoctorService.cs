@@ -1,6 +1,5 @@
 ﻿using Application.Dtos.UserDtos;
 using Shared;
-using Shared.UserDtos;
 
 namespace Application.Contracts;
 

@@ -1,5 +1,6 @@
 ﻿using System.Security.Claims;
 using System.Text;
+using System.Text.Json.Serialization;
 using Application.Contracts;
 using Application.Options;
 using Application.Services;
@@ -80,7 +81,12 @@ public static class DependencyInjection
 	}
 	public static IServiceCollection ConfigureControllers(this IServiceCollection services)
 	{
-		services.AddControllers();
+		services.AddControllers()
+			.AddJsonOptions(config =>
+			{
+				config.JsonSerializerOptions
+				.Converters.Add(new JsonStringEnumConverter());
+			});
 
 		return services;
 	}

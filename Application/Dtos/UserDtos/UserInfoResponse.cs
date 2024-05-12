@@ -1,4 +1,6 @@
-﻿namespace Application.Dtos.UserDtos;
+﻿using Domain.Enums;
+
+namespace Application.Dtos.UserDtos;
 public class BaseUserInfoResponse
 {
 	public string FirstName { get; set; } = string.Empty;
@@ -15,5 +17,6 @@ public class UserInfoResponse : BaseUserInfoResponse { }
 public class DoctorInfoResponse : BaseUserInfoResponse
 {
 	public string? Biography { get; set; }
-	//public string? Specialization { get; set; }
+
+	public DoctorSpecialization Specialization { get; set; }
 }

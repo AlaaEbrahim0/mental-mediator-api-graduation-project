@@ -1,7 +1,7 @@
 ﻿using Application.Contracts;
+using Application.Dtos.UserDtos;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Shared.UserDtos;
 namespace API.Controllers;
 
 [ApiController]

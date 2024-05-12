@@ -8,7 +8,6 @@ using Shared;
 using Shared.CommentsDtos;
 using Shared.PostsDto;
 using Shared.ReplyDtos;
-using Shared.UserDtos;
 
 public class MappingProfile : Profile
 {
