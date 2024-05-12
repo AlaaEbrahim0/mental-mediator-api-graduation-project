@@ -4,6 +4,7 @@ using Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Infrastructure.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20240511170847_AddedEndTimeColumnToAvailableDaysTable")]
+    partial class AddedEndTimeColumnToAvailableDaysTable
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -66,7 +69,7 @@ namespace Infrastructure.Migrations
 
                     b.HasIndex("UserId");
 
-                    b.ToTable("Appointment", (string)null);
+                    b.ToTable("Appointment");
                 });
 
             modelBuilder.Entity("Domain.Entities.AvailableDays", b =>
@@ -96,7 +99,7 @@ namespace Infrastructure.Migrations
 
                     b.HasIndex("WeeklyScheduleId");
 
-                    b.ToTable("AvailableDays", (string)null);
+                    b.ToTable("AvailableDays");
                 });
 
             modelBuilder.Entity("Domain.Entities.BaseUser", b =>
@@ -207,7 +210,7 @@ namespace Infrastructure.Migrations
 
                     b.HasIndex("PostId");
 
-                    b.ToTable("Comments", (string)null);
+                    b.ToTable("Comments");
                 });
 
             modelBuilder.Entity("Domain.Entities.Notification", b =>
@@ -246,7 +249,7 @@ namespace Infrastructure.Migrations
 
                     b.HasIndex("AppUserId");
 
-                    b.ToTable("Notifications", (string)null);
+                    b.ToTable("Notifications");
                 });
 
             modelBuilder.Entity("Domain.Entities.Post", b =>
@@ -281,7 +284,7 @@ namespace Infrastructure.Migrations
 
                     b.HasIndex("AppUserId");
 
-                    b.ToTable("Posts", (string)null);
+                    b.ToTable("Posts");
                 });
 
             modelBuilder.Entity("Domain.Entities.Reply", b =>
@@ -310,7 +313,7 @@ namespace Infrastructure.Migrations
 
                     b.HasIndex("CommentId");
 
-                    b.ToTable("Replies", (string)null);
+                    b.ToTable("Replies");
                 });
 
             modelBuilder.Entity("Domain.Entities.WeeklySchedule", b =>
@@ -330,7 +333,7 @@ namespace Infrastructure.Migrations
                         .IsUnique()
                         .HasFilter("[DoctorId] IS NOT NULL");
 
-                    b.ToTable("WeeklySchedule", (string)null);
+                    b.ToTable("WeeklySchedule");
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRole", b =>

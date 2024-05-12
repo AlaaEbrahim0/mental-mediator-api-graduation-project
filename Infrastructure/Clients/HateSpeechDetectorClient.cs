@@ -20,7 +20,7 @@ public class HateSpeechDetectorClient : IHateSpeechDetector
 	{
 		using (var httpClient = _httpClientFactory.CreateClient("ml-client"))
 		{
-			var response = await httpClient.PostAsJsonAsync("/predict", new { text = content });
+			var response = await httpClient.PostAsJsonAsync("/predict_HS", new { text = content });
 			if (response.IsSuccessStatusCode)
 			{
 				var data = await response.Content.ReadFromJsonAsync<HateSpeechDetectionResult>();

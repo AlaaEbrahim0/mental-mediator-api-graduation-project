@@ -7,7 +7,7 @@ public class Appointment
 {
 	public int Id { get; set; }
 	public string UserId { get; set; } = string.Empty;
-	public BaseUser? User { get; set; }
+	public User? User { get; set; }
 	public string DoctorId { get; set; } = string.Empty;
 	public Doctor? Doctor { get; set; }
 	public DateTime StartTime { get; set; }

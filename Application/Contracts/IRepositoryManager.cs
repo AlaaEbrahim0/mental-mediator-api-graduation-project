@@ -9,5 +9,6 @@ public interface IRepositoryManager
 	INotificationRepository Notifications { get; }
 	IDoctorRepository Doctors { get; }
 	IUserRepository Users { get; }
+	IWeeklyScheduleRepository WeeklySchedules { get; }
 	Task SaveAsync();
 }

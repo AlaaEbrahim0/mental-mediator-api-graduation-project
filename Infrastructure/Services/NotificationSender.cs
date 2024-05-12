@@ -22,7 +22,6 @@ public class NotificationSender : INotificationSender
 		var notificationResponse = _mapper.Map<NotificationResponse>(notification);
 
 		await _hubContext.Clients.User(notification.AppUserId).ReceiveNotification(notificationResponse);
-
 	}
 
 }

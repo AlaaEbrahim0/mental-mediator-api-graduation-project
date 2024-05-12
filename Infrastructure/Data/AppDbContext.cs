@@ -12,9 +12,25 @@ public class AppDbContext : IdentityDbContext<BaseUser>
 	}
 	protected override void OnModelCreating(ModelBuilder builder)
 	{
-		builder.Entity<User>().ToTable("Users");
-		builder.Entity<Doctor>().ToTable("Doctors");
+		builder.Entity<User>().ToTable("Users")
+			.HasMany(d => d.Appointments)
+			.WithOne(d => d.User)
+			.OnDelete(DeleteBehavior.NoAction); ;
+
+		builder.Entity<Doctor>().ToTable("Doctors")
+			.HasMany(d => d.Appointments)
+			.WithOne(d => d.Doctor)
+			.OnDelete(DeleteBehavior.NoAction);
+
+		builder.Entity<WeeklySchedule>()
+			.HasMany(d => d.AvailableDays)
+			.WithOne()
+			.HasForeignKey(d => d.WeeklyScheduleId);
+
 		builder.Entity<BaseUser>().ToTable("BaseUsers");
+
+
+
 		base.OnModelCreating(builder);
 	}
 

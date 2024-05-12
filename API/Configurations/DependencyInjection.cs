@@ -30,10 +30,11 @@ public static class DependencyInjection
 					  "https://mental-health-ochre.vercel.app",
 						"https://localhost:7221",
 						"http://localhost:5068",
-						"http://localhost:5500")
-					.AllowAnyHeader()
-					.AllowAnyMethod()
-					.AllowCredentials();
+						"http://localhost:5500",
+							"http://localhost:3000")
+						.AllowAnyHeader()
+						.AllowAnyMethod()
+						.AllowCredentials();
 
 			});
 
