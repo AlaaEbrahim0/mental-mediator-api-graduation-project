@@ -28,7 +28,8 @@ public class MappingProfile : Profile
 		CreateMap<UpdateReplyRequest, Reply>();
 
 		CreateMap<UpdateUserInfoRequest, User>();
-		CreateMap<UpdateDoctorInfoRequest, Doctor>();
+		CreateMap<UpdateDoctorInfoRequest, Doctor>()
+			.ForMember(dest => dest.WeeklySchedule, src => src.Ignore());
 
 		CreateMap<BaseUser, DoctorInfoResponse>()
 			.IncludeAllDerived();

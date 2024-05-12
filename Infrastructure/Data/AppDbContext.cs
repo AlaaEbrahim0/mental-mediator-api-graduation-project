@@ -20,7 +20,7 @@ public class AppDbContext : IdentityDbContext<BaseUser>
 		builder.Entity<Doctor>().ToTable("Doctors")
 			.HasMany(d => d.Appointments)
 			.WithOne(d => d.Doctor)
-			.OnDelete(DeleteBehavior.NoAction);
+			.OnDelete(DeleteBehavior.Cascade);
 
 		builder.Entity<WeeklySchedule>()
 			.HasMany(d => d.AvailableDays)
