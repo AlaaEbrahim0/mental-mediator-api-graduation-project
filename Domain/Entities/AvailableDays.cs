@@ -3,7 +3,7 @@
 namespace Domain.Entities;
 
 
-public class AvailableDays
+public class DoctorAvailableDay
 {
 	public int Id { get; set; }
 
@@ -14,6 +14,6 @@ public class AvailableDays
 	public TimeSpan EndTime { get; set; } = new TimeSpan(21, 0, 0);
 	public int? WeeklyScheduleId { get; set; }
 
-	//public WeeklySchedule? WeeklySchedule { get; set; }
+	public WeeklySchedule? WeeklySchedule { get; set; }
 }
 

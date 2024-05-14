@@ -8,3 +8,4 @@ public class WeeklySchedule
 
 	public List<AvailableDays> AvailableDays { get; set; } = new();
 }
+

@@ -1,4 +1,6 @@
-﻿namespace API.BackgroundJobs;
+﻿using Microsoft.Extensions.Hosting;
+
+namespace Infrastructure.BackgroundJobs;
 
 public class HostingRefresher : BackgroundService
 {

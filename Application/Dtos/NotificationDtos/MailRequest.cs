@@ -1,15 +1,22 @@
-﻿using System.ComponentModel.DataAnnotations;
+﻿using FluentValidation;
 
 namespace Application.Dtos.NotificationDtos;
 public class MailRequest
 {
-	[Required]
-	[EmailAddress(ErrorMessage = "Invalid email address format")]
 	public string? ToEmail { get; set; }
 
-	[Required]
 	public string? Subject { get; set; }
 
-	[Required]
 	public string? Body { get; set; }
+}
+
+public class MailRequestValidator : AbstractValidator<MailRequest>
+{
+	public MailRequestValidator()
+	{
+		RuleFor(x => x.ToEmail)
+			.NotEmpty()
+			.EmailAddress()
+			.WithMessage("Invalid email address");
+	}
 }

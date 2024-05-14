@@ -9,7 +9,11 @@ public class AvailableDaysConfigurations : IEntityTypeConfiguration<AvailableDay
 
 	public void Configure(EntityTypeBuilder<AvailableDays> builder)
 	{
-		builder.ToTable(t => t.HasCheckConstraint("CA_AvailableDays_StartEndTime", "EndTime > StartTime"));
+		builder
+			.HasOne(x => x.WeeklySchedule)
+			.WithMany(x => x.AvailableDays)
+			.HasForeignKey(x => x.WeeklyScheduleId)
+			.OnDelete(DeleteBehavior.Cascade);
 	}
 
 }

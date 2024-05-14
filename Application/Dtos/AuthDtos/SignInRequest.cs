@@ -1,15 +1,27 @@
 ﻿using System.ComponentModel;
-using System.ComponentModel.DataAnnotations;
+using FluentValidation;
 
 namespace Application.Dtos.AuthDtos;
 public record SignInRequest
 {
-	[Required(ErrorMessage = "Email is required")]
-	[EmailAddress(ErrorMessage = "Invalid email address format")]
 	[DefaultValue("test@example.com")]
 	public string Email { get; init; } = string.Empty;
 
-	[Required(ErrorMessage = "Password is required")]
 	[DefaultValue("Password1!")]
 	public string Password { get; init; } = string.Empty;
+}
+
+public class SignInRequestValidator : AbstractValidator<SignInRequest>
+{
+	public SignInRequestValidator()
+	{
+		RuleFor(x => x.Email)
+			.NotNull()
+			.EmailAddress().WithMessage("Invalid email address");
+
+		RuleFor(x => x.Password)
+			.NotNull()
+			.Length(8, 128).WithMessage("Password must be between 8 and 128 characters");
+	}
+
 }

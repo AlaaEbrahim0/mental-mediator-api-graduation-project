@@ -26,7 +26,7 @@ public class UpdateAvailableDayRequestValidator : AbstractValidator<UpdateAvaila
 
 public class UpdateAvailableDayRequest
 {
-	[DefaultValue("09:00:00")]
+	[DefaultValue("08:00:00")]
 	public TimeSpan StartTime { get; set; }
 
 	[DefaultValue("00:30:00")]

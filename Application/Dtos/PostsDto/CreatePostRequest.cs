@@ -1,17 +1,30 @@
-﻿using System.ComponentModel.DataAnnotations;
+﻿using System.ComponentModel;
+using FluentValidation;
 
 namespace Shared.PostsDto;
 public class CreatePostRequest
 {
-    [Required(ErrorMessage = "Title is required")]
-    [MaxLength(255, ErrorMessage = "Title cannot exceed 255 characters")]
-    public string? Title { get; set; }
+	[DefaultValue("Lorem ipsum dolor sit amet, consectetur adipiscing elit. Cras laoreet luctus ex. Praesent vel ligula ut neque ullamcorper placerat ac.")]
+	public string? Title { get; set; }
 
+	[DefaultValue("Lorem ipsum dolor sit amet, consectetur adipiscing elit. Cras laoreet luctus ex. Praesent vel ligula ut neque ullamcorper placerat ac.")]
+	public string? Content { get; set; }
 
-    [Required(ErrorMessage = "Content is required")]
-    [MaxLength(2047, ErrorMessage = "Content cannot exceed 2047 characters")]
-    public string? Content { get; set; }
+	public bool IsAnonymous { get; set; }
+}
 
-    [Required]
-    public bool IsAnonymous { get; set; }
+public class CreatePostRequestValidator : AbstractValidator<CreatePostRequest>
+{
+	public CreatePostRequestValidator()
+	{
+		RuleFor(x => x.Content)
+			.NotEmpty()
+			.NotNull()
+			.Length(1, 4000);
+
+		RuleFor(x => x.Title)
+			.NotEmpty()
+			.NotNull()
+			.Length(1, 1000);
+	}
 }

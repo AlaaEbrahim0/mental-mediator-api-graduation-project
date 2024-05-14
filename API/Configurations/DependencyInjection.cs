@@ -5,10 +5,14 @@ using Application.Contracts;
 using Application.Dtos.WeeklyScheduleDtos;
 using Application.Options;
 using Application.Services;
+using Application.Utilities;
 using Domain.Entities;
 using Domain.Repositories;
 using FluentValidation;
 using FluentValidation.AspNetCore;
+using Infrastructure.BackgroundJobs;
+using Infrastructure.Caching;
+using Infrastructure.Clients;
 using Infrastructure.Data;
 using Infrastructure.Repositories;
 using Infrastructure.Services;
@@ -99,7 +103,6 @@ public static class DependencyInjection
 
 		return services;
 	}
-
 	public static IServiceCollection ConfigureRepositores(this IServiceCollection services)
 	{
 		services.AddScoped<IRepositoryManager, RepositoryManager>();
@@ -113,30 +116,58 @@ public static class DependencyInjection
 		return services;
 	}
 
-	public static IServiceCollection ConfigureMailSettings(this IServiceCollection services, ConfigurationManager configuration)
+	public static IServiceCollection ConfigureHttpClients(this IServiceCollection services, ConfigurationManager configuration, bool envIsDev)
 	{
-		services.Configure<MailSettings>(configuration.GetSection("MailSettings"));
+		services.AddScoped<IHateSpeechDetector, HateSpeechDetectorClient>();
+
+		services.AddHttpClient<HateSpeechDetectorClient>("ml-client", config =>
+		{
+			var baseAddress = configuration["MLServerAddress"];
+			config.BaseAddress = new Uri(baseAddress!);
+		});
+
+		if (envIsDev)
+		{
+			services.AddHostedService<HostingRefresher>();
+
+			services.AddHttpClient<HostingRefresher>("self", config =>
+			{
+				var baseAddress = configuration["BaseAddress"];
+				config.BaseAddress = new Uri(baseAddress!);
+			});
+		}
 		return services;
 	}
 
-	public static IServiceCollection ConfigureMailService(this IServiceCollection services)
+	public static IServiceCollection ConfigureServices(this IServiceCollection services)
 	{
-		services.AddTransient<IMailService, MailService>();
+		services
+			.AddScoped<IPostService, PostService>()
+			.AddTransient<IMailService, MailService>()
+			.AddScoped<ICommentService, CommentService>()
+			.AddScoped<IReplyService, ReplyService>()
+			.AddScoped<IUserClaimsService, UserClaimsService>()
+			.AddScoped<INotificationService, NotificationService>()
+			.AddScoped<INotificationSender, NotificationSender>()
+			.AddScoped<IWeeklyScheduleService, WeeklyScheduleService>()
+			.AddScoped<ClaimsPrincipal>()
+			.AddScoped<MailTemplates>()
+			.AddScoped<IUserService, UserService>()
+			.AddScoped<IDoctorService, DoctorService>()
+			.AddScoped<IStorageService, CloudinaryStorageService>()
+			.AddScoped<IWebRootFileProvider, WebRootFileProvider>()
+			.AddSignalR();
+
 		return services;
+	}
+	public static IServiceCollection ConfigureCaching(this IServiceCollection services)
+	{
+		services
+			.AddSingleton<ICacheService, InMemoryCacheService>()
+			.AddDistributedMemoryCache();
+
 	}
 
-	public static IServiceCollection ConfigureEntityServices(this IServiceCollection services)
-	{
-		services.AddScoped<IPostService, PostService>();
-		services.AddScoped<ICommentService, CommentService>();
-		services.AddScoped<IReplyService, ReplyService>();
-		services.AddScoped<IUserClaimsService, UserClaimsService>();
-		services.AddScoped<INotificationService, NotificationService>();
-		services.AddScoped<INotificationSender, NotificationSender>();
-		services.AddScoped<IWeeklyScheduleService, WeeklyScheduleService>();
-		services.AddScoped<ClaimsPrincipal>();
-		return services;
-	}
 
 	public static IServiceCollection ConfigureAuthentication(this IServiceCollection services, ConfigurationManager configuration)
 	{
@@ -170,26 +201,11 @@ public static class DependencyInjection
 				};
 			});
 
-		return services;
-	}
 
-	public static IServiceCollection ConfigureAuthorization(this IServiceCollection services)
-	{
 		services.AddAuthorizationBuilder();
 		return services;
 	}
-	public static IServiceCollection ConfigureIdentity(this IServiceCollection services)
-	{
-		services
-			.AddIdentity<BaseUser, IdentityRole>(options =>
-			{
-				options.SignIn.RequireConfirmedEmail = true;
-			})
-			.AddEntityFrameworkStores<AppDbContext>()
-			.AddDefaultTokenProviders();
 
-		return services;
-	}
 	public static IServiceCollection ConfigureDbContext(this IServiceCollection services, IConfiguration configuration, IWebHostEnvironment env)
 	{
 		var connectionString = string.Empty;
@@ -209,6 +225,15 @@ public static class DependencyInjection
 			config.EnableSensitiveDataLogging();
 
 		});
+
+		services
+			.AddIdentity<BaseUser, IdentityRole>(options =>
+			{
+				options.SignIn.RequireConfirmedEmail = true;
+			})
+			.AddEntityFrameworkStores<AppDbContext>()
+			.AddDefaultTokenProviders();
+
 		return services;
 	}
 
@@ -216,9 +241,11 @@ public static class DependencyInjection
 	{
 		services.Configure<JwtOptions>(configuration.GetSection("JwtSettings"));
 		services.Configure<GoogleAuthenticationOptions>(configuration.GetSection("GoogleAuthentication"));
+		services.Configure<MailSettings>(configuration.GetSection("MailSettings"));
 
 		return services;
 	}
+
 	public static IServiceCollection ConfigureAutoMapper(this IServiceCollection services)
 	{
 		services.AddAutoMapper(config => config.AddProfile<MappingProfile>());

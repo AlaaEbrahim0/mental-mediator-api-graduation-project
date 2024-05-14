@@ -3,6 +3,13 @@ using FluentValidation;
 
 namespace Application.Dtos.WeeklyScheduleDtos;
 
+
+public class CreateDoctorWeeklyScheduleRequest
+{
+	[Required]
+	public List<CreateAvailableDayRequest> AvailableDays { get; set; } = new(7);
+}
+
 public class CreateDoctorWeeklyScheduleRequestValidator : AbstractValidator<CreateDoctorWeeklyScheduleRequest>
 {
 	public CreateDoctorWeeklyScheduleRequestValidator()
@@ -15,10 +22,4 @@ public class CreateDoctorWeeklyScheduleRequestValidator : AbstractValidator<Crea
 			.Must(x => x.Select(x => x.DayOfWeek).Distinct().Count() == x.Select(x => x.DayOfWeek).Count())
 			.WithMessage("Available days must not have duplicate days");
 	}
-}
-
-public class CreateDoctorWeeklyScheduleRequest
-{
-	[Required]
-	public List<CreateAvailableDayRequest> AvailableDays { get; set; } = new(7);
 }

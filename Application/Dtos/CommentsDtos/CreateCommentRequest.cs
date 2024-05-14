@@ -1,9 +1,19 @@
-﻿using System.ComponentModel.DataAnnotations;
+﻿using System.ComponentModel;
+using FluentValidation;
 
 namespace Shared.CommentsDtos;
 public class CreateCommentRequest
 {
-    [Required(ErrorMessage = "Content is required")]
-    [MaxLength(2047, ErrorMessage = "Content cannot exceed 2047 characters")]
-    public string? Content { get; set; }
+	[DefaultValue("Comment Example")]
+	public string Content { get; set; } = string.Empty;
+}
+
+public class CreateCommentRequestValidator : AbstractValidator<CreateCommentRequest>
+{
+	public CreateCommentRequestValidator()
+	{
+		RuleFor(x => x.Content)
+			.NotNull()
+			.Length(1, 2000);
+	}
 }

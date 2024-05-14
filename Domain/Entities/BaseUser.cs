@@ -21,5 +21,6 @@ public class BaseUser : IdentityUser
 
 	public List<Post> Posts { get; set; } = new();
 	public List<Notification> Notifications { get; set; } = new();
-
 }
+
+

@@ -12,15 +12,6 @@ public class AppDbContext : IdentityDbContext<BaseUser>
 	}
 	protected override void OnModelCreating(ModelBuilder builder)
 	{
-		builder.Entity<User>().ToTable("Users")
-			.HasMany(d => d.Appointments)
-			.WithOne(d => d.User)
-			.OnDelete(DeleteBehavior.NoAction); ;
-
-		builder.Entity<Doctor>().ToTable("Doctors")
-			.HasMany(d => d.Appointments)
-			.WithOne(d => d.Doctor)
-			.OnDelete(DeleteBehavior.Cascade);
 
 		builder.Entity<WeeklySchedule>()
 			.HasMany(d => d.AvailableDays)
@@ -29,8 +20,6 @@ public class AppDbContext : IdentityDbContext<BaseUser>
 			.OnDelete(DeleteBehavior.Cascade);
 
 		builder.Entity<BaseUser>().ToTable("BaseUsers");
-
-
 
 		base.OnModelCreating(builder);
 	}
@@ -43,8 +32,7 @@ public class AppDbContext : IdentityDbContext<BaseUser>
 	public DbSet<Doctor> Doctors { get; set; }
 	public DbSet<User> Clients { get; set; }
 	//public DbSet<Appointment> Appointments { get; set; }
-	//public DbSet<TimeSlot> TimeSlots { get; set; }
-	//public DbSet<WeeklySchedule> WeeklySchedules { get; set; }
+	public DbSet<WeeklySchedule> WeeklySchedules { get; set; }
 
 
 }
