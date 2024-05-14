@@ -12,8 +12,8 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Infrastructure.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20240511170847_AddedEndTimeColumnToAvailableDaysTable")]
-    partial class AddedEndTimeColumnToAvailableDaysTable
+    [Migration("20240511170847_AddedEndTimeColumnToAvailableDayTable")]
+    partial class AddedEndTimeColumnToAvailableDayTable
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)

@@ -13,14 +13,18 @@ public class DoctorService : IDoctorService
 		_userClaimsService;
 	private readonly IStorageService _storageService;
 	private readonly IMapper _mapper;
+	private readonly IWeeklyScheduleService _weeklyScheduleService;
 
-	public DoctorService(IUserClaimsService userClaimsService, IStorageService storageService, IMapper mapper, IRepositoryManager repoManager)
+	public DoctorService(IUserClaimsService userClaimsService, IStorageService storageService, IMapper mapper, IRepositoryManager repoManager, IWeeklyScheduleService weeklyScheduleService)
 	{
 		_userClaimsService = userClaimsService;
 		_storageService = storageService;
 		_mapper = mapper;
 		_repoManager = repoManager;
+		_weeklyScheduleService = weeklyScheduleService;
 	}
+
+	public IWeeklyScheduleService WeeklyScheduleService => _weeklyScheduleService;
 
 	public async Task<Result<DoctorInfoResponse>> GetDoctorInfo(string id)
 	{
@@ -37,22 +41,22 @@ public class DoctorService : IDoctorService
 		}
 
 		var response = _mapper.Map<DoctorInfoResponse>(user);
-
 		return response;
+
 	}
 
-	public async Task<Result<DoctorInfoResponse>> UpdateDoctorInfo(string id, UpdateDoctorInfoRequest request)
+	public async Task<Result<DoctorInfoResponse>> UpdateDoctorInfo(string doctorId, UpdateDoctorInfoRequest request)
 	{
 		var currentUserId = _userClaimsService.GetUserId();
-		if (!currentUserId.Equals(id))
+		if (!currentUserId.Equals(doctorId))
 		{
 			return Error.Forbidden("Users.ForbiddenInfo", "you don't have permission to access this resource");
 		}
-		var user = await _repoManager.Doctors.GetById(id, true);
+		var user = await _repoManager.Doctors.GetById(doctorId, true);
 
 		if (user is null)
 		{
-			return UserErrors.NotFound(id);
+			return UserErrors.NotFound(doctorId);
 		}
 
 		if (request.Photo is not null)
@@ -72,4 +76,7 @@ public class DoctorService : IDoctorService
 		var response = _mapper.Map<DoctorInfoResponse>(user);
 		return response;
 	}
+
+
+
 }

@@ -30,7 +30,7 @@ public record RegisterationRequest
 	public string Password { get; init; } = string.Empty;
 
 	[Required(ErrorMessage = "Birthdate is required")]
-	[FutureDateTimeValidation()]
+	[BirthDateRangeValidation()]
 	[DefaultValue("2000-01-01")]
 	public DateOnly BirthDate { get; set; }
 

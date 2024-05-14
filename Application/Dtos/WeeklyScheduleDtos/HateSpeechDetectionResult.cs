@@ -1,4 +1,4 @@
-﻿namespace Application.Dtos;
+﻿namespace Application.Dtos.WeeklyScheduleDtos;
 
 public class HateSpeechDetectionResult
 {

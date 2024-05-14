@@ -2,10 +2,13 @@
 using System.Text;
 using System.Text.Json.Serialization;
 using Application.Contracts;
+using Application.Dtos.WeeklyScheduleDtos;
 using Application.Options;
 using Application.Services;
 using Domain.Entities;
 using Domain.Repositories;
+using FluentValidation;
+using FluentValidation.AspNetCore;
 using Infrastructure.Data;
 using Infrastructure.Repositories;
 using Infrastructure.Services;
@@ -82,11 +85,16 @@ public static class DependencyInjection
 	}
 	public static IServiceCollection ConfigureControllers(this IServiceCollection services)
 	{
+		services.AddValidatorsFromAssemblyContaining<CreateAvailableDayRequest>();
+		services.AddFluentValidationAutoValidation();
+		services.AddFluentValidationClientsideAdapters();
+
 		services.AddControllers()
 			.AddJsonOptions(config =>
 			{
 				config.JsonSerializerOptions
 				.Converters.Add(new JsonStringEnumConverter());
+
 			});
 
 		return services;
@@ -101,6 +109,7 @@ public static class DependencyInjection
 		services.AddScoped<INotificationRepository, NotificationRepository>();
 		services.AddScoped<IDoctorRepository, DoctorRepository>();
 		services.AddScoped<IUserRepository, UserRepository>();
+		services.AddScoped<IWeeklyScheduleRepository, WeeklyScheduleRepository>();
 		return services;
 	}
 
@@ -124,6 +133,7 @@ public static class DependencyInjection
 		services.AddScoped<IUserClaimsService, UserClaimsService>();
 		services.AddScoped<INotificationService, NotificationService>();
 		services.AddScoped<INotificationSender, NotificationSender>();
+		services.AddScoped<IWeeklyScheduleService, WeeklyScheduleService>();
 		services.AddScoped<ClaimsPrincipal>();
 		return services;
 	}
@@ -195,6 +205,8 @@ public static class DependencyInjection
 		services.AddDbContext<AppDbContext>(config =>
 		{
 			config.UseSqlServer(connectionString, b => b.MigrationsAssembly(nameof(Infrastructure)));
+			config.EnableDetailedErrors();
+			config.EnableSensitiveDataLogging();
 
 		});
 		return services;

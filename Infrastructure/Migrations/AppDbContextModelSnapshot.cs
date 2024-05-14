@@ -66,7 +66,7 @@ namespace Infrastructure.Migrations
 
                     b.HasIndex("UserId");
 
-                    b.ToTable("Appointment");
+                    b.ToTable("Appointment", (string)null);
                 });
 
             modelBuilder.Entity("Domain.Entities.AvailableDays", b =>
@@ -96,7 +96,7 @@ namespace Infrastructure.Migrations
 
                     b.HasIndex("WeeklyScheduleId");
 
-                    b.ToTable("AvailableDays");
+                    b.ToTable("AvailableDays", (string)null);
                 });
 
             modelBuilder.Entity("Domain.Entities.BaseUser", b =>
@@ -207,7 +207,7 @@ namespace Infrastructure.Migrations
 
                     b.HasIndex("PostId");
 
-                    b.ToTable("Comments");
+                    b.ToTable("Comments", (string)null);
                 });
 
             modelBuilder.Entity("Domain.Entities.Notification", b =>
@@ -246,7 +246,7 @@ namespace Infrastructure.Migrations
 
                     b.HasIndex("AppUserId");
 
-                    b.ToTable("Notifications");
+                    b.ToTable("Notifications", (string)null);
                 });
 
             modelBuilder.Entity("Domain.Entities.Post", b =>
@@ -281,7 +281,7 @@ namespace Infrastructure.Migrations
 
                     b.HasIndex("AppUserId");
 
-                    b.ToTable("Posts");
+                    b.ToTable("Posts", (string)null);
                 });
 
             modelBuilder.Entity("Domain.Entities.Reply", b =>
@@ -310,7 +310,7 @@ namespace Infrastructure.Migrations
 
                     b.HasIndex("CommentId");
 
-                    b.ToTable("Replies");
+                    b.ToTable("Replies", (string)null);
                 });
 
             modelBuilder.Entity("Domain.Entities.WeeklySchedule", b =>
@@ -330,7 +330,7 @@ namespace Infrastructure.Migrations
                         .IsUnique()
                         .HasFilter("[DoctorId] IS NOT NULL");
 
-                    b.ToTable("WeeklySchedule");
+                    b.ToTable("WeeklySchedule", (string)null);
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRole", b =>
@@ -492,7 +492,7 @@ namespace Infrastructure.Migrations
                     b.HasOne("Domain.Entities.Doctor", "Doctor")
                         .WithMany("Appointments")
                         .HasForeignKey("DoctorId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.NoAction)
                         .IsRequired();
 
                     b.HasOne("Domain.Entities.User", "User")
@@ -508,9 +508,11 @@ namespace Infrastructure.Migrations
 
             modelBuilder.Entity("Domain.Entities.AvailableDays", b =>
                 {
-                    b.HasOne("Domain.Entities.WeeklySchedule", null)
+                    b.HasOne("Domain.Entities.WeeklySchedule", "WeeklySchedule")
                         .WithMany("AvailableDays")
                         .HasForeignKey("WeeklyScheduleId");
+
+                    b.Navigation("WeeklySchedule");
                 });
 
             modelBuilder.Entity("Domain.Entities.Comment", b =>

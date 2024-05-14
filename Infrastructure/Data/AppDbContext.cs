@@ -25,7 +25,8 @@ public class AppDbContext : IdentityDbContext<BaseUser>
 		builder.Entity<WeeklySchedule>()
 			.HasMany(d => d.AvailableDays)
 			.WithOne()
-			.HasForeignKey(d => d.WeeklyScheduleId);
+			.HasForeignKey(d => d.WeeklyScheduleId)
+			.OnDelete(DeleteBehavior.Cascade);
 
 		builder.Entity<BaseUser>().ToTable("BaseUsers");
 

@@ -10,5 +10,6 @@ public interface IRepositoryManager
 	IDoctorRepository Doctors { get; }
 	IUserRepository Users { get; }
 	IWeeklyScheduleRepository WeeklySchedules { get; }
+	IAvailableDayRepository AvailableDays { get; }
 	Task SaveAsync();
 }

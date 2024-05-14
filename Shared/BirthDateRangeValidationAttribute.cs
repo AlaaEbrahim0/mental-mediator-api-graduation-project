@@ -2,7 +2,7 @@
 
 namespace Shared;
 
-public class FutureDateTimeValidationAttribute : ValidationAttribute
+public class BirthDateRangeValidationAttribute : ValidationAttribute
 {
 	public DateOnly MaxDate { get; set; }
 		= DateOnly.FromDateTime(new DateTime(2014, 1, 1));
@@ -19,5 +19,4 @@ public class FutureDateTimeValidationAttribute : ValidationAttribute
 		};
 		return true;
 	}
-
 }

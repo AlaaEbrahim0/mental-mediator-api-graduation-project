@@ -80,9 +80,9 @@ namespace Infrastructure.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_AvailableDays", x => x.Id);
+                    table.PrimaryKey("PK_AvailableDay", x => x.Id);
                     table.ForeignKey(
-                        name: "FK_AvailableDays_WeeklySchedule_WeeklyScheduleId",
+                        name: "FK_AvailableDay_WeeklySchedule_WeeklyScheduleId",
                         column: x => x.WeeklyScheduleId,
                         principalTable: "WeeklySchedule",
                         principalColumn: "Id");
@@ -99,7 +99,7 @@ namespace Infrastructure.Migrations
                 column: "UserId");
 
             migrationBuilder.CreateIndex(
-                name: "IX_AvailableDays_WeeklyScheduleId",
+                name: "IX_AvailableDay_WeeklyScheduleId",
                 table: "AvailableDays",
                 column: "WeeklyScheduleId");
 

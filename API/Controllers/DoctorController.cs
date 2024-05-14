@@ -6,16 +6,14 @@ namespace API.Controllers;
 
 [ApiController]
 [Route("api/doctors")]
-[Authorize]
+[Authorize(Roles = "Doctor")]
 public class DoctorController : ControllerBase
 {
 	private readonly IDoctorService _doctorService;
-	private readonly IRepositoryManager _repos;
 
-	public DoctorController(IDoctorService userService, IRepositoryManager repos)
+	public DoctorController(IDoctorService userService)
 	{
 		_doctorService = userService;
-		_repos = repos;
 	}
 
 	[HttpGet("{id}")]
@@ -38,16 +36,6 @@ public class DoctorController : ControllerBase
 			return result.ToProblemDetails();
 		}
 		return Ok(result.Value);
-	}
-
-	[HttpGet("{doctorId}/schedules/{scheduleId:int}")]
-	public async Task<IActionResult> GetDoctorSchedule(string doctorId, int scheduleId)
-	{
-		var item = await _repos.WeeklySchedules.GetById(doctorId, scheduleId, false);
-
-
-		return Ok(item);
-
 	}
 
 }

@@ -2,6 +2,7 @@
 
 using Application.Dtos.AuthDtos;
 using Application.Dtos.UserDtos;
+using Application.Dtos.WeeklyScheduleDtos;
 using AutoMapper;
 using Domain.Entities;
 using Shared;
@@ -46,6 +47,14 @@ public class MappingProfile : Profile
 
 		CreateMap<RegisterationRequest, User>();
 		CreateMap<RegisterationRequest, Doctor>();
+
+		CreateMap<AvailableDays, AvailableDayResponse>();
+		CreateMap<WeeklySchedule, DoctorWeeklyScheduleResponse>();
+
+		CreateMap<CreateAvailableDayRequest, AvailableDays>();
+		CreateMap<UpdateAvailableDayRequest, AvailableDays>();
+
+		CreateMap<CreateDoctorWeeklyScheduleRequest, WeeklySchedule>();
 
 	}
 }

@@ -13,6 +13,7 @@ public class Appointment
 	public DateTime StartTime { get; set; }
 	public TimeSpan Duration { get; set; }
 
+
 	[DatabaseGenerated(DatabaseGeneratedOption.Computed)]
 	public DateTime AppointmentEndTime => StartTime + Duration;
 
