@@ -1,7 +1,7 @@
-﻿using Application.Services;
+﻿using Application.Dtos.ReplyDtos;
+using Application.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Shared.ReplyDtos;
 
 namespace API.Controllers;
 

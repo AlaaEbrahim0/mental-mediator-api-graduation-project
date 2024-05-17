@@ -1,4 +1,5 @@
-﻿using Domain.Entities;
+﻿using System.Reflection;
+using Domain.Entities;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 
@@ -12,14 +13,7 @@ public class AppDbContext : IdentityDbContext<BaseUser>
 	}
 	protected override void OnModelCreating(ModelBuilder builder)
 	{
-
-		builder.Entity<WeeklySchedule>()
-			.HasMany(d => d.AvailableDays)
-			.WithOne()
-			.HasForeignKey(d => d.WeeklyScheduleId)
-			.OnDelete(DeleteBehavior.Cascade);
-
-		builder.Entity<BaseUser>().ToTable("BaseUsers");
+		builder.ApplyConfigurationsFromAssembly(Assembly.GetExecutingAssembly());
 
 		base.OnModelCreating(builder);
 	}
@@ -31,8 +25,7 @@ public class AppDbContext : IdentityDbContext<BaseUser>
 	public DbSet<User> AppUsers { get; set; }
 	public DbSet<Doctor> Doctors { get; set; }
 	public DbSet<User> Clients { get; set; }
-	//public DbSet<Appointment> Appointments { get; set; }
+	public DbSet<Appointment> Appointments { get; set; }
 	public DbSet<WeeklySchedule> WeeklySchedules { get; set; }
-
 
 }

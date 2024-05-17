@@ -1,10 +1,10 @@
 ﻿using Application.Contracts;
+using Application.Dtos.ReplyDtos;
 using AutoMapper;
 using Domain.Entities;
 using Domain.Enums;
 using Domain.Errors;
 using Shared;
-using Shared.ReplyDtos;
 
 namespace Application.Services;
 

@@ -5,7 +5,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace API.Controllers;
 
 [ApiController]
-[Route("api/doctors")]
+[Route("api/doctors/{doctorId}/schedules/{scheduleId:int}")]
 [Authorize(Roles = "Doctor")]
 public class WeeklyScheduleController : ControllerBase
 {
@@ -16,7 +16,7 @@ public class WeeklyScheduleController : ControllerBase
 		_scheduleService = scheduleService;
 	}
 
-	[HttpGet("{doctorId}/schedules/{scheduleId:int}")]
+	[HttpGet]
 	[AllowAnonymous]
 	public async Task<IActionResult> GetDoctorSchedule(string doctorId, int scheduleId)
 	{
@@ -28,7 +28,7 @@ public class WeeklyScheduleController : ControllerBase
 		return Ok(result.Value);
 	}
 
-	[HttpGet("{doctorId}/schedules/{scheduleId:int}/days/{dayId:int}")]
+	[HttpGet("days/{dayId:int}")]
 	[AllowAnonymous]
 	public async Task<IActionResult> GetScheduleWeekDay(string doctorId, int scheduleId,
 		int dayId)
@@ -40,7 +40,8 @@ public class WeeklyScheduleController : ControllerBase
 		}
 		return Ok(result.Value);
 	}
-	[HttpPost("{doctorId}/schedules/")]
+
+	[HttpPost()]
 	public async Task<IActionResult> CreateDoctorSchedule(string doctorId,
 		CreateDoctorWeeklyScheduleRequest request)
 	{
@@ -52,8 +53,7 @@ public class WeeklyScheduleController : ControllerBase
 		return Ok(result.Value);
 	}
 
-	[HttpPost("{doctorId}/schedules/{scheduleId:int}/days/")]
-	[AllowAnonymous]
+	[HttpPost("days")]
 	public async Task<IActionResult> AddScheduleWeekDay(string doctorId, int scheduleId,
 		CreateAvailableDayRequest request)
 	{
@@ -65,8 +65,7 @@ public class WeeklyScheduleController : ControllerBase
 		return Ok(result.Value);
 	}
 
-	[HttpPut("{doctorId}/schedules/{scheduleId:int}/days/{dayId:int}")]
-	[AllowAnonymous]
+	[HttpPut("days/{dayId:int}")]
 	public async Task<IActionResult> UpdateScheduleWeekDay(string doctorId, int scheduleId,
 		int dayId, UpdateAvailableDayRequest request)
 	{
@@ -78,8 +77,7 @@ public class WeeklyScheduleController : ControllerBase
 		return Ok(result.Value);
 	}
 
-	[HttpDelete("{doctorId}/schedules/{scheduleId:int}/days/{dayId:int}")]
-	[AllowAnonymous]
+	[HttpDelete("days/{dayId:int}")]
 	public async Task<IActionResult> DeleteScheduleWeekDay(string doctorId, int scheduleId,
 		int dayId)
 	{
@@ -91,7 +89,7 @@ public class WeeklyScheduleController : ControllerBase
 		return Ok(result.Value);
 	}
 
-	[HttpDelete("{doctorId}/schedules/{scheduleId:int}")]
+	[HttpDelete]
 	public async Task<IActionResult> DeleteDoctorSchedule(string doctorId, int scheduleId)
 	{
 		var result = await _scheduleService.DeleteWeeklySchedule(doctorId, scheduleId);

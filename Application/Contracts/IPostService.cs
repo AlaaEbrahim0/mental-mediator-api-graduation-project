@@ -1,5 +1,6 @@
-﻿using Shared;
-using Shared.PostsDto;
+﻿using Application.Dtos.PostsDto;
+using Shared;
+
 
 namespace Application.Services;
 public interface IPostService

@@ -7,20 +7,24 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.Services
 	.ConfigureControllers()
+	.ConfigureSwagger()
 	.ConfigureCors()
-	.ConfigureAuthentication(builder.Configuration)
-	.ConfigureRepositores()
-	.ConfigureDbContext(builder.Configuration, builder.Environment)
-	.ConfigureHttpClients(builder.Configuration, builder.Environment.IsDevelopment())
 	.ConfigureOptions(builder.Configuration)
-	.ConfigureServices()
+	.ConfigureDbContext(builder.Configuration, builder.Environment)
+	.ConfigureIdentity()
+	.ConfigureAuthentication(builder.Configuration)
+	.ConfigureAuthorization()
+	.ConfigureRepositores()
 	.ConfigureAutoMapper()
-	.ConfigureSwagger();
+	.ConfigureServices()
+	.ConfigureCaching()
+	.ConfigureHttpClients(builder.Configuration, builder.Environment.IsDevelopment());
 
 
 var app = builder.Build();
 
 app.UseDeveloperExceptionPage();
+
 app.UseSwagger();
 app.UseSwaggerUI(c => c
 	.SwaggerEndpoint("/swagger/v1/swagger.json", "TestApiJWT v1"));
@@ -29,7 +33,7 @@ app.UseHttpsRedirection();
 
 app.UseStaticFiles();
 
-app.UseCors("AllowAll");
+app.UseCors("Default");
 
 app.UseAuthentication();
 

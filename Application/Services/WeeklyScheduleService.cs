@@ -143,7 +143,6 @@ public class WeeklyScheduleService : IWeeklyScheduleService
 
 	public async Task<Result<AvailableDayResponse>> AddDay(
 		string doctorId,
-		int scheduleId,
 		CreateAvailableDayRequest request)
 	{
 		var currentUser = _userClaimsService.GetUserId();
@@ -177,7 +176,7 @@ public class WeeklyScheduleService : IWeeklyScheduleService
 		return response;
 	}
 
-	public async Task<Result<DoctorWeeklyScheduleResponse>> GetWeeklySchedule(string doctorId, int scheduleId)
+	public async Task<Result<DoctorWeeklyScheduleResponse>> GetWeeklySchedule(string doctorId, int scheduleId = -1)
 	{
 		var currentUser = _userClaimsService.GetUserId();
 		if (currentUser != doctorId)

@@ -10,10 +10,12 @@ public class DoctorConfiguration : IEntityTypeConfiguration<Doctor>
 	public void Configure(EntityTypeBuilder<Doctor> builder)
 	{
 		builder
-			.ToTable("Doctors")
+			.ToTable("Doctors");
+
+		builder
 			.HasMany(d => d.Appointments)
 			.WithOne(d => d.Doctor)
-			.OnDelete(DeleteBehavior.SetNull);
+			.OnDelete(DeleteBehavior.NoAction);
 	}
 
 }

@@ -8,7 +8,6 @@ namespace Infrastructure.Clients;
 
 public class HateSpeechDetectorClient : IHateSpeechDetector
 {
-
 	private readonly IHttpClientFactory _httpClientFactory;
 
 	public HateSpeechDetectorClient(IHttpClientFactory httpClientFactory)

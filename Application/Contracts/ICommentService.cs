@@ -1,6 +1,5 @@
-﻿using Domain.Entities;
+﻿using Application.Dtos.CommentsDtos;
 using Shared;
-using Shared.CommentsDtos;
 
 namespace Application.Services;
 public interface ICommentService

@@ -20,7 +20,7 @@ public class WeeklyScheduleRepository : RepositoryBase<WeeklySchedule>, IWeeklyS
 	public async Task<WeeklySchedule?> GetById(string doctorId, int scheduleId, bool trackChanges)
 	{
 		return await
-			FindByCondition(w => w.Id == scheduleId && doctorId.Equals(doctorId), trackChanges)
+			FindByCondition(x => x.DoctorId!.Equals(doctorId), trackChanges)
 			.Include(x => x.AvailableDays)
 			.SingleOrDefaultAsync();
 	}

@@ -5,7 +5,6 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 namespace Infrastructure.Configurations;
 
 
-
 public class PostConfiguration : IEntityTypeConfiguration<Post>
 {
 

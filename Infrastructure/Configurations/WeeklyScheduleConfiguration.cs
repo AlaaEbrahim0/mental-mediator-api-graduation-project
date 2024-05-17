@@ -12,7 +12,7 @@ public class WeeklyScheduleConfiguration : IEntityTypeConfiguration<WeeklySchedu
 		builder
 			.HasMany(d => d.AvailableDays)
 			.WithOne()
-			.HasForeignKey(d => d.WeeklyScheduleId)
+			.HasPrincipalKey(x => x.Id)
 			.OnDelete(DeleteBehavior.Cascade);
 
 	}

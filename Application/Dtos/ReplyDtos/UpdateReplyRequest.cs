@@ -1,4 +1,4 @@
-﻿namespace Shared.ReplyDtos;
+﻿namespace Application.Dtos.ReplyDtos;
 
 public class UpdateReplyRequest : CreateReplyRequest
 {

@@ -55,6 +55,7 @@ public class Notification
 			Resources = JsonConvert.SerializeObject(value);
 		}
 	}
+
 	public static Notification CreateNotification(string userId, string message, Dictionary<string, int> resource, NotificationType type)
 	{
 		var notification = new Notification()

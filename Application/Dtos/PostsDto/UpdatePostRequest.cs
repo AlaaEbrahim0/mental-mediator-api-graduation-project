@@ -1,4 +1,4 @@
-﻿namespace Shared.PostsDto;
+﻿namespace Application.Dtos.PostsDto;
 
 public class UpdatePostRequest : CreatePostRequest
 {

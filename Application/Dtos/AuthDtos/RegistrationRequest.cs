@@ -20,7 +20,7 @@ public record RegisterationRequest
 	public DateOnly BirthDate { get; set; }
 
 	[DefaultValue("male")]
-	public string? Gender { get; set; }
+	public string Gender { get; set; } = string.Empty;
 
 	public string Username => Email.Split('@')[0];
 
@@ -34,35 +34,37 @@ public class RegisterationRequestValidator : AbstractValidator<RegisterationRequ
 	public RegisterationRequestValidator()
 	{
 		RuleFor(x => x.Email)
-			.NotNull()
+			.NotEmpty()
 			.EmailAddress().WithMessage("Invalid email address");
 
 		RuleFor(x => x.Password)
-			.NotNull()
+			.NotEmpty()
 			.Length(8, 128).WithMessage("Password must be between 8 and 128 characters");
 
 		RuleFor(x => x.FirstName)
-			.NotNull()
+			.NotEmpty()
 			.Length(2, 64).WithMessage("First name must be between 2 and 64 characters");
 
 		RuleFor(x => x.LastName)
-			.NotNull()
+			.NotEmpty()
 			.Length(2, 64).WithMessage("Last name must be between 2 and 64 characters");
 
 		RuleFor(x => x.BirthDate)
-			.NotNull()
+			.NotEmpty()
 			.Must(x => x < DateOnly.FromDateTime(DateTime.Now))
 			.WithMessage("Birthdate cannot be in the future");
 
 		RuleFor(x => x.Gender)
 			.NotNull()
-			.Must(x => x!.Equals("male", StringComparison.InvariantCultureIgnoreCase) || x.Equals("female", StringComparison.InvariantCultureIgnoreCase))
+			.Must(x => x.Equals("male", StringComparison.InvariantCultureIgnoreCase) ||
+			x.Equals("female", StringComparison.InvariantCultureIgnoreCase))
 			.WithMessage("Gender must be male or female");
 
 		RuleFor(x => x.Role)
 			.NotNull()
-			.Must(x => x!.Equals("user", StringComparison.InvariantCultureIgnoreCase) ||
-			x.Equals("admin", StringComparison.InvariantCultureIgnoreCase))
+			.Must(x => x.Equals("user", StringComparison.OrdinalIgnoreCase) ||
+			x.Equals("admin", StringComparison.OrdinalIgnoreCase) ||
+			x.Equals("Doctor", StringComparison.OrdinalIgnoreCase))
 			.WithMessage("Role must be user or admin or doctor");
 
 

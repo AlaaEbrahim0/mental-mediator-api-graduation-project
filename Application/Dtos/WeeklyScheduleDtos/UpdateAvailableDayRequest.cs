@@ -3,6 +3,19 @@ using FluentValidation;
 
 namespace Application.Dtos.WeeklyScheduleDtos;
 
+public class UpdateAvailableDayRequest
+{
+	[DefaultValue("08:00:00")]
+	public TimeSpan StartTime { get; set; }
+
+	[DefaultValue("00:30:00")]
+	public TimeSpan SessionDuration { get; set; }
+
+	[DefaultValue("17:00:00")]
+	public TimeSpan EndTime { get; set; }
+}
+
+
 public class UpdateAvailableDayRequestValidator : AbstractValidator<UpdateAvailableDayRequest>
 {
 	public UpdateAvailableDayRequestValidator()
@@ -22,18 +35,3 @@ public class UpdateAvailableDayRequestValidator : AbstractValidator<UpdateAvaila
 			.NotNull();
 	}
 }
-
-
-public class UpdateAvailableDayRequest
-{
-	[DefaultValue("08:00:00")]
-	public TimeSpan StartTime { get; set; }
-
-	[DefaultValue("00:30:00")]
-	public TimeSpan SessionDuration { get; set; }
-
-	[DefaultValue("17:00:00")]
-	public TimeSpan EndTime { get; set; }
-}
-
-

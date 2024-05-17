@@ -23,7 +23,7 @@ public class JwtTokenGenerator
 	{
 		IEnumerable<Claim> jwtClaims = await GetUserJwtClaims(user);
 
-		var symmetricSecurityKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_jwtOptions.Key!)); ;
+		var symmetricSecurityKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_jwtOptions.Key!));
 
 		var signingCredentials = new SigningCredentials(symmetricSecurityKey, SecurityAlgorithms.HmacSha256);
 

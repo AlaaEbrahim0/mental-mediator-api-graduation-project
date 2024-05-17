@@ -1,7 +1,7 @@
 ﻿using System.ComponentModel;
 using FluentValidation;
 
-namespace Shared.CommentsDtos;
+namespace Application.Dtos.CommentsDtos;
 public class CreateCommentRequest
 {
 	[DefaultValue("Comment Example")]

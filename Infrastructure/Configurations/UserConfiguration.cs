@@ -9,9 +9,10 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
 
 	public void Configure(EntityTypeBuilder<User> builder)
 	{
+		builder
+			.ToTable("Users");
 
 		builder
-			.ToTable("Users")
 			.HasMany(d => d.Appointments)
 			.WithOne(d => d.User)
 			.OnDelete(DeleteBehavior.NoAction);

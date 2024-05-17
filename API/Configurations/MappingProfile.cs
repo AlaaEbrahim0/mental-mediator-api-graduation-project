@@ -1,14 +1,15 @@
-﻿namespace API;
+﻿namespace API.Configurations;
 
 using Application.Dtos.AuthDtos;
+using Application.Dtos.CommentsDtos;
+using Application.Dtos.PostsDto;
+using Application.Dtos.ReplyDtos;
 using Application.Dtos.UserDtos;
 using Application.Dtos.WeeklyScheduleDtos;
 using AutoMapper;
 using Domain.Entities;
 using Shared;
-using Shared.CommentsDtos;
-using Shared.PostsDto;
-using Shared.ReplyDtos;
+
 
 public class MappingProfile : Profile
 {

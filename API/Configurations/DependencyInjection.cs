@@ -31,7 +31,7 @@ public static class DependencyInjection
 	{
 		services.AddCors(config =>
 		{
-			config.AddPolicy("AllowAll", policy =>
+			config.AddPolicy("Default", policy =>
 			{
 				policy
 					.WithOrigins(
@@ -89,9 +89,6 @@ public static class DependencyInjection
 	}
 	public static IServiceCollection ConfigureControllers(this IServiceCollection services)
 	{
-		services.AddValidatorsFromAssemblyContaining<CreateAvailableDayRequest>();
-		services.AddFluentValidationAutoValidation();
-		services.AddFluentValidationClientsideAdapters();
 
 		services.AddControllers()
 			.AddJsonOptions(config =>
@@ -100,6 +97,10 @@ public static class DependencyInjection
 				.Converters.Add(new JsonStringEnumConverter());
 
 			});
+
+		services.AddValidatorsFromAssemblyContaining<CreateAvailableDayRequest>();
+		services.AddFluentValidationAutoValidation();
+		services.AddFluentValidationClientsideAdapters();
 
 		return services;
 	}
@@ -143,7 +144,6 @@ public static class DependencyInjection
 	{
 		services
 			.AddScoped<IPostService, PostService>()
-			.AddTransient<IMailService, MailService>()
 			.AddScoped<ICommentService, CommentService>()
 			.AddScoped<IReplyService, ReplyService>()
 			.AddScoped<IUserClaimsService, UserClaimsService>()
@@ -151,11 +151,12 @@ public static class DependencyInjection
 			.AddScoped<INotificationSender, NotificationSender>()
 			.AddScoped<IWeeklyScheduleService, WeeklyScheduleService>()
 			.AddScoped<ClaimsPrincipal>()
-			.AddScoped<MailTemplates>()
+			.AddTransient<MailTemplates>()
 			.AddScoped<IUserService, UserService>()
 			.AddScoped<IDoctorService, DoctorService>()
 			.AddScoped<IStorageService, CloudinaryStorageService>()
 			.AddScoped<IWebRootFileProvider, WebRootFileProvider>()
+			.AddTransient<IMailService, MailService>()
 			.AddSignalR();
 
 		return services;
@@ -166,6 +167,7 @@ public static class DependencyInjection
 			.AddSingleton<ICacheService, InMemoryCacheService>()
 			.AddDistributedMemoryCache();
 
+		return services;
 	}
 
 
@@ -179,7 +181,7 @@ public static class DependencyInjection
 			{
 				options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
 				options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
-
+				options.DefaultScheme = JwtBearerDefaults.AuthenticationScheme;
 			})
 			.AddGoogle(options =>
 			{
@@ -202,6 +204,24 @@ public static class DependencyInjection
 			});
 
 
+
+		return services;
+	}
+
+	public static IServiceCollection ConfigureIdentity(this IServiceCollection services)
+	{
+		services.AddIdentity<BaseUser, IdentityRole>(options =>
+		{
+		})
+			.AddEntityFrameworkStores<AppDbContext>()
+			.AddDefaultTokenProviders();
+
+		return services;
+
+	}
+
+	public static IServiceCollection ConfigureAuthorization(this IServiceCollection services)
+	{
 		services.AddAuthorizationBuilder();
 		return services;
 	}
@@ -225,14 +245,6 @@ public static class DependencyInjection
 			config.EnableSensitiveDataLogging();
 
 		});
-
-		services
-			.AddIdentity<BaseUser, IdentityRole>(options =>
-			{
-				options.SignIn.RequireConfirmedEmail = true;
-			})
-			.AddEntityFrameworkStores<AppDbContext>()
-			.AddDefaultTokenProviders();
 
 		return services;
 	}

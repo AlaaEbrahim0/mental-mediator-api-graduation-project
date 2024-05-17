@@ -1,9 +1,9 @@
-﻿using Application.Services;
+﻿using Application.Dtos.CommentsDtos;
+using Application.Services;
 using Infrastructure.Hubs;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.SignalR;
-using Shared.CommentsDtos;
 
 namespace API.Controllers;
 

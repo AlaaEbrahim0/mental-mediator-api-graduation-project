@@ -1,5 +1,5 @@
-﻿using Shared;
-using Shared.ReplyDtos;
+﻿using Application.Dtos.ReplyDtos;
+using Shared;
 
 namespace Application.Services;
 public interface IReplyService

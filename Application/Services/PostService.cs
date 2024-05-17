@@ -1,10 +1,11 @@
 ﻿using Application.Contracts;
+using Application.Dtos.PostsDto;
 using AutoMapper;
 using Domain.Entities;
 using Domain.Errors;
 using Microsoft.AspNetCore.Identity;
 using Shared;
-using Shared.PostsDto;
+
 
 namespace Application.Services;
 public class PostService : IPostService

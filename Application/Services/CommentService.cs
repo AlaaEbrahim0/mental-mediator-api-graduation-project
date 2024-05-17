@@ -1,12 +1,12 @@
 ﻿
 using Application.Contracts;
+using Application.Dtos.CommentsDtos;
 using AutoMapper;
 using Domain.Entities;
 using Domain.Enums;
 using Domain.Errors;
 using Microsoft.AspNetCore.Identity;
 using Shared;
-using Shared.CommentsDtos;
 
 namespace Application.Services;
 public class CommentService : ICommentService

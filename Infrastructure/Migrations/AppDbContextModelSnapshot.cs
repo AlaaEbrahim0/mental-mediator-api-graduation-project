@@ -66,7 +66,7 @@ namespace Infrastructure.Migrations
 
                     b.HasIndex("UserId");
 
-                    b.ToTable("Appointment", (string)null);
+                    b.ToTable("Appointments");
                 });
 
             modelBuilder.Entity("Domain.Entities.AvailableDays", b =>
@@ -77,7 +77,7 @@ namespace Infrastructure.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
-                    b.Property<int?>("DayOfWeek")
+                    b.Property<int>("DayOfWeek")
                         .HasColumnType("int");
 
                     b.Property<TimeSpan>("EndTime")
@@ -96,7 +96,7 @@ namespace Infrastructure.Migrations
 
                     b.HasIndex("WeeklyScheduleId");
 
-                    b.ToTable("AvailableDays", (string)null);
+                    b.ToTable("AvailableDays");
                 });
 
             modelBuilder.Entity("Domain.Entities.BaseUser", b =>
@@ -207,7 +207,7 @@ namespace Infrastructure.Migrations
 
                     b.HasIndex("PostId");
 
-                    b.ToTable("Comments", (string)null);
+                    b.ToTable("Comments");
                 });
 
             modelBuilder.Entity("Domain.Entities.Notification", b =>
@@ -246,7 +246,7 @@ namespace Infrastructure.Migrations
 
                     b.HasIndex("AppUserId");
 
-                    b.ToTable("Notifications", (string)null);
+                    b.ToTable("Notifications");
                 });
 
             modelBuilder.Entity("Domain.Entities.Post", b =>
@@ -258,13 +258,11 @@ namespace Infrastructure.Migrations
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
                     b.Property<string>("AppUserId")
-                        .IsRequired()
                         .HasColumnType("nvarchar(450)");
 
                     b.Property<string>("Content")
                         .IsRequired()
-                        .HasMaxLength(2047)
-                        .HasColumnType("nvarchar(2047)");
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<bool>("IsAnonymous")
                         .HasColumnType("bit");
@@ -273,15 +271,13 @@ namespace Infrastructure.Migrations
                         .HasColumnType("datetime2");
 
                     b.Property<string>("Title")
-                        .IsRequired()
-                        .HasMaxLength(255)
-                        .HasColumnType("nvarchar(255)");
+                        .HasColumnType("nvarchar(max)");
 
                     b.HasKey("Id");
 
                     b.HasIndex("AppUserId");
 
-                    b.ToTable("Posts", (string)null);
+                    b.ToTable("Posts");
                 });
 
             modelBuilder.Entity("Domain.Entities.Reply", b =>
@@ -310,7 +306,7 @@ namespace Infrastructure.Migrations
 
                     b.HasIndex("CommentId");
 
-                    b.ToTable("Replies", (string)null);
+                    b.ToTable("Replies");
                 });
 
             modelBuilder.Entity("Domain.Entities.WeeklySchedule", b =>
@@ -330,7 +326,7 @@ namespace Infrastructure.Migrations
                         .IsUnique()
                         .HasFilter("[DoctorId] IS NOT NULL");
 
-                    b.ToTable("WeeklySchedule", (string)null);
+                    b.ToTable("WeeklySchedules");
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRole", b =>
@@ -508,11 +504,10 @@ namespace Infrastructure.Migrations
 
             modelBuilder.Entity("Domain.Entities.AvailableDays", b =>
                 {
-                    b.HasOne("Domain.Entities.WeeklySchedule", "WeeklySchedule")
+                    b.HasOne("Domain.Entities.WeeklySchedule", null)
                         .WithMany("AvailableDays")
-                        .HasForeignKey("WeeklyScheduleId");
-
-                    b.Navigation("WeeklySchedule");
+                        .HasForeignKey("WeeklyScheduleId")
+                        .OnDelete(DeleteBehavior.Cascade);
                 });
 
             modelBuilder.Entity("Domain.Entities.Comment", b =>
@@ -536,7 +531,8 @@ namespace Infrastructure.Migrations
                 {
                     b.HasOne("Domain.Entities.BaseUser", "AppUser")
                         .WithMany("Notifications")
-                        .HasForeignKey("AppUserId");
+                        .HasForeignKey("AppUserId")
+                        .OnDelete(DeleteBehavior.Cascade);
 
                     b.Navigation("AppUser");
                 });
@@ -546,8 +542,7 @@ namespace Infrastructure.Migrations
                     b.HasOne("Domain.Entities.BaseUser", "AppUser")
                         .WithMany("Posts")
                         .HasForeignKey("AppUserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
+                        .OnDelete(DeleteBehavior.Cascade);
 
                     b.Navigation("AppUser");
                 });
@@ -673,8 +668,7 @@ namespace Infrastructure.Migrations
                 {
                     b.Navigation("Appointments");
 
-                    b.Navigation("WeeklySchedule")
-                        .IsRequired();
+                    b.Navigation("WeeklySchedule");
                 });
 
             modelBuilder.Entity("Domain.Entities.User", b =>

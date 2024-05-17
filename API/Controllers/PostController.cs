@@ -1,8 +1,8 @@
-﻿using Application.Services;
+﻿using Application.Dtos.PostsDto;
+using Application.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Shared;
-using Shared.PostsDto;
 
 namespace API.Controllers;
 

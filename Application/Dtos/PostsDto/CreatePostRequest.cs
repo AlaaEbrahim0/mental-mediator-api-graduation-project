@@ -1,7 +1,7 @@
 ﻿using System.ComponentModel;
 using FluentValidation;
 
-namespace Shared.PostsDto;
+namespace Application.Dtos.PostsDto;
 public class CreatePostRequest
 {
 	[DefaultValue("Lorem ipsum dolor sit amet, consectetur adipiscing elit. Cras laoreet luctus ex. Praesent vel ligula ut neque ullamcorper placerat ac.")]
@@ -19,12 +19,11 @@ public class CreatePostRequestValidator : AbstractValidator<CreatePostRequest>
 	{
 		RuleFor(x => x.Content)
 			.NotEmpty()
-			.NotNull()
 			.Length(1, 4000);
 
 		RuleFor(x => x.Title)
 			.NotEmpty()
-			.NotNull()
 			.Length(1, 1000);
+
 	}
 }

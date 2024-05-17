@@ -16,11 +16,11 @@ public class SignInRequestValidator : AbstractValidator<SignInRequest>
 	public SignInRequestValidator()
 	{
 		RuleFor(x => x.Email)
-			.NotNull()
+			.NotEmpty()
 			.EmailAddress().WithMessage("Invalid email address");
 
 		RuleFor(x => x.Password)
-			.NotNull()
+			.NotEmpty()
 			.Length(8, 128).WithMessage("Password must be between 8 and 128 characters");
 	}
 
