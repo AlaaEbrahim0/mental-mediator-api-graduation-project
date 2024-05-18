@@ -3,7 +3,7 @@ using FluentValidation;
 
 namespace Application.Dtos.WeeklyScheduleDtos;
 
-public class UpdateAvailableDayRequest
+public class UpdateScheduleWeekDayRequest
 {
 	[DefaultValue("08:00:00")]
 	public TimeSpan StartTime { get; set; }
@@ -16,9 +16,9 @@ public class UpdateAvailableDayRequest
 }
 
 
-public class UpdateAvailableDayRequestValidator : AbstractValidator<UpdateAvailableDayRequest>
+public class UpdateScheduleWeekDayRequestValidator : AbstractValidator<UpdateScheduleWeekDayRequest>
 {
-	public UpdateAvailableDayRequestValidator()
+	public UpdateScheduleWeekDayRequestValidator()
 	{
 		RuleFor(x => x.EndTime)
 			.NotNull()

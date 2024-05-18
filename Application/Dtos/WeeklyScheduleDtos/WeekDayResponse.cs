@@ -1,8 +1,7 @@
 ﻿namespace Application.Dtos.WeeklyScheduleDtos;
 
-public class AvailableDayResponse
+public class WeekDayResponse
 {
-	public int Id { get; set; }
 	public DayOfWeek? DayOfWeek { get; set; }
 	public TimeSpan StartTime { get; set; }
 	public TimeSpan SessionDuration { get; set; }

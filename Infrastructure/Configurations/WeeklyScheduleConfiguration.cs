@@ -4,17 +4,18 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace Infrastructure.Configurations;
 
-public class WeeklyScheduleConfiguration : IEntityTypeConfiguration<WeeklySchedule>
+public class WeeklyScheduleConfiguration : IEntityTypeConfiguration<DoctorScheduleWeekDay>
 {
 
-	public void Configure(EntityTypeBuilder<WeeklySchedule> builder)
+	public void Configure(EntityTypeBuilder<DoctorScheduleWeekDay> builder)
 	{
+		builder.HasKey(x => new { x.DoctorId, x.DayOfWeek });
+
 		builder
-			.HasMany(d => d.AvailableDays)
-			.WithOne()
+			.HasOne(x => x.Doctor)
+			.WithMany(x => x.DoctorScheduleWeekDays)
 			.HasPrincipalKey(x => x.Id)
 			.OnDelete(DeleteBehavior.Cascade);
-
 	}
 
 }

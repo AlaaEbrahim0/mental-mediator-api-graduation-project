@@ -26,6 +26,6 @@ public class AppDbContext : IdentityDbContext<BaseUser>
 	public DbSet<Doctor> Doctors { get; set; }
 	public DbSet<User> Clients { get; set; }
 	public DbSet<Appointment> Appointments { get; set; }
-	public DbSet<WeeklySchedule> WeeklySchedules { get; set; }
+	public DbSet<DoctorScheduleWeekDay> ScheduleWeekDays { get; set; }
 
 }

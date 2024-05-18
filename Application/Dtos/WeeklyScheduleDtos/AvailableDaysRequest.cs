@@ -1,2 +1,0 @@
-﻿namespace Application.Dtos.WeeklyScheduleDtos;
-

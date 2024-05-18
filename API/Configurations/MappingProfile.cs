@@ -30,13 +30,7 @@ public class MappingProfile : Profile
 		CreateMap<UpdateReplyRequest, Reply>();
 
 		CreateMap<UpdateUserInfoRequest, User>();
-		CreateMap<UpdateDoctorInfoRequest, Doctor>()
-			.ForMember(dest => dest.WeeklySchedule, src => src.Ignore());
-
-		CreateMap<BaseUser, DoctorInfoResponse>()
-			.IncludeAllDerived();
-
-		CreateMap<User, UserInfoResponse>();
+		CreateMap<UpdateDoctorInfoRequest, Doctor>();
 		CreateMap<Doctor, DoctorInfoResponse>();
 
 		CreateMap<Notification, NotificationResponse>()
@@ -49,13 +43,14 @@ public class MappingProfile : Profile
 		CreateMap<RegisterationRequest, User>();
 		CreateMap<RegisterationRequest, Doctor>();
 
-		CreateMap<AvailableDays, AvailableDayResponse>();
-		CreateMap<WeeklySchedule, DoctorWeeklyScheduleResponse>();
+		CreateMap<CreateScheduleWeekDayRequest, DoctorScheduleWeekDay>();
+		CreateMap<CreateDoctorWeeklyScheduleRequest, List<DoctorScheduleWeekDay>>()
+			.ForMember(x => x, src => src.MapFrom(x => x.WeekDays));
 
-		CreateMap<CreateAvailableDayRequest, AvailableDays>();
-		CreateMap<UpdateAvailableDayRequest, AvailableDays>();
+		CreateMap<List<DoctorScheduleWeekDay>, DoctorWeeklyScheduleResponse>()
+			.ForMember(x => x.WeekDays, src => src.MapFrom(x => x))
+			.ForMember(x => x.DoctorId, src => src.MapFrom(x => x.Select(x => x.DoctorId).First()));
 
-		CreateMap<CreateDoctorWeeklyScheduleRequest, WeeklySchedule>();
 
 	}
 }

@@ -1,20 +1,18 @@
-﻿using System.ComponentModel.DataAnnotations;
-using FluentValidation;
+﻿using FluentValidation;
 
 namespace Application.Dtos.WeeklyScheduleDtos;
 
 
 public class CreateDoctorWeeklyScheduleRequest
 {
-	[Required]
-	public List<CreateAvailableDayRequest> AvailableDays { get; set; } = new(7);
+	public List<CreateScheduleWeekDayRequest> WeekDays { get; set; } = new();
 }
 
 public class CreateDoctorWeeklyScheduleRequestValidator : AbstractValidator<CreateDoctorWeeklyScheduleRequest>
 {
 	public CreateDoctorWeeklyScheduleRequestValidator()
 	{
-		RuleFor(x => x.AvailableDays)
+		RuleFor(x => x.WeekDays)
 			.NotEmpty()
 			.WithMessage("Available days cannot be empty")
 			.Must(x => x.Count <= 7)

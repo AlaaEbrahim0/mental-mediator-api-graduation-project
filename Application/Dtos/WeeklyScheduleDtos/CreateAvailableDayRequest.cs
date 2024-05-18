@@ -3,14 +3,14 @@
 namespace Application.Dtos.WeeklyScheduleDtos;
 
 
-public class CreateAvailableDayRequest : UpdateAvailableDayRequest
+public class CreateScheduleWeekDayRequest : UpdateScheduleWeekDayRequest
 {
 	public DayOfWeek DayOfWeek { get; set; }
 }
 
-public class CreateAvailableDayRequestValidator : AbstractValidator<CreateAvailableDayRequest>
+public class CreateScheduleWeekDayRequestValidator : AbstractValidator<CreateScheduleWeekDayRequest>
 {
-	public CreateAvailableDayRequestValidator()
+	public CreateScheduleWeekDayRequestValidator()
 	{
 		RuleFor(x => x.DayOfWeek)
 			.NotNull();

@@ -14,8 +14,8 @@ public class DoctorRepository : RepositoryBase<Doctor>, IDoctorRepository
 	public async Task<Doctor?> GetById(string id, bool trackChanges)
 	{
 		var doctor = await FindByCondition(d => d.Id == id, trackChanges)
-			.Include(d => d.WeeklySchedule)
 			.FirstOrDefaultAsync();
+
 		return doctor;
 	}
 

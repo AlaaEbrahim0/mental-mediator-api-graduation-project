@@ -98,7 +98,7 @@ public static class DependencyInjection
 
 			});
 
-		services.AddValidatorsFromAssemblyContaining<CreateAvailableDayRequest>();
+		services.AddValidatorsFromAssemblyContaining<CreateScheduleWeekDayRequest>();
 		services.AddFluentValidationAutoValidation();
 		services.AddFluentValidationClientsideAdapters();
 
@@ -113,7 +113,7 @@ public static class DependencyInjection
 		services.AddScoped<INotificationRepository, NotificationRepository>();
 		services.AddScoped<IDoctorRepository, DoctorRepository>();
 		services.AddScoped<IUserRepository, UserRepository>();
-		services.AddScoped<IWeeklyScheduleRepository, WeeklyScheduleRepository>();
+		services.AddScoped<IDoctorScheduleRepository, DoctorScheduleRepository>();
 		return services;
 	}
 
@@ -137,6 +137,8 @@ public static class DependencyInjection
 				config.BaseAddress = new Uri(baseAddress!);
 			});
 		}
+
+		services.AddHostedService<MailSenderJob>();
 		return services;
 	}
 
