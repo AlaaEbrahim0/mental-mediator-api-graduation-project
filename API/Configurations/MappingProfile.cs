@@ -44,13 +44,15 @@ public class MappingProfile : Profile
 		CreateMap<RegisterationRequest, Doctor>();
 
 		CreateMap<CreateScheduleWeekDayRequest, DoctorScheduleWeekDay>();
-		CreateMap<CreateDoctorWeeklyScheduleRequest, List<DoctorScheduleWeekDay>>()
-			.ForMember(x => x, src => src.MapFrom(x => x.WeekDays));
+		CreateMap<UpdateScheduleWeekDayRequest, DoctorScheduleWeekDay>();
 
-		CreateMap<List<DoctorScheduleWeekDay>, DoctorWeeklyScheduleResponse>()
-			.ForMember(x => x.WeekDays, src => src.MapFrom(x => x))
-			.ForMember(x => x.DoctorId, src => src.MapFrom(x => x.Select(x => x.DoctorId).First()));
+		CreateMap<CreateDoctorWeeklyScheduleRequest, WeeklySchedule>();
 
+		CreateMap<DoctorScheduleWeekDay, WeekDayResponse>();
+
+		CreateMap<WeeklySchedule, DoctorWeeklyScheduleResponse>()
+			.ForMember(x => x.DoctorId, src => src.MapFrom(x => x.WeekDays.Select(x => x.DoctorId).First()))
+			.ForMember(x => x.WeekDays, src => src.MapFrom(x => x.WeekDays));
 
 	}
 }

@@ -1,6 +1,7 @@
 ﻿using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using Domain.Enums;
+using FluentValidation;
 using Newtonsoft.Json;
 
 namespace Domain.Entities;
@@ -71,4 +72,17 @@ public class Notification
 
 	}
 
+}
+
+public class NotificationValidator : AbstractValidator<Notification>
+{
+	public NotificationValidator()
+	{
+		RuleFor(x => x.Message)
+			.NotEmpty()
+			.Length(8, 400);
+
+		RuleFor(x => x.AppUserId)
+			.NotEmpty();
+	}
 }

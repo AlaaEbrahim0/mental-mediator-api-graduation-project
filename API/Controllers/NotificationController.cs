@@ -16,6 +16,7 @@ public class NotificationController : ControllerBase
 		_notificationService = notificationService;
 	}
 
+
 	[HttpGet("{id:int}")]
 	public async Task<IActionResult> GetNotificationById(int id)
 	{
@@ -27,7 +28,7 @@ public class NotificationController : ControllerBase
 		return Ok(result.Value);
 	}
 	[HttpGet("user/{userId}")]
-	public async Task<IActionResult> GetNotificationById(string userId)
+	public async Task<IActionResult> GetNotificationByUserId(string userId)
 	{
 		var result = await _notificationService.GetNotificationByUserId(userId);
 		if (result.IsFailure)

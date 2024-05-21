@@ -138,7 +138,6 @@ public static class DependencyInjection
 			});
 		}
 
-		services.AddHostedService<MailSenderJob>();
 		return services;
 	}
 

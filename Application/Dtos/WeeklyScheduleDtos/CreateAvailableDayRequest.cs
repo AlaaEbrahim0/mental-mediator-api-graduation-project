@@ -13,6 +13,9 @@ public class CreateScheduleWeekDayRequestValidator : AbstractValidator<CreateSch
 	public CreateScheduleWeekDayRequestValidator()
 	{
 		RuleFor(x => x.DayOfWeek)
-			.NotNull();
+			.NotNull()
+			.WithMessage("Weekday cannot be empty");
+
+		Include(new UpdateScheduleWeekDayRequestValidator());
 	}
 }

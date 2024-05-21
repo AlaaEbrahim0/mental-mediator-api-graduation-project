@@ -11,16 +11,15 @@ public class DoctorScheduleRepository : RepositoryBase<DoctorScheduleWeekDay>, I
 	{
 	}
 
-	public async Task CreateDoctorWeeklySchedule(string doctorId, List<DoctorScheduleWeekDay> schedule)
+	public async Task CreateDoctorWeeklySchedule(string doctorId, WeeklySchedule weeklySchedule)
 	{
 		await _dbContext
-			.AddRangeAsync(schedule);
+			.AddRangeAsync(weeklySchedule.WeekDays);
 	}
 
-	public async Task DeleteDoctorSchedule(string doctorId)
+	public void DeleteDoctorSchedule(WeeklySchedule schedule)
 	{
-		var dayweeks = await this.GetSchedule(doctorId, true);
-		_dbContext.ScheduleWeekDays.RemoveRange(dayweeks);
+		_dbContext.ScheduleWeekDays.RemoveRange(schedule.WeekDays);
 	}
 
 	public void CreateScheduleWeekDay(DoctorScheduleWeekDay weeklySchedule)
@@ -33,11 +32,13 @@ public class DoctorScheduleRepository : RepositoryBase<DoctorScheduleWeekDay>, I
 		Delete(weeklySchedule);
 	}
 
-	public async Task<List<DoctorScheduleWeekDay>> GetSchedule(string doctorId, bool trackChanges)
+	public async Task<WeeklySchedule> GetSchedule(string doctorId, bool trackChanges)
 	{
-		return await FindByCondition(x => x.DoctorId == doctorId, trackChanges)
+		var weekDays = await FindByCondition(x => x.DoctorId == doctorId, trackChanges)
 			.OrderBy(x => x.DayOfWeek)
 			.ToListAsync();
+
+		return new WeeklySchedule { WeekDays = weekDays };
 
 	}
 

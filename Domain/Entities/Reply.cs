@@ -1,4 +1,5 @@
 ﻿using System.ComponentModel.DataAnnotations.Schema;
+using FluentValidation;
 
 namespace Domain.Entities;
 
@@ -15,4 +16,17 @@ public class Reply
 
 	[NotMapped]
 	public string? Username { get; set; }
+}
+public class ReplyValidator : AbstractValidator<Comment>
+{
+	public ReplyValidator()
+	{
+		RuleFor(x => x.Content)
+			.NotNull()
+			.Length(1, 2000);
+
+		RuleFor(x => x.AppUserId)
+			.NotNull()
+			.NotEmpty();
+	}
 }

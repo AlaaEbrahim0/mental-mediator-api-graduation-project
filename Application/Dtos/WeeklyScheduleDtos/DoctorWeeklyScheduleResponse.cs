@@ -2,6 +2,6 @@
 
 public class DoctorWeeklyScheduleResponse
 {
-	public string DoctorId { get; set; } = string.Empty;
-	public List<CreateScheduleWeekDayRequest> WeekDays { get; set; } = new();
+	public string? DoctorId { get; set; }
+	public List<WeekDayResponse> WeekDays { get; set; } = new();
 }
