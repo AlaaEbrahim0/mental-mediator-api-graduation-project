@@ -10,3 +10,4 @@ public class Doctor : BaseUser
 	public List<DoctorScheduleWeekDay> DoctorScheduleWeekDays { get; set; } = new();
 }
 
+
