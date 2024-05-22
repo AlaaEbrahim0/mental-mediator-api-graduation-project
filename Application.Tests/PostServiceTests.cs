@@ -3,6 +3,7 @@ using Application.Dtos.PostsDto;
 using Application.Services;
 using AutoMapper;
 using Domain.Entities;
+using Domain.Errors;
 using Moq;
 using Shared;
 
@@ -126,7 +127,151 @@ public class PostServiceTests
 	[Fact]
 	public async Task GetPostById_ReturnsNotFound_WhenPostDoesntExist()
 	{
+		// Arrange
+		int postId = -1;
+		_mockRepos.Setup(x => x.Posts.GetPostById(postId, false))
+			.ReturnsAsync(default(Post));
+
+		// Act
+		var response = await _sut.GetPostById(postId);
+
+		// Assert
+		Assert.True(response.IsFailure);
+		Assert.Equal(response.Error, PostErrors.NotFound(postId));
+
+	}
+
+	[Fact]
+	public async Task GetPostById_ReturnsPostResponse_WhenPostDoesntExist()
+	{
+		// Arrange
+		int postId = 1;
+		var post = new Post
+		{
+			Id = postId,
+			Content = "string",
+			Title = "string",
+			PostedOn = DateTime.UtcNow,
+		};
+		var postResponse = new PostResponse
+		{
+			Id = postId,
+			Content = "string",
+			Title = "string",
+			PostedOn = DateTime.UtcNow,
+		};
+		_mockRepos.Setup(x => x.Posts.GetPostById(postId, false))
+			.ReturnsAsync(post);
+
+		_mockMapper.Setup(x => x.Map<PostResponse>(post))
+			.Returns(postResponse);
+
+		// Act
+		var response = await _sut.GetPostById(postId);
+
+		// Assert
+		Assert.True(response.IsSuccess);
+		Assert.Equal(response.Value, postResponse);
+	}
+
+	[Fact]
+	public async Task CreatePostAsync_ReturnsServiceUnavailable_WhenHateSpeechDetectorServiceIsUnavailable()
+	{
+		// Arrange
+		var postRequest = new CreatePostRequest
+		{
+			Content = "content",
+			Title = "title",
+		};
+		var hateSpeechResult = Error.ServiceUnavailable("ExternalServices.HateSpeechDetectionServiceUnavailable", "failed to fetch data from ml server");
+
+		var text = postRequest.Title + " " + postRequest.Content;
+		_mockHateSpeechDetector.Setup(x => x.IsHateSpeech(text))
+			.ReturnsAsync(hateSpeechResult);
+
+		// Act
+		var result = await _sut.CreatePostAsync(postRequest);
+
+		// Assert
+		Assert.True(result.IsFailure);
+		Assert.Equal(result.Error, hateSpeechResult);
+	}
+	[Fact]
+	public async Task CreatePostAsync_ReturnsForbidden_WhenHateSpeechDetected()
+	{
+		// Arrange
+		var postRequest = new CreatePostRequest
+		{
+			Content = "bad content",
+			Title = "bad title",
+		};
+		var hateSpeechResult = Error.Forbidden("Content.Forbidden", "Your post violates our policy against hate speech and could not be published");
+
+		var text = postRequest.Title + " " + postRequest.Content;
+		_mockHateSpeechDetector.Setup(x => x.IsHateSpeech(text))
+			.ReturnsAsync(hateSpeechResult);
+
+		// Act
+		var result = await _sut.CreatePostAsync(postRequest);
+
+		// Assert
+		Assert.True(result.IsFailure);
+		Assert.Equal(result.Error, hateSpeechResult);
+	}
+	[Fact]
+	public async Task CreatePostAsync_ReturnsAnonymousPostResponse_WhenIsAnonymousTrueAndHateSpeechIsNotDetected()
+	{
+		// Arrange
+		var postRequest = new CreatePostRequest
+		{
+			Content = "good content",
+			Title = "good title",
+			IsAnonymous = true
+		};
+
+		var text = postRequest.Content + " " + postRequest.Title;
+		var isHateSpeech = Result<bool>.Success(false);
+
+		_mockHateSpeechDetector.Setup(x => x.IsHateSpeech(text))
+			.ReturnsAsync(isHateSpeech);
+
+		var post = new Post
+		{
+			Content = postRequest.Content,
+			Title = postRequest.Title,
+			IsAnonymous = postRequest.IsAnonymous,
+			Username = "username",
+			PostedOn = DateTime.UtcNow,
+		};
+
+		var postResponse = new PostResponse
+		{
+			Content = post.Content,
+			Title = post.Title,
+			IsAnonymous = true,
+			PostedOn = DateTime.UtcNow,
+			Username = null!
+		};
 
 
+		_mockMapper.Setup(mapper => mapper.Map<Post>(postRequest))
+			.Returns(post);
+
+		_mockRepos.Setup(repo => repo.Posts.CreatePost(post));
+
+		_mockRepos.Setup(repo => repo.SaveAsync());
+
+		_mockMapper.Setup(mapper => mapper.Map<PostResponse>(post))
+			.Returns(postResponse);
+
+		// Act
+		var result = await _sut.CreatePostAsync(postRequest);
+
+		// Assert
+		Assert.True(result.IsSuccess);
+		Assert.Equal(result.Value, postResponse);
+
+		_mockRepos.Verify(x => x.Posts.CreatePost(post), Times.Once);
+		_mockRepos.Verify(x => x.SaveAsync(), Times.Once);
 	}
 }
