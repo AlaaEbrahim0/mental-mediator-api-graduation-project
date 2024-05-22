@@ -31,6 +31,8 @@ public class MappingProfile : Profile
 
 		CreateMap<UpdateUserInfoRequest, User>();
 		CreateMap<UpdateDoctorInfoRequest, Doctor>();
+
+		CreateMap<User, UserInfoResponse>();
 		CreateMap<Doctor, DoctorInfoResponse>();
 
 		CreateMap<Notification, NotificationResponse>()

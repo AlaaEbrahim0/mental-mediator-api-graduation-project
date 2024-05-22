@@ -1,4 +1,5 @@
 ﻿using System.ComponentModel;
+using Application.Contracts;
 using FluentValidation;
 
 namespace Application.Dtos.PostsDto;
@@ -15,7 +16,9 @@ public class CreatePostRequest
 
 public class CreatePostRequestValidator : AbstractValidator<CreatePostRequest>
 {
-	public CreatePostRequestValidator()
+	private readonly IHateSpeechDetector hateSpeechDetector;
+
+	public CreatePostRequestValidator(IHateSpeechDetector hateSpeechDetector)
 	{
 		RuleFor(x => x.Content)
 			.NotEmpty()
@@ -24,6 +27,6 @@ public class CreatePostRequestValidator : AbstractValidator<CreatePostRequest>
 		RuleFor(x => x.Title)
 			.NotEmpty()
 			.Length(1, 1000);
-
+		this.hateSpeechDetector = hateSpeechDetector;
 	}
 }

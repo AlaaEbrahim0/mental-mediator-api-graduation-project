@@ -366,3 +366,4 @@ FodyWeavers.xsd
 /API/appsettings.Production.json
 /API/google_secret.json
 /API/.env
+/Application.Tests/Application.Tests.csproj

@@ -3,7 +3,6 @@ using Application.Dtos.PostsDto;
 using AutoMapper;
 using Domain.Entities;
 using Domain.Errors;
-using Microsoft.AspNetCore.Identity;
 using Shared;
 
 
@@ -13,17 +12,15 @@ public class PostService : IPostService
 	private readonly IRepositoryManager _repos;
 	private readonly IMapper _mapper;
 	private readonly IUserClaimsService _userClaimsService;
-	private readonly UserManager<BaseUser> _userManager;
 	private readonly IHateSpeechDetector _hateSpeechDetector;
 	private readonly ICacheService _cacheService;
 
 
-	public PostService(IRepositoryManager repos, IMapper mapper, IUserClaimsService userClaimsService, UserManager<BaseUser> userManager, IHateSpeechDetector hateSpeechDetector, ICacheService cacheService)
+	public PostService(IRepositoryManager repos, IMapper mapper, IUserClaimsService userClaimsService, IHateSpeechDetector hateSpeechDetector, ICacheService cacheService)
 	{
 		_repos = repos;
 		_mapper = mapper;
 		_userClaimsService = userClaimsService;
-		_userManager = userManager;
 		_hateSpeechDetector = hateSpeechDetector;
 		_cacheService = cacheService;
 	}
@@ -91,7 +88,6 @@ public class PostService : IPostService
 		var postResponse = _mapper.Map<PostResponse>(post);
 		return postResponse;
 	}
-
 
 	public async Task<Result<PostResponse>> DeletePost(int id)
 	{
