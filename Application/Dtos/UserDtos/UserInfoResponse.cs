@@ -3,6 +3,7 @@
 namespace Application.Dtos.UserDtos;
 public class BaseUserInfoResponse
 {
+	public string Id { get; set; } = string.Empty;
 	public string FirstName { get; set; } = string.Empty;
 	public string LastName { get; set; } = string.Empty;
 	public string Email { get; init; } = string.Empty;
