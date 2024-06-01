@@ -29,12 +29,6 @@ public class ReplyService : IReplyService
 
 	public async Task<Result<ReplyResponse>> CreateReply(int postId, int commentId, CreateReplyRequest createReplyRequest)
 	{
-		var comment = await _repos.Comments.GetById(postId, commentId, false);
-		if (comment is null)
-		{
-			return CommentErrors.NotFound(commentId);
-		}
-
 		var isHateSpeechResult = await _hateSpeechDetector.IsHateSpeech(createReplyRequest.Content!);
 
 		if (isHateSpeechResult.IsFailure)
@@ -45,6 +39,13 @@ public class ReplyService : IReplyService
 		{
 			return Error.Forbidden("Content.Forbidden", "Your reply violates our policy against hate speech and could not be published");
 		}
+
+		var comment = await _repos.Comments.GetById(postId, commentId, false);
+		if (comment is null)
+		{
+			return CommentErrors.NotFound(commentId);
+		}
+
 
 		var userId = _userClaimsService.GetUserId();
 		var userName = _userClaimsService.GetUserName();
@@ -128,6 +129,17 @@ public class ReplyService : IReplyService
 
 	public async Task<Result<ReplyResponse>> UpdateReply(int postId, int commentId, int replyId, UpdateReplyRequest updateReplyRequest)
 	{
+		var isHateSpeechResult = await _hateSpeechDetector.IsHateSpeech(updateReplyRequest.Content!);
+
+		if (isHateSpeechResult.IsFailure)
+		{
+			return isHateSpeechResult.Error;
+		}
+		if (isHateSpeechResult.Value)
+		{
+			return Error.Forbidden("Content.Forbidden", "Your reply violates our policy against hate speech and could not be published");
+		}
+
 		var reply = await _repos.Replies.GetById(postId, commentId, replyId, true);
 
 		if (reply is null)

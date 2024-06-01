@@ -147,6 +147,17 @@ public class CommentService : ICommentService
 
 	public async Task<Result<CommentResponse>> UpdateComment(int postId, int commentId, UpdateCommentRequest updateCommentRequest)
 	{
+		var isHateSpeechResult = await _hateSpeechDetector.IsHateSpeech(updateCommentRequest.Content!);
+
+		if (isHateSpeechResult.IsFailure)
+		{
+			return isHateSpeechResult.Error;
+		}
+		if (isHateSpeechResult.Value)
+		{
+			return Error.Forbidden("Content.Forbidden", "Your comment violates our policy against hate speech and could not be published");
+		}
+
 		var comment = await _repos.Comments.GetById(postId, commentId, true);
 		if (comment is null)
 		{

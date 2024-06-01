@@ -70,6 +70,7 @@ public class PostService : IPostService
 		{
 			return Error.Forbidden("Content.Forbidden", "Your post violates our policy against hate speech and could not be published");
 		}
+
 		var post = _mapper.Map<Post>(postRequest);
 
 		var userId = _userClaimsService.GetUserId();
@@ -113,6 +114,17 @@ public class PostService : IPostService
 
 	public async Task<Result<PostResponse>> UpdatePost(int id, UpdatePostRequest updatePostRequest)
 	{
+		var isHateSpeechResult = await _hateSpeechDetector.IsHateSpeech($"{updatePostRequest.Title} {updatePostRequest.Content}"!);
+
+		if (isHateSpeechResult.IsFailure)
+		{
+			return isHateSpeechResult.Error;
+		}
+		if (isHateSpeechResult.Value)
+		{
+			return Error.Forbidden("Content.Forbidden", "Your post violates our policy against hate speech and could not be published");
+		}
+
 		var userId = _userClaimsService.GetUserId();
 
 		var post = await _repos.Posts.GetPostById(id, true);
