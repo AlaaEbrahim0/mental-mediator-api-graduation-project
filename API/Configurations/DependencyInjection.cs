@@ -43,7 +43,8 @@ public static class DependencyInjection
 							"http://localhost:3000")
 						.AllowAnyHeader()
 						.AllowAnyMethod()
-						.AllowCredentials();
+						.AllowCredentials()
+						.WithExposedHeaders();
 
 			});
 

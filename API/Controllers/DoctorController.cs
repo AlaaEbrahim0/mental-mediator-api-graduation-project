@@ -38,4 +38,26 @@ public class DoctorController : ControllerBase
 		return Ok(result.Value);
 	}
 
+	[HttpGet("me")]
+	public async Task<IActionResult> GetDoctorProfile()
+	{
+		var result = await _doctorService.GetCurrentDoctorInfo();
+		if (result.IsFailure)
+		{
+			return result.ToProblemDetails();
+		}
+		return Ok(result.Value);
+	}
+
+	[HttpPut("me")]
+	public async Task<IActionResult> UpdateDoctorProfile([FromForm] UpdateDoctorInfoRequest request)
+	{
+		var result = await _doctorService.UpdateCurrentDoctorInfo(request);
+		if (result.IsFailure)
+		{
+			return result.ToProblemDetails();
+		}
+		return Ok(result.Value);
+	}
+
 }

@@ -28,10 +28,32 @@ public class UserController : ControllerBase
 		return Ok(result.Value);
 	}
 
+	[HttpGet("me")]
+	public async Task<IActionResult> GetUserProfile()
+	{
+		var result = await _userService.GetCurrentUserInfo();
+		if (result.IsFailure)
+		{
+			return result.ToProblemDetails();
+		}
+		return Ok(result.Value);
+	}
+
 	[HttpPut("{id}")]
 	public async Task<IActionResult> UpdateUserProfile(string id, [FromForm] UpdateUserInfoRequest request)
 	{
 		var result = await _userService.UpdateUserInfo(id, request);
+		if (result.IsFailure)
+		{
+			return result.ToProblemDetails();
+		}
+		return Ok(result.Value);
+	}
+
+	[HttpPut("me")]
+	public async Task<IActionResult> UpdateUserProfile([FromForm] UpdateUserInfoRequest request)
+	{
+		var result = await _userService.UpdateCurrentUserInfo(request);
 		if (result.IsFailure)
 		{
 			return result.ToProblemDetails();

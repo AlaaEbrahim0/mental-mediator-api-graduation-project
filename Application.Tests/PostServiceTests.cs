@@ -230,17 +230,17 @@ public class PostServiceTests
 		};
 
 		var text = postRequest.Content + " " + postRequest.Title;
-		var isHateSpeech = Result<bool>.Success(false);
+		var isHateSpeechResult = Result<bool>.Success(false);
 
 		_mockHateSpeechDetector.Setup(x => x.IsHateSpeech(text))
-			.ReturnsAsync(isHateSpeech);
+			.ReturnsAsync(isHateSpeechResult);
 
 		var post = new Post
 		{
 			Content = postRequest.Content,
 			Title = postRequest.Title,
 			IsAnonymous = postRequest.IsAnonymous,
-			Username = "username",
+			AppUserId = "user-id",
 			PostedOn = DateTime.UtcNow,
 		};
 
@@ -249,10 +249,10 @@ public class PostServiceTests
 			Content = post.Content,
 			Title = post.Title,
 			IsAnonymous = true,
-			PostedOn = DateTime.UtcNow,
+			PostedOn = post.PostedOn,
+			AppUserId = post.AppUserId,
 			Username = null!
 		};
-
 
 		_mockMapper.Setup(mapper => mapper.Map<Post>(postRequest))
 			.Returns(post);
@@ -264,14 +264,16 @@ public class PostServiceTests
 		_mockMapper.Setup(mapper => mapper.Map<PostResponse>(post))
 			.Returns(postResponse);
 
-		// Act
+		_mockUserClaimsService.Setup(x => x.GetUserId())
+			.Returns("user-id");
+
 		var result = await _sut.CreatePostAsync(postRequest);
 
-		// Assert
 		Assert.True(result.IsSuccess);
-		Assert.Equal(result.Value, postResponse);
+		Assert.Equal(postResponse, result.Value);
 
 		_mockRepos.Verify(x => x.Posts.CreatePost(post), Times.Once);
 		_mockRepos.Verify(x => x.SaveAsync(), Times.Once);
 	}
+
 }

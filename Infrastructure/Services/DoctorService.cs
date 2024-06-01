@@ -44,6 +44,20 @@ public class DoctorService : IDoctorService
 		return response;
 
 	}
+	public async Task<Result<DoctorInfoResponse>> GetCurrentDoctorInfo()
+	{
+		var currentUserId = _userClaimsService.GetUserId();
+		var user = await _repoManager.Doctors.GetById(currentUserId, false);
+
+		if (user is null)
+		{
+			return UserErrors.NotFound(currentUserId);
+		}
+
+		var response = _mapper.Map<DoctorInfoResponse>(user);
+		return response;
+
+	}
 
 	public async Task<Result<DoctorInfoResponse>> UpdateDoctorInfo(string doctorId, UpdateDoctorInfoRequest request)
 	{
@@ -57,6 +71,33 @@ public class DoctorService : IDoctorService
 		if (user is null)
 		{
 			return UserErrors.NotFound(doctorId);
+		}
+
+		if (request.Photo is not null)
+		{
+			var uploadResult = await _storageService.UploadPhoto(request.Photo);
+			if (uploadResult.IsFailure)
+			{
+				return uploadResult.Error;
+			}
+			user.PhotoUrl = uploadResult.Value;
+		}
+
+		_mapper.Map(request, user);
+		_repoManager.Doctors.UpdateDoctor(user);
+		await _repoManager.SaveAsync();
+
+		var response = _mapper.Map<DoctorInfoResponse>(user);
+		return response;
+	}
+	public async Task<Result<DoctorInfoResponse>> UpdateCurrentDoctorInfo(UpdateDoctorInfoRequest request)
+	{
+		var currentUserId = _userClaimsService.GetUserId();
+		var user = await _repoManager.Doctors.GetById(currentUserId, true);
+
+		if (user is null)
+		{
+			return UserErrors.NotFound(currentUserId);
 		}
 
 		if (request.Photo is not null)
