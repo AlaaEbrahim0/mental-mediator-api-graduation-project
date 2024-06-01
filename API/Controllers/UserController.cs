@@ -11,10 +11,12 @@ namespace API.Controllers;
 public class UserController : ControllerBase
 {
 	private readonly IUserService _userService;
+	private readonly INotificationService _notificationService;
 
-	public UserController(IUserService userService)
+	public UserController(IUserService userService, INotificationService notificationService)
 	{
 		_userService = userService;
+		_notificationService = notificationService;
 	}
 
 	[HttpGet("{id}")]
@@ -54,6 +56,17 @@ public class UserController : ControllerBase
 	public async Task<IActionResult> UpdateUserProfile([FromForm] UpdateUserInfoRequest request)
 	{
 		var result = await _userService.UpdateCurrentUserInfo(request);
+		if (result.IsFailure)
+		{
+			return result.ToProblemDetails();
+		}
+		return Ok(result.Value);
+	}
+
+	[HttpGet("me/notifications")]
+	public async Task<IActionResult> GetCurrentUserNotifications()
+	{
+		var result = await _notificationService.GetCurrentUserNotifications();
 		if (result.IsFailure)
 		{
 			return result.ToProblemDetails();

@@ -50,6 +50,14 @@ public class NotificationService : INotificationService
 		return notificationReponse.ToList();
 	}
 
+	public async Task<Result<IEnumerable<NotificationResponse>>> GetCurrentUserNotifications()
+	{
+		var currentUserId = _userClaimsService.GetUserId();
+		var notifications = await _repos.Notifications.GetByUserId(currentUserId, false);
+		var notificationReponse = _mapper.Map<IEnumerable<NotificationResponse>>(notifications);
+		return notificationReponse.ToList();
+	}
+
 
 
 }

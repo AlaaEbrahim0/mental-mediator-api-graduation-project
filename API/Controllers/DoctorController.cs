@@ -10,10 +10,12 @@ namespace API.Controllers;
 public class DoctorController : ControllerBase
 {
 	private readonly IDoctorService _doctorService;
+	private readonly INotificationService _notificationService;
 
-	public DoctorController(IDoctorService userService)
+	public DoctorController(IDoctorService userService, INotificationService notificationService)
 	{
 		_doctorService = userService;
+		_notificationService = notificationService;
 	}
 
 	[HttpGet("{id}")]
@@ -59,5 +61,19 @@ public class DoctorController : ControllerBase
 		}
 		return Ok(result.Value);
 	}
+
+	[HttpGet]
+
+	[HttpGet("me/notifications")]
+	public async Task<IActionResult> GetCurrentDoctorNotifications()
+	{
+		var result = await _notificationService.GetCurrentUserNotifications();
+		if (result.IsFailure)
+		{
+			return result.ToProblemDetails();
+		}
+		return Ok(result.Value);
+	}
+
 
 }
