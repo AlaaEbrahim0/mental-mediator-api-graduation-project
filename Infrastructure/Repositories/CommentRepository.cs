@@ -37,7 +37,9 @@ public class CommentRepository : RepositoryBase<Comment>, ICommentRepository
 				PostId = x.PostId,
 				CommentedAt = x.CommentedAt,
 				Content = x.Content,
+				PhotoUrl = x.AppUser.PhotoUrl,
 			})
+
 			.ToListAsync();
 	}
 
@@ -54,6 +56,7 @@ public class CommentRepository : RepositoryBase<Comment>, ICommentRepository
 				PostId = x.PostId,
 				CommentedAt = x.CommentedAt,
 				Content = x.Content,
+				PhotoUrl = x.AppUser.PhotoUrl,
 			})
 			.SingleOrDefaultAsync();
 	}

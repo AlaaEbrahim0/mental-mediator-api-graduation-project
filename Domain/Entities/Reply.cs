@@ -15,8 +15,12 @@ public class Reply
 	public Comment? Comment { get; set; }
 
 	[NotMapped]
+	public string? PhotoUrl { get; set; }
+
+	[NotMapped]
 	public string? Username { get; set; }
 }
+
 public class ReplyValidator : AbstractValidator<Comment>
 {
 	public ReplyValidator()

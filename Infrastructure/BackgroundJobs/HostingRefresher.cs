@@ -5,7 +5,7 @@ namespace Infrastructure.BackgroundJobs;
 
 public class HostingRefresher : BackgroundService
 {
-	private readonly static TimeSpan period = TimeSpan.FromMinutes(3);
+	private readonly static TimeSpan period = TimeSpan.FromMinutes(5);
 	private readonly IHttpClientFactory _httpClientFactory;
 
 	public HostingRefresher(IHttpClientFactory httpClientFactory)

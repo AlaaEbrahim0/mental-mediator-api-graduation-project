@@ -16,6 +16,9 @@ public class Comment
 	public List<Reply> Replies { get; set; } = new();
 
 	[NotMapped]
+	public string? PhotoUrl { get; set; }
+
+	[NotMapped]
 	public string? Username { get; set; }
 
 }

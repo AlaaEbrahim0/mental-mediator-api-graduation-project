@@ -7,4 +7,6 @@ public class CommentResponse
 	public DateTime CommentedAt { get; set; }
 	public string? Username { get; set; }
 	public string? AppUserId { get; set; }
+	public string? PhotoUrl { get; set; }
+
 }

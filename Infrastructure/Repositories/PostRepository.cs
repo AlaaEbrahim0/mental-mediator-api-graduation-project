@@ -36,6 +36,8 @@ public class PostRepository : RepositoryBase<Post>, IPostRepository
 				Title = p.Title,
 				Username = p.IsAnonymous ? null : p.AppUser!.FullName,
 				IsAnonymous = p.IsAnonymous,
+				PhotoUrl = p.AppUser!.PhotoUrl,
+
 			})
 			.Paginate(parameters.PageNumber, parameters.PageSize)
 			.ToListAsync();
@@ -55,6 +57,7 @@ public class PostRepository : RepositoryBase<Post>, IPostRepository
 				Title = p.Title,
 				Username = p.IsAnonymous ? null : p.AppUser!.FullName,
 				IsAnonymous = p.IsAnonymous,
+				PhotoUrl = p.AppUser!.PhotoUrl,
 			})
 			.Paginate(parameters.PageNumber, parameters.PageSize)
 			.ToListAsync();
@@ -74,6 +77,7 @@ public class PostRepository : RepositoryBase<Post>, IPostRepository
 				Title = p.Title,
 				Username = p.IsAnonymous ? null : p.AppUser!.FullName,
 				IsAnonymous = p.IsAnonymous,
+				PhotoUrl = p.AppUser!.PhotoUrl,
 			})
 			.SingleOrDefaultAsync();
 	}

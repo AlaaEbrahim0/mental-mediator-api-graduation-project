@@ -13,6 +13,7 @@ public class PostResponse
 
 	public string Username { get; set; } = string.Empty;
 
+	public string? PhotoUrl { get; set; }
 	public bool IsAnonymous { get; set; }
 }
 

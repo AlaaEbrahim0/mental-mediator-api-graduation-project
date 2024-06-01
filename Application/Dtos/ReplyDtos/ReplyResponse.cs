@@ -6,4 +6,6 @@ public class ReplyResponse
 	public DateTime RepliedAt { get; set; }
 	public string? Username { get; set; }
 	public string? AppUserId { get; set; }
+	public string? PhotoUrl { get; set; }
+
 }

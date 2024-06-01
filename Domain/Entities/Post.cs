@@ -18,6 +18,9 @@ public class Post
 
 	public bool IsAnonymous { get; set; }
 
+	[NotMapped]
+	public string? PhotoUrl { get; set; }
+
 	public BaseUser? AppUser { get; set; }
 	public DateTime PostedOn { get; set; }
 	public List<Comment> Comments { get; set; } = new();
