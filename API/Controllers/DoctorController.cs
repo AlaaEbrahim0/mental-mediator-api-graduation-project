@@ -62,8 +62,6 @@ public class DoctorController : ControllerBase
 		return Ok(result.Value);
 	}
 
-	[HttpGet]
-
 	[HttpGet("me/notifications")]
 	public async Task<IActionResult> GetCurrentDoctorNotifications()
 	{

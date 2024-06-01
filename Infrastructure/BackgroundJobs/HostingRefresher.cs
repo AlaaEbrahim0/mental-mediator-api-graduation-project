@@ -1,4 +1,5 @@
-﻿using Microsoft.Extensions.Hosting;
+﻿using System.Net.Http.Json;
+using Microsoft.Extensions.Hosting;
 
 namespace Infrastructure.BackgroundJobs;
 
@@ -25,6 +26,23 @@ public class HostingRefresher : BackgroundService
 					try
 					{
 						var response = await httpClient.GetAsync("api/posts");
+
+						if (response.IsSuccessStatusCode)
+						{
+							Console.WriteLine("Refreshed...");
+						}
+					}
+					catch (Exception ex)
+					{
+						Console.WriteLine(ex.Message);
+					}
+				}
+				using (var httpClient = _httpClientFactory.CreateClient("ml-client"))
+				{
+					Console.WriteLine(httpClient.BaseAddress);
+					try
+					{
+						var response = await httpClient.PostAsJsonAsync("predict_HS", new { text = "normal" });
 
 						if (response.IsSuccessStatusCode)
 						{
