@@ -1,5 +1,4 @@
-﻿
-using Application.Contracts;
+﻿using Application.Contracts;
 using Application.Dtos.CommentsDtos;
 using AutoMapper;
 using Domain.Entities;
@@ -74,6 +73,7 @@ public class CommentService : ICommentService
 		var userId = _userClaimsService.GetUserId();
 		var userName = _userClaimsService.GetUserName();
 		var userRole = _userClaimsService.GetRole();
+
 		if (!AllowedToComment(post, userId, userRole))
 		{
 			return Error.Forbidden("Users.Forbidden", "Only doctors and post author are allowed to comment on anonymous posts");

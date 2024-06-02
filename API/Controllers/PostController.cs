@@ -1,4 +1,5 @@
-﻿using Application.Dtos.PostsDto;
+﻿
+using Application.Dtos.PostsDto;
 using Application.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -72,7 +73,7 @@ public class PostController : ControllerBase
 
 	[HttpPost]
 	[Authorize]
-	public async Task<IActionResult> CreatePost([FromBody] CreatePostRequest request)
+	public async Task<IActionResult> CreatePost([FromForm] CreatePostRequest request)
 	{
 		var result = await _postService.CreatePostAsync(request);
 

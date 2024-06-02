@@ -16,6 +16,7 @@ public class InMemoryCacheService : ICacheService
 
 	public async Task<T?> GetAsync<T>(string key) where T : class
 	{
+
 		var cachedValue = await _distributedCache.GetStringAsync(key);
 		if (cachedValue == null)
 		{

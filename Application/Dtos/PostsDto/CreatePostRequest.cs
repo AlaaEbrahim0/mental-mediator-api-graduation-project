@@ -1,6 +1,7 @@
 ﻿using System.ComponentModel;
-using Application.Contracts;
+using Application.Utilities;
 using FluentValidation;
+using Microsoft.AspNetCore.Http;
 
 namespace Application.Dtos.PostsDto;
 public class CreatePostRequest
@@ -12,13 +13,14 @@ public class CreatePostRequest
 	public string? Content { get; set; }
 
 	public bool IsAnonymous { get; set; }
+
+	public IFormFile? PhotoPost { get; set; }
 }
 
 public class CreatePostRequestValidator : AbstractValidator<CreatePostRequest>
 {
-	private readonly IHateSpeechDetector hateSpeechDetector;
 
-	public CreatePostRequestValidator(IHateSpeechDetector hateSpeechDetector)
+	public CreatePostRequestValidator()
 	{
 		RuleFor(x => x.Content)
 			.NotEmpty()
@@ -27,6 +29,9 @@ public class CreatePostRequestValidator : AbstractValidator<CreatePostRequest>
 		RuleFor(x => x.Title)
 			.NotEmpty()
 			.Length(1, 1000);
-		this.hateSpeechDetector = hateSpeechDetector;
+
+		RuleFor(x => x.PhotoPost)
+			.SetValidator(new PhotoValidator()!);
+
 	}
 }

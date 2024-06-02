@@ -13,16 +13,17 @@ public class PostService : IPostService
 	private readonly IMapper _mapper;
 	private readonly IUserClaimsService _userClaimsService;
 	private readonly IHateSpeechDetector _hateSpeechDetector;
+	private readonly IStorageService _storageService;
 	private readonly ICacheService _cacheService;
 
-
-	public PostService(IRepositoryManager repos, IMapper mapper, IUserClaimsService userClaimsService, IHateSpeechDetector hateSpeechDetector, ICacheService cacheService)
+	public PostService(IRepositoryManager repos, IMapper mapper, IUserClaimsService userClaimsService, IHateSpeechDetector hateSpeechDetector, ICacheService cacheService, IStorageService storageService)
 	{
 		_repos = repos;
 		_mapper = mapper;
 		_userClaimsService = userClaimsService;
 		_hateSpeechDetector = hateSpeechDetector;
 		_cacheService = cacheService;
+		_storageService = storageService;
 	}
 
 	public async Task<Result<IEnumerable<PostResponse>>> GetPosts(
@@ -72,6 +73,12 @@ public class PostService : IPostService
 		}
 
 		var post = _mapper.Map<Post>(postRequest);
+
+		if (postRequest.PhotoPost is not null)
+		{
+			var photoUrl = await _storageService.UploadPhoto(postRequest.PhotoPost);
+			post.PostPhotoUrl = photoUrl.Value;
+		}
 
 		var userId = _userClaimsService.GetUserId();
 		post.AppUserId = userId;

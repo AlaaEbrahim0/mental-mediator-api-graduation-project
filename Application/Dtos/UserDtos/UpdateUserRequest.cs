@@ -1,4 +1,4 @@
-﻿using Domain.Errors;
+﻿using Application.Utilities;
 using FluentValidation;
 using Microsoft.AspNetCore.Http;
 
@@ -46,36 +46,9 @@ public class BaseUpdateUserInfoRequestValidator : AbstractValidator<BaseUpdateUs
 			.WithMessage("Gender must be male or female");
 
 		RuleFor(x => x.Photo)
-			.Custom((photo, context) =>
-			{
-				var error = ValidatePhoto(photo);
-				if (!string.IsNullOrEmpty(error))
-				{
-					context.AddFailure(error);
-				}
-			});
+			.SetValidator(new PhotoValidator()!);
 
 	}
 
-	private string ValidatePhoto(IFormFile? photo)
-	{
-		if (photo == null)
-		{
-			return string.Empty;
-		}
-
-		var photoExtension = Path.GetExtension(photo.FileName);
-		if (!allowedPhotoExtensions.Contains(photoExtension))
-		{
-			return StorageErrors.UnsupportedPhotoExtension(photoExtension).Description;
-		}
-
-		if (photo.Length > MaxPhotoSizeInBytes)
-		{
-			return StorageErrors.FileSizeExceededMaximumSize().Description;
-		}
-
-		return string.Empty;
-	}
 }
 

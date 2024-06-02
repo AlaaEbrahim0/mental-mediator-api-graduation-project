@@ -34,10 +34,11 @@ public class PostRepository : RepositoryBase<Post>, IPostRepository
 				Content = p.Content,
 				PostedOn = p.PostedOn,
 				Title = p.Title,
-				Username = p.IsAnonymous ? null : p.AppUser!.FullName,
 				IsAnonymous = p.IsAnonymous,
-				PhotoUrl = p.AppUser!.PhotoUrl,
-
+				Username = p.IsAnonymous ? null : p.AppUser!.FullName,
+				PhotoUrl = p.IsAnonymous ? null : p.AppUser!.PhotoUrl,
+				PostPhotoUrl = p.PostPhotoUrl,
+				CommentsCount = p.Comments.Count()
 			})
 			.Paginate(parameters.PageNumber, parameters.PageSize)
 			.ToListAsync();
@@ -55,9 +56,10 @@ public class PostRepository : RepositoryBase<Post>, IPostRepository
 				Content = p.Content,
 				PostedOn = p.PostedOn,
 				Title = p.Title,
-				Username = p.IsAnonymous ? null : p.AppUser!.FullName,
 				IsAnonymous = p.IsAnonymous,
-				PhotoUrl = p.AppUser!.PhotoUrl,
+				Username = p.IsAnonymous ? null : p.AppUser!.FullName,
+				PhotoUrl = p.IsAnonymous ? null : p.AppUser!.PhotoUrl,
+				PostPhotoUrl = p.PostPhotoUrl,
 			})
 			.Paginate(parameters.PageNumber, parameters.PageSize)
 			.ToListAsync();
@@ -65,6 +67,7 @@ public class PostRepository : RepositoryBase<Post>, IPostRepository
 
 	public async Task<Post?> GetPostById(int id, bool trackChanges)
 	{
+
 		return await
 			FindByCondition(p => p.Id == id, trackChanges)
 			.Include(p => p.AppUser)
@@ -78,6 +81,7 @@ public class PostRepository : RepositoryBase<Post>, IPostRepository
 				Username = p.IsAnonymous ? null : p.AppUser!.FullName,
 				IsAnonymous = p.IsAnonymous,
 				PhotoUrl = p.AppUser!.PhotoUrl,
+				PostPhotoUrl = p.PostPhotoUrl,
 			})
 			.SingleOrDefaultAsync();
 	}

@@ -7,6 +7,7 @@ public class PostResponse
 	public string? Title { get; set; }
 
 	public string Content { get; set; } = string.Empty;
+
 	public DateTime PostedOn { get; set; }
 
 	public string? AppUserId { get; set; }
@@ -14,7 +15,13 @@ public class PostResponse
 	public string Username { get; set; } = string.Empty;
 
 	public string? PhotoUrl { get; set; }
+
+	public string? PostPhotoUrl { get; set; }
+
 	public bool IsAnonymous { get; set; }
+
+	public int CommentsCount { get; set; }
+
 }
 
 

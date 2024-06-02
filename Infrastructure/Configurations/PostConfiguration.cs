@@ -15,6 +15,13 @@ public class PostConfiguration : IEntityTypeConfiguration<Post>
 			.WithOne(c => c.Post)
 			.OnDelete(DeleteBehavior.Cascade);
 
+		builder
+			.Property(p => p.PostPhotoUrl)
+			.HasMaxLength(1000);
+
+		builder
+			.HasIndex(p => p.PostedOn);
+
 	}
 
 }

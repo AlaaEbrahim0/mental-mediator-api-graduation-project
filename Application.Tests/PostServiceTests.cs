@@ -17,9 +17,12 @@ public class PostServiceTests
 	private readonly Mock<IHateSpeechDetector> _mockHateSpeechDetector;
 	private readonly Mock<IUserClaimsService> _mockUserClaimsService;
 	private readonly Mock<ICacheService> _mockCacheService;
+	private readonly Mock<IStorageService> _mockStorageService;
+
 
 	public PostServiceTests()
 	{
+		_mockStorageService = new Mock<IStorageService>();
 		_mockCacheService = new Mock<ICacheService>();
 		_mockMapper = new Mock<IMapper>();
 		_mockHateSpeechDetector = new Mock<IHateSpeechDetector>();
@@ -31,7 +34,8 @@ public class PostServiceTests
 			_mockMapper.Object,
 			_mockUserClaimsService.Object,
 			_mockHateSpeechDetector.Object,
-			_mockCacheService.Object
+			_mockCacheService.Object,
+			_mockStorageService.Object
 		);
 	}
 
