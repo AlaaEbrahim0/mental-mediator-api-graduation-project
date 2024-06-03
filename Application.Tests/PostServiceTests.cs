@@ -44,7 +44,7 @@ public class PostServiceTests
 	public async Task GetPosts_ReturnsCachedPosts_WhenCacheIsNotEmpty()
 	{
 		// Arrange
-		var parameters = new RequestParameters
+		var parameters = new PostRequestParameters
 		{
 			PageNumber = 1,
 			PageSize = 1
@@ -69,7 +69,7 @@ public class PostServiceTests
 	public async Task GetPosts_ReturnsPostsFromRepo_WhenCacheIsEmpty()
 	{
 		// Arrange
-		var parameters = new RequestParameters
+		var parameters = new PostRequestParameters
 		{
 			PageNumber = 1,
 			PageSize = 1
@@ -104,7 +104,7 @@ public class PostServiceTests
 	public async Task GetPosts_ReturnsEmptyList_WhenRepoReturnsNoPosts()
 	{
 		// Arrange
-		var parameters = new RequestParameters { PageNumber = 1, PageSize = 10 };
+		var parameters = new PostRequestParameters { PageNumber = 1, PageSize = 10 };
 		var posts = new List<Post>();
 		var postResponses = new List<PostResponse>();
 		string postPageKey = $"posts_{parameters.PageNumber}_{parameters.PageSize}";
