@@ -66,7 +66,8 @@ public class PostRepository : RepositoryBase<Post>, IPostRepository
 			.ToListAsync();
 	}
 
-	public async Task<IEnumerable<Post>> GetPostsByUserId(string userId, PostRequestParameters parameters, bool trackChanges)
+	public async Task<IEnumerable<Post>> GetPostsByUserId(string userId, PostRequestParameters
+		parameters, bool trackChanges)
 	{
 		return await
 			FindByCondition(p => p.AppUserId == userId, trackChanges)
@@ -82,6 +83,8 @@ public class PostRepository : RepositoryBase<Post>, IPostRepository
 				Username = p.IsAnonymous ? null : p.AppUser!.FullName,
 				PhotoUrl = p.IsAnonymous ? null : p.AppUser!.PhotoUrl,
 				PostPhotoUrl = p.PostPhotoUrl,
+				CommentsCount = p.Comments.Count()
+
 			})
 			.Paginate(parameters.PageNumber, parameters.PageSize)
 			.ToListAsync();
@@ -104,6 +107,8 @@ public class PostRepository : RepositoryBase<Post>, IPostRepository
 				PhotoUrl = p.IsAnonymous ? null : p.AppUser!.PhotoUrl,
 				IsAnonymous = p.IsAnonymous,
 				PostPhotoUrl = p.PostPhotoUrl,
+				CommentsCount = p.Comments.Count()
+
 			})
 			.SingleOrDefaultAsync();
 	}
