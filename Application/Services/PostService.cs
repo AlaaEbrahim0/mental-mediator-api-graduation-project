@@ -29,14 +29,14 @@ public class PostService : IPostService
 	public async Task<Result<IEnumerable<PostResponse>>> GetPosts(
 		PostRequestParameters parameters)
 	{
-		string postPageKey = $"posts_{parameters.PageNumber}_{parameters.PageSize}";
+		//string postPageKey = $"posts_{parameters.PageNumber}_{parameters.PageSize}";
 
-		var cachedPosts = await _cacheService.GetAsync<List<PostResponse>>(postPageKey);
+		//var cachedPosts = await _cacheService.GetAsync<List<PostResponse>>(postPageKey);
 
-		if (cachedPosts is not null)
-		{
-			return cachedPosts;
-		}
+		//if (cachedPosts is not null)
+		//{
+		//	return cachedPosts;
+		//}
 
 		IEnumerable<Post> posts;
 		if (parameters.ConfessionsOnly)
@@ -50,7 +50,7 @@ public class PostService : IPostService
 
 		var postResponse = _mapper.Map<IEnumerable<PostResponse>>(posts);
 
-		await _cacheService.SetAsync(postPageKey, postResponse, TimeSpan.FromMinutes(1));
+		//await _cacheService.SetAsync(postPageKey, postResponse, TimeSpan.FromMinutes(1));
 
 		return postResponse.ToList();
 	}
