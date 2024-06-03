@@ -66,7 +66,7 @@ public class PostRepository : RepositoryBase<Post>, IPostRepository
 			.ToListAsync();
 	}
 
-	public async Task<IEnumerable<Post>> GetPostsByUserId(string userId, RequestParameters parameters, bool trackChanges)
+	public async Task<IEnumerable<Post>> GetPostsByUserId(string userId, PostRequestParameters parameters, bool trackChanges)
 	{
 		return await
 			FindByCondition(p => p.AppUserId == userId, trackChanges)

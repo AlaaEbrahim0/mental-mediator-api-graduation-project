@@ -46,7 +46,7 @@ public class PostController : ControllerBase
 	[Authorize]
 	public async Task<IActionResult> GetPostsByUserId(
 		[FromRoute] string userId,
-		[FromQuery] RequestParameters parameters)
+		[FromQuery] PostRequestParameters parameters)
 	{
 		var result = await _postService.GetPostsByUserId(userId, parameters);
 		if (result.IsFailure)

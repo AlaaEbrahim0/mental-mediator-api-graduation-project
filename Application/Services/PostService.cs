@@ -169,7 +169,7 @@ public class PostService : IPostService
 		return postResponse;
 	}
 
-	public async Task<Result<IEnumerable<PostResponse>>> GetPostsByUserId(string userId, RequestParameters parameters)
+	public async Task<Result<IEnumerable<PostResponse>>> GetPostsByUserId(string userId, PostRequestParameters parameters)
 	{
 		var currentUserId = _userClaimsService.GetUserId();
 		if (userId != currentUserId)
