@@ -90,7 +90,7 @@ public class PostController : ControllerBase
 
 	[HttpPut("{id:int}")]
 	[Authorize]
-	public async Task<IActionResult> UpdatePost(int id, UpdatePostRequest updatePostRequest)
+	public async Task<IActionResult> UpdatePost(int id, [FromForm] UpdatePostRequest updatePostRequest)
 	{
 		var result = await _postService.UpdatePost(id, updatePostRequest);
 		if (result.IsFailure)

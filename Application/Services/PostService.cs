@@ -145,6 +145,13 @@ public class PostService : IPostService
 			return PostErrors.Forbidden(id);
 		}
 
+		if (updatePostRequest.PhotoPost is not null)
+		{
+			var photoUrl = await _storageService.UploadPhoto(updatePostRequest.PhotoPost);
+
+			post.PostPhotoUrl = photoUrl.Value;
+		}
+
 		_mapper.Map(updatePostRequest, post);
 		_repos.Posts.UpdatePost(post);
 		await _repos.SaveAsync();
