@@ -22,10 +22,32 @@ public class PostRepository : RepositoryBase<Post>, IPostRepository
 		Delete(post);
 	}
 
-	public async Task<IEnumerable<Post>> GetAllPosts(RequestParameters parameters, bool trackChanges)
+	public async Task<IEnumerable<Post>> GetAllPosts(PostRequestParameters parameters, bool trackChanges)
 	{
 		return await
 			FindAll(trackChanges)
+			.OrderByDescending(c => c.PostedOn)
+			.Select(p => new Post
+			{
+				Id = p.Id,
+				AppUserId = p.AppUserId,
+				Content = p.Content,
+				PostedOn = p.PostedOn,
+				Title = p.Title,
+				IsAnonymous = p.IsAnonymous,
+				Username = p.IsAnonymous ? null : p.AppUser!.FullName,
+				PhotoUrl = p.IsAnonymous ? null : p.AppUser!.PhotoUrl,
+				PostPhotoUrl = p.PostPhotoUrl,
+				CommentsCount = p.Comments.Count()
+			})
+			.Paginate(parameters.PageNumber, parameters.PageSize)
+			.ToListAsync();
+	}
+
+	public async Task<IEnumerable<Post>> GetConfessionOnly(PostRequestParameters parameters, bool trackChanges)
+	{
+		return await
+			FindByCondition(x => x.IsAnonymous, trackChanges)
 			.OrderByDescending(c => c.PostedOn)
 			.Select(p => new Post
 			{
@@ -79,8 +101,8 @@ public class PostRepository : RepositoryBase<Post>, IPostRepository
 				PostedOn = p.PostedOn,
 				Title = p.Title,
 				Username = p.IsAnonymous ? null : p.AppUser!.FullName,
+				PhotoUrl = p.IsAnonymous ? null : p.AppUser!.PhotoUrl,
 				IsAnonymous = p.IsAnonymous,
-				PhotoUrl = p.AppUser!.PhotoUrl,
 				PostPhotoUrl = p.PostPhotoUrl,
 			})
 			.SingleOrDefaultAsync();

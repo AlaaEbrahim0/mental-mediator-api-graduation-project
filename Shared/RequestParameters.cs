@@ -18,3 +18,7 @@ public class RequestParameters
 	}
 }
 
+public class PostRequestParameters : RequestParameters
+{
+	public bool ConfessionsOnly { get; set; }
+}

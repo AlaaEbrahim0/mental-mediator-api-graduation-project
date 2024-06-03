@@ -27,7 +27,7 @@ public class PostService : IPostService
 	}
 
 	public async Task<Result<IEnumerable<PostResponse>>> GetPosts(
-		RequestParameters parameters)
+		PostRequestParameters parameters)
 	{
 		string postPageKey = $"posts_{parameters.PageNumber}_{parameters.PageSize}";
 
@@ -37,7 +37,16 @@ public class PostService : IPostService
 		{
 			return cachedPosts;
 		}
-		var posts = await _repos.Posts.GetAllPosts(parameters, false);
+
+		IEnumerable<Post> posts;
+		if (parameters.ConfessionsOnly)
+		{
+			posts = await _repos.Posts.GetConfessionOnly(parameters, false);
+		}
+		else
+		{
+			posts = await _repos.Posts.GetAllPosts(parameters, false);
+		}
 
 		var postResponse = _mapper.Map<IEnumerable<PostResponse>>(posts);
 

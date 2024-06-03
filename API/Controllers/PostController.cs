@@ -19,7 +19,7 @@ public class PostController : ControllerBase
 	}
 
 	[HttpGet]
-	public async Task<IActionResult> GetPosts([FromQuery] RequestParameters parameters)
+	public async Task<IActionResult> GetPosts([FromQuery] PostRequestParameters parameters)
 	{
 		var result = await _postService.GetPosts(parameters);
 		if (result.IsFailure)
