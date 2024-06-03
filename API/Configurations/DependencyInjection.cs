@@ -36,7 +36,7 @@ public static class DependencyInjection
 				policy
 					.WithOrigins(
 					  "https://mental-health-ochre.vercel.app",
-					  "https://mental-mediator-doctor-ui-graduation-project.vercel.app/",
+					  "https://mental-mediator-doctor-ui-graduation-project.vercel.app",
 					  "https://mental-health-b2uehhu7l-rana-tareks-projects.vercel.app",
 						"https://localhost:7221",
 						"http://localhost:5068",
