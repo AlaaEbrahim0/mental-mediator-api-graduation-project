@@ -38,22 +38,22 @@ public class NotificationService : INotificationService
 		await _notificationSender.SendNotificationAsync(notification);
 	}
 
-	public async Task<Result<IEnumerable<NotificationResponse>>> GetNotificationByUserId(string userId)
+	public async Task<Result<IEnumerable<NotificationResponse>>> GetNotificationByUserId(string userId, RequestParameters request)
 	{
 		var currentUserId = _userClaimsService.GetUserId();
 		if (userId != currentUserId)
 		{
 			return NotificationErrors.Forbidden();
 		}
-		var notifications = await _repos.Notifications.GetByUserId(userId, false);
+		var notifications = await _repos.Notifications.GetByUserId(userId, request, false);
 		var notificationReponse = _mapper.Map<IEnumerable<NotificationResponse>>(notifications);
 		return notificationReponse.ToList();
 	}
 
-	public async Task<Result<IEnumerable<NotificationResponse>>> GetCurrentUserNotifications()
+	public async Task<Result<IEnumerable<NotificationResponse>>> GetCurrentUserNotifications(RequestParameters request)
 	{
 		var currentUserId = _userClaimsService.GetUserId();
-		var notifications = await _repos.Notifications.GetByUserId(currentUserId, false);
+		var notifications = await _repos.Notifications.GetByUserId(currentUserId, request, false);
 		var notificationReponse = _mapper.Map<IEnumerable<NotificationResponse>>(notifications);
 		return notificationReponse.ToList();
 	}
