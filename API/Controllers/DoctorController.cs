@@ -1,7 +1,9 @@
-﻿using Application.Contracts;
+﻿
+using Application.Contracts;
 using Application.Dtos.UserDtos;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Shared;
 namespace API.Controllers;
 
 [ApiController]
@@ -63,9 +65,9 @@ public class DoctorController : ControllerBase
 	}
 
 	[HttpGet("me/notifications")]
-	public async Task<IActionResult> GetCurrentDoctorNotifications()
+	public async Task<IActionResult> GetCurrentDoctorNotifications(RequestParameters paramters)
 	{
-		var result = await _notificationService.GetCurrentUserNotifications();
+		var result = await _notificationService.GetCurrentUserNotifications(paramters);
 		if (result.IsFailure)
 		{
 			return result.ToProblemDetails();
