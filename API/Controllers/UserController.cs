@@ -2,6 +2,7 @@
 using Application.Dtos.UserDtos;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Shared;
 
 namespace API.Controllers;
 
@@ -64,9 +65,9 @@ public class UserController : ControllerBase
 	}
 
 	[HttpGet("me/notifications")]
-	public async Task<IActionResult> GetCurrentUserNotifications()
+	public async Task<IActionResult> GetCurrentUserNotifications(RequestParameters paramters)
 	{
-		var result = await _notificationService.GetCurrentUserNotifications();
+		var result = await _notificationService.GetCurrentUserNotifications(paramters);
 		if (result.IsFailure)
 		{
 			return result.ToProblemDetails();
