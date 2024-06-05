@@ -38,5 +38,15 @@ public class NotificationController : ControllerBase
 		}
 		return Ok(result.Value);
 	}
+	[HttpGet("user/me")]
+	public async Task<IActionResult> GetCurrentUserNotifications([FromQuery] RequestParameters paramters)
+	{
+		var result = await _notificationService.GetCurrentUserNotifications(paramters);
+		if (result.IsFailure)
+		{
+			return result.ToProblemDetails();
+		}
+		return Ok(result.Value);
+	}
 
 }

@@ -2,7 +2,6 @@
 using Application.Dtos.UserDtos;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Shared;
 
 namespace API.Controllers;
 
@@ -57,17 +56,6 @@ public class UserController : ControllerBase
 	public async Task<IActionResult> UpdateUserProfile([FromForm] UpdateUserInfoRequest request)
 	{
 		var result = await _userService.UpdateCurrentUserInfo(request);
-		if (result.IsFailure)
-		{
-			return result.ToProblemDetails();
-		}
-		return Ok(result.Value);
-	}
-
-	[HttpGet("me/notifications")]
-	public async Task<IActionResult> GetCurrentUserNotifications(RequestParameters paramters)
-	{
-		var result = await _notificationService.GetCurrentUserNotifications(paramters);
 		if (result.IsFailure)
 		{
 			return result.ToProblemDetails();
