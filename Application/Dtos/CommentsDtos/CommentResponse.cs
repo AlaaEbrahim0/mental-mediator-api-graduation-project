@@ -1,4 +1,5 @@
-﻿namespace Application.Dtos.CommentsDtos;
+﻿
+namespace Application.Dtos.CommentsDtos;
 
 public class CommentResponse
 {
@@ -8,5 +9,6 @@ public class CommentResponse
 	public string? Username { get; set; }
 	public string? AppUserId { get; set; }
 	public string? PhotoUrl { get; set; }
+	public int RepliesCount { get; set; }
 
 }

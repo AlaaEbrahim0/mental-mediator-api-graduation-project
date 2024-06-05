@@ -246,6 +246,7 @@ public static class DependencyInjection
 			config.UseSqlServer(connectionString, b => b.MigrationsAssembly(nameof(Infrastructure)));
 			config.EnableDetailedErrors();
 			config.EnableSensitiveDataLogging();
+			config.LogTo(Console.WriteLine);
 
 		});
 

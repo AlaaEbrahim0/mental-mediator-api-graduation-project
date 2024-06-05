@@ -20,5 +20,8 @@ public class Comment
 	[NotMapped]
 	public string? Username { get; set; }
 
+	[NotMapped]
+	public int RepliesCount { get; set; }
+
 }
 

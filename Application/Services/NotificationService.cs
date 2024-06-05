@@ -58,6 +58,25 @@ public class NotificationService : INotificationService
 		return notificationReponse.ToList();
 	}
 
-
+	public async Task<Result<bool>> MarkAllAsReadAsync()
+	{
+		string currentUserId = _userClaimsService.GetUserId();
+		await _repos.Notifications.MarkAllAsRead(currentUserId);
+		await _repos.SaveAsync();
+		return true;
+	}
+	public async Task<Result<bool>> MarkAsReadAsync(int id)
+	{
+		string currentUserId = _userClaimsService.GetUserId();
+		var notification = await _repos.Notifications.GetById(id, true);
+		if (notification is null)
+		{
+			return NotificationErrors.NotFound(id);
+		}
+		notification.IsRead = true;
+		_repos.Notifications.UpdateNotification(notification);
+		await _repos.SaveAsync();
+		return true;
+	}
 
 }

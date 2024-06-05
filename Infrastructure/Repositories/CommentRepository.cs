@@ -38,8 +38,8 @@ public class CommentRepository : RepositoryBase<Comment>, ICommentRepository
 				CommentedAt = x.CommentedAt,
 				Content = x.Content,
 				PhotoUrl = x.AppUser.PhotoUrl,
+				RepliesCount = x.Replies.Count(),
 			})
-
 			.ToListAsync();
 	}
 
@@ -57,6 +57,8 @@ public class CommentRepository : RepositoryBase<Comment>, ICommentRepository
 				CommentedAt = x.CommentedAt,
 				Content = x.Content,
 				PhotoUrl = x.AppUser.PhotoUrl,
+				RepliesCount = x.Replies.Count(),
+
 			})
 			.SingleOrDefaultAsync();
 	}

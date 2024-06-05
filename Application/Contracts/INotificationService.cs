@@ -8,6 +8,6 @@ public interface INotificationService
 	Task<Result<NotificationResponse>> GetNotificationById(int id);
 	Task SendNotificationAsync(Notification notification);
 	Task<Result<IEnumerable<NotificationResponse>>> GetCurrentUserNotifications(RequestParameters request);
-
-
+	Task<Result<bool>> MarkAllAsReadAsync();
+	Task<Result<bool>> MarkAsReadAsync(int id);
 }

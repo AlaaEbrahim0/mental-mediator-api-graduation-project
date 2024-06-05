@@ -9,4 +9,5 @@ public static class NotificationErrors
 
 	public static Error Forbidden() => Error.Forbidden(
 		"Notifications.Forbidden", $"you have no access to this notification");
+
 }

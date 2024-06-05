@@ -1,4 +1,5 @@
-﻿using System.ComponentModel.DataAnnotations.Schema;
+﻿
+using System.ComponentModel.DataAnnotations.Schema;
 using Domain.Enums;
 using Newtonsoft.Json;
 
@@ -24,6 +25,8 @@ public class Notification
 	public string Resources { get; set; } = string.Empty;
 
 	public string? Type { get; set; }
+
+	public bool IsRead { get; set; }
 
 	[NotMapped]
 	public NotificationType TypeEnum

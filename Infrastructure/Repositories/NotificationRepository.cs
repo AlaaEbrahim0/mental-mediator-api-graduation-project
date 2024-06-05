@@ -17,17 +17,14 @@ public class NotificationRepository : RepositoryBase<Notification>, INotificatio
 	{
 		Create(notification);
 	}
-
-	public void DeleteNotification(Notification notification)
+	public void UpdateNotification(Notification notification)
 	{
-		Delete(notification);
+		Update(notification);
 	}
-
 
 	public async Task<Notification?> GetById(int notificationId, bool trackChanges)
 	{
 		return await FindByCondition(n => n.Id == notificationId, trackChanges)
-			.OrderByDescending(n => n.DateCreated)
 			.FirstOrDefaultAsync();
 	}
 
@@ -39,8 +36,9 @@ public class NotificationRepository : RepositoryBase<Notification>, INotificatio
 			.ToListAsync();
 	}
 
-	public void UpdateNotification(Notification notification)
+	public async Task MarkAllAsRead(string userId)
 	{
-		Update(notification);
+		var x = await FindByCondition(n => n.AppUserId == userId && !n.IsRead, true)
+			.ExecuteUpdateAsync(n => n.SetProperty(n => n.IsRead, true));
 	}
 }

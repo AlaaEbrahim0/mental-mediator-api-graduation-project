@@ -28,7 +28,8 @@ public class NotificationController : ControllerBase
 		}
 		return Ok(result.Value);
 	}
-	[HttpGet("user/{userId}")]
+
+	[HttpGet("users/{userId}")]
 	public async Task<IActionResult> GetNotificationByUserId(string userId, RequestParameters paramters)
 	{
 		var result = await _notificationService.GetNotificationByUserId(userId, paramters);
@@ -38,10 +39,33 @@ public class NotificationController : ControllerBase
 		}
 		return Ok(result.Value);
 	}
-	[HttpGet("user/me")]
+
+	[HttpGet("users/me")]
 	public async Task<IActionResult> GetCurrentUserNotifications([FromQuery] RequestParameters paramters)
 	{
 		var result = await _notificationService.GetCurrentUserNotifications(paramters);
+		if (result.IsFailure)
+		{
+			return result.ToProblemDetails();
+		}
+		return Ok(result.Value);
+	}
+
+	[HttpPut("users/me/read")]
+	public async Task<IActionResult> MarkAllAsRead()
+	{
+		var result = await _notificationService.MarkAllAsReadAsync();
+		if (result.IsFailure)
+		{
+			return result.ToProblemDetails();
+		}
+		return Ok(result.Value);
+	}
+
+	[HttpPut("{id:int}/read")]
+	public async Task<IActionResult> MarkAsRead(int id)
+	{
+		var result = await _notificationService.MarkAsReadAsync(id);
 		if (result.IsFailure)
 		{
 			return result.ToProblemDetails();

@@ -17,6 +17,4 @@ public record NotificationResponse
 	public Dictionary<string, int> Resources { get; set; } = new();
 
 	public string? Type { get; set; }
-
-	public int Count { get; set; }
 }
