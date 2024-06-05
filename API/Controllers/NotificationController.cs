@@ -1,6 +1,7 @@
 ﻿using Application.Contracts;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Shared;
 
 namespace API.Controllers;
 
@@ -28,7 +29,7 @@ public class NotificationController : ControllerBase
 		return Ok(result.Value);
 	}
 	[HttpGet("user/{userId}")]
-	public async Task<IActionResult> GetNotificationByUserId(string userId)
+	public async Task<IActionResult> GetNotificationByUserId(string userId, RequestParameters paramters)
 	{
 		var result = await _notificationService.GetNotificationByUserId(userId);
 		if (result.IsFailure)

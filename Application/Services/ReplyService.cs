@@ -49,6 +49,7 @@ public class ReplyService : IReplyService
 
 		var userId = _userClaimsService.GetUserId();
 		var userName = _userClaimsService.GetUserName();
+		var userPhotoUrl = _userClaimsService.GetPhotoUrl();
 
 		var reply = _mapper.Map<Reply>(createReplyRequest);
 
@@ -71,8 +72,10 @@ public class ReplyService : IReplyService
 
 			var notification = Notification.CreateNotification(
 				comment.AppUserId!,
-				$"{userName} has replied to your comment",
+				$"has replied to your comment",
 				replyResources,
+				userName,
+				userPhotoUrl,
 				NotificationType.Reply
 				);
 

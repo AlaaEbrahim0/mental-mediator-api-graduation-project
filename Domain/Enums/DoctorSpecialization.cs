@@ -10,3 +10,4 @@ public enum DoctorSpecialization
 	SchoolPsychology,
 	SocialPsychology
 }
+

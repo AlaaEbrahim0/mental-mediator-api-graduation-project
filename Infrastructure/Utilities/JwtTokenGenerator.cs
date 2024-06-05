@@ -56,6 +56,7 @@ public class JwtTokenGenerator
 			new Claim(ClaimTypes.NameIdentifier, user.Id!),
 			new Claim(JwtRegisteredClaimNames.Email, user.Email!),
 			new Claim(JwtRegisteredClaimNames.Name, user.FullName!),
+			new Claim("photoUrl", user.PhotoUrl ?? ""),
 			new Claim(JwtRegisteredClaimNames.Jti, user.Email!, Guid.NewGuid().ToString()),
 		}
 		.Union(userClaims)

@@ -1,4 +1,5 @@
-﻿namespace Shared;
+﻿
+namespace Shared;
 public record NotificationResponse
 {
 	public int Id { get; set; }
@@ -9,7 +10,13 @@ public record NotificationResponse
 
 	public bool IsRead { get; set; }
 
+	public string? NotifierUserName { get; set; }
+
+	public string? NotifierPhotoUrl { get; set; }
+
 	public Dictionary<string, int> Resources { get; set; } = new();
 
 	public string? Type { get; set; }
+
+	public int Count { get; set; }
 }

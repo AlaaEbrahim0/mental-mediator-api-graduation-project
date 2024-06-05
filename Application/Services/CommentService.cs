@@ -73,6 +73,7 @@ public class CommentService : ICommentService
 		var userId = _userClaimsService.GetUserId();
 		var userName = _userClaimsService.GetUserName();
 		var userRole = _userClaimsService.GetRole();
+		var userPhotoUrl = _userClaimsService.GetPhotoUrl();
 
 		if (!AllowedToComment(post, userId, userRole))
 		{
@@ -103,8 +104,10 @@ public class CommentService : ICommentService
 
 			var notification = Notification.CreateNotification(
 				post.AppUserId!,
-			$"{userName} has commented on your post",
+			$"has commented on your post",
 				notificationResources,
+				userName,
+				userPhotoUrl,
 				NotificationType.Comment
 			);
 

@@ -22,6 +22,10 @@ public class UserClaimsService : IUserClaimsService
 	{
 		return _signInManager.Context.User.FindFirst(JwtRegisteredClaimNames.Name)!.Value;
 	}
+	public string GetPhotoUrl()
+	{
+		return _signInManager.Context.User.FindFirst("PhotoUrl")!.Value;
+	}
 
 	public string GetRole()
 	{

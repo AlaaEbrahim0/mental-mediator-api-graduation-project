@@ -1,11 +1,10 @@
-﻿using System.Net.Http.Json;
-using Microsoft.Extensions.Hosting;
+﻿using Microsoft.Extensions.Hosting;
 
 namespace Infrastructure.BackgroundJobs;
 
 public class HostingRefresher : BackgroundService
 {
-	private readonly static TimeSpan period = TimeSpan.FromMinutes(5);
+	private readonly static TimeSpan period = TimeSpan.FromMinutes(1);
 	private readonly IHttpClientFactory _httpClientFactory;
 
 	public HostingRefresher(IHttpClientFactory httpClientFactory)
@@ -42,7 +41,7 @@ public class HostingRefresher : BackgroundService
 					Console.WriteLine(httpClient.BaseAddress);
 					try
 					{
-						var response = await httpClient.PostAsJsonAsync("predict_HS", new { text = "normal" });
+						var response = await httpClient.GetAsync("hello");
 
 						if (response.IsSuccessStatusCode)
 						{

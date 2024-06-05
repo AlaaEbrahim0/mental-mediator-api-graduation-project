@@ -1,7 +1,5 @@
-﻿using System.ComponentModel.DataAnnotations;
-using System.ComponentModel.DataAnnotations.Schema;
+﻿using System.ComponentModel.DataAnnotations.Schema;
 using Domain.Enums;
-using FluentValidation;
 using Newtonsoft.Json;
 
 namespace Domain.Entities;
@@ -15,20 +13,16 @@ public class Notification
 
 	public BaseUser? AppUser { get; set; }
 
-	[Required]
-	[StringLength(500, ErrorMessage = "Message length can't be more than 500.")]
+	public string? NotifierUserName { get; set; }
+
+	public string? NotifierPhotoUrl { get; set; }
+
 	public string? Message { get; set; }
 
-	[Required]
 	public DateTime DateCreated { get; set; }
 
-	public bool IsRead { get; set; }
-
-	[StringLength(1000, ErrorMessage = "Type length can't be more than 1000.")]
 	public string Resources { get; set; } = string.Empty;
 
-	[Required]
-	[StringLength(100, ErrorMessage = "Type length can't be more than 20.")]
 	public string? Type { get; set; }
 
 	[NotMapped]
@@ -57,12 +51,14 @@ public class Notification
 		}
 	}
 
-	public static Notification CreateNotification(string userId, string message, Dictionary<string, int> resource, NotificationType type)
+	public static Notification CreateNotification(string userId, string message, Dictionary<string, int> resource, string notifierUsername, string notifierPhotoUrl, NotificationType type)
 	{
 		var notification = new Notification()
 		{
 			AppUserId = userId,
 			DateCreated = DateTime.UtcNow,
+			NotifierUserName = notifierUsername,
+			NotifierPhotoUrl = notifierPhotoUrl,
 			Message = message,
 			ResourcesObject = resource,
 			TypeEnum = type
@@ -72,17 +68,4 @@ public class Notification
 
 	}
 
-}
-
-public class NotificationValidator : AbstractValidator<Notification>
-{
-	public NotificationValidator()
-	{
-		RuleFor(x => x.Message)
-			.NotEmpty()
-			.Length(8, 400);
-
-		RuleFor(x => x.AppUserId)
-			.NotEmpty();
-	}
 }
