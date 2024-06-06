@@ -23,4 +23,3 @@ public class BaseUser : IdentityUser
 	public List<Notification> Notifications { get; set; } = new();
 }
 
-public class Admin : BaseUser { }
