@@ -7,7 +7,7 @@ namespace API.Controllers;
 
 [ApiController]
 [Route("api/doctors")]
-[Authorize(Roles = "Doctor")]
+[Authorize(Roles = "Doctor, Admin")]
 public class DoctorController : ControllerBase
 {
 	private readonly IDoctorService _doctorService;

@@ -19,6 +19,10 @@ public class UserFactory
 				user = mapper.Map<Doctor>(request);
 				break;
 
+			case "Admin":
+				user = mapper.Map<Admin>(request);
+				break;
+
 			default:
 				break;
 		}

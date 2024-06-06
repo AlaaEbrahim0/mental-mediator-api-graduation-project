@@ -1,4 +1,5 @@
-﻿namespace API.Configurations;
+﻿
+namespace API.Configurations;
 
 using Application.Dtos.AuthDtos;
 using Application.Dtos.CommentsDtos;
@@ -32,7 +33,9 @@ public class MappingProfile : Profile
 		CreateMap<UpdateUserInfoRequest, User>();
 		CreateMap<UpdateDoctorInfoRequest, Doctor>();
 
+
 		CreateMap<User, UserInfoResponse>();
+		CreateMap<Admin, UserInfoResponse>();
 		CreateMap<Doctor, DoctorInfoResponse>();
 
 		CreateMap<Notification, NotificationResponse>()
@@ -44,6 +47,7 @@ public class MappingProfile : Profile
 
 		CreateMap<RegisterationRequest, User>();
 		CreateMap<RegisterationRequest, Doctor>();
+		CreateMap<RegisterationRequest, Admin>();
 
 		CreateMap<CreateScheduleWeekDayRequest, DoctorScheduleWeekDay>();
 		CreateMap<UpdateScheduleWeekDayRequest, DoctorScheduleWeekDay>();

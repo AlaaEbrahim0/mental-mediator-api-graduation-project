@@ -1,3 +1,2 @@
 ﻿namespace Domain.Entities;
-
-//public class Admin : BaseUser { }
+public class Admin : BaseUser { }

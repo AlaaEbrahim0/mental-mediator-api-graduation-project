@@ -38,6 +38,7 @@ public static class DependencyInjection
 					  "https://mental-health-ochre.vercel.app",
 					  "https://mental-mediator-doctor-ui-graduation-project.vercel.app",
 					  "https://mental-health-b2uehhu7l-rana-tareks-projects.vercel.app",
+					  "https://nexus-admin-panel.vercel.app",
 						"https://localhost:7221",
 						"http://localhost:5068",
 						"http://localhost:5500",
