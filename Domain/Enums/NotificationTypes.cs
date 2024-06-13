@@ -2,5 +2,9 @@
 public enum NotificationType
 {
 	Comment,
-	Reply
+	Reply,
+	AppointmentRequest,
+	AppointmentRejection,
+	AppointmentConfirmation,
+	AppointmentCancellation
 }

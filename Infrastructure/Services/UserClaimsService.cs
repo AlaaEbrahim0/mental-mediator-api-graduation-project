@@ -32,8 +32,6 @@ public class UserClaimsService : IUserClaimsService
 		var role = _signInManager.Context.User.Claims.FirstOrDefault(c => c.Type == "http://schemas.microsoft.com/ws/2008/06/identity/claims/role")!.Value;
 
 		return role;
-
-
 	}
 
 

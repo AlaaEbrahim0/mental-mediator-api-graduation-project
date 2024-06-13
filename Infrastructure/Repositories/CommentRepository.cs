@@ -33,7 +33,7 @@ public class CommentRepository : RepositoryBase<Comment>, ICommentRepository
 			{
 				Id = x.Id,
 				AppUserId = x.AppUserId,
-				Username = x.AppUser!.FullName,
+				Username = x.AppUser.FullName,
 				PostId = x.PostId,
 				CommentedAt = x.CommentedAt,
 				Content = x.Content,
@@ -52,7 +52,7 @@ public class CommentRepository : RepositoryBase<Comment>, ICommentRepository
 			{
 				Id = x.Id,
 				AppUserId = x.AppUserId,
-				Username = x.AppUser!.FullName,
+				Username = x.AppUser.FullName,
 				PostId = x.PostId,
 				CommentedAt = x.CommentedAt,
 				Content = x.Content,

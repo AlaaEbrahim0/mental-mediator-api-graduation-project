@@ -6,10 +6,10 @@ public class Comment
 	public int Id { get; set; }
 	public int PostId { get; set; }
 	public string? AppUserId { get; set; }
-	public Post? Post { get; set; }
-	public BaseUser? AppUser { get; set; }
+	public Post Post { get; set; } = null!;
+	public BaseUser AppUser { get; set; } = null!;
 
-	public string? Content { get; set; }
+	public string Content { get; set; } = null!;
 	public DateTime CommentedAt { get; set; }
 
 	public List<Reply> Replies { get; set; } = new();

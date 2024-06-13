@@ -116,6 +116,7 @@ public static class DependencyInjection
 		services.AddScoped<INotificationRepository, NotificationRepository>();
 		services.AddScoped<IDoctorRepository, DoctorRepository>();
 		services.AddScoped<IUserRepository, UserRepository>();
+		services.AddScoped<IAppointementRepository, AppointmentRepository>();
 		services.AddScoped<IDoctorScheduleRepository, DoctorScheduleRepository>();
 		return services;
 	}
@@ -153,6 +154,7 @@ public static class DependencyInjection
 			.AddScoped<IUserClaimsService, UserClaimsService>()
 			.AddScoped<INotificationService, NotificationService>()
 			.AddScoped<INotificationSender, NotificationSender>()
+			.AddScoped<IAppointmentService, AppointmentService>()
 			.AddScoped<IWeeklyScheduleService, WeeklyScheduleService>()
 			.AddScoped<ClaimsPrincipal>()
 			.AddTransient<MailTemplates>()
@@ -169,7 +171,7 @@ public static class DependencyInjection
 	{
 		services
 			.AddSingleton<ICacheService, InMemoryCacheService>()
-			.AddDistributedMemoryCache();
+			.AddMemoryCache();
 
 		return services;
 	}

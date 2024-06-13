@@ -26,15 +26,18 @@ public static class DbInitializer
 		//    context.Database.Migrate();
 		//}
 
-		if (context.Posts.Any() ||
-			context.Users.Any() ||
-			context.UserRoles.Any())
+		if (context.Roles.Any())
 		{
 			Console.WriteLine("already seeded");
 			return;
 		}
 
-		var rolesIds = Enumerable.Range(1, 3).Select(x => Guid.NewGuid().ToString()).ToArray();
+		var rolesIds = Enumerable
+			.Range(1, 3)
+			.Select(x => Guid.NewGuid()
+			.ToString())
+			.ToArray();
+
 		var roles = new List<IdentityRole>()
 		{
 			new IdentityRole() { Id = rolesIds[0], Name = "User", NormalizedName = "USER"},

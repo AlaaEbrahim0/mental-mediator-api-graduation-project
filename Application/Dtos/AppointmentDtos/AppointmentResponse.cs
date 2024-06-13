@@ -1,37 +1,27 @@
-﻿using System.ComponentModel.DataAnnotations.Schema;
-using Domain.Enums;
+﻿using Domain.Enums;
 
-namespace Domain.Entities;
+namespace Application.Dtos.AppointmentDtos;
 
-public class Appointment
+public class AppointmentResponse
 {
 	public int Id { get; set; }
 	public string UserId { get; set; } = string.Empty;
-	public User User { get; set; } = null!;
 	public string DoctorId { get; set; } = string.Empty;
-	public Doctor? Doctor { get; set; } = null!;
 	public DateTime StartTime { get; set; }
 	public TimeSpan Duration { get; set; }
 
-	[NotMapped]
-	public string ClientName { get; set; } = null!;
+	public string ClientName { get; set; } = string.Empty;
 
-	[NotMapped]
 	public string? ClientPhotoUrl { get; set; }
 
-	[NotMapped]
 	public string? DoctorPhotoUrl { get; set; }
 
-	[NotMapped]
-	public string DoctorName { get; set; } = null!;
+	public string DoctorName { get; set; } = string.Empty;
 
-
-	[DatabaseGenerated(DatabaseGeneratedOption.Computed)]
 	public DateTime EndTime => StartTime + Duration;
 
 	public AppointmentStatus Status { get; set; }
-	public string Location { get; set; } = null!;
-	public string? Reason { get; set; }
+	public string Location { get; set; } = string.Empty;
 	public string? CancellationReason { get; set; }
 	public string? RejectionReason { get; set; }
 }

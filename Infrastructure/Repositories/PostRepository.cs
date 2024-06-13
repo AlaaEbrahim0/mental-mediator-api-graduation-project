@@ -24,7 +24,9 @@ public class PostRepository : RepositoryBase<Post>, IPostRepository
 
 	public async Task<IEnumerable<Post>> GetAllPosts(PostRequestParameters parameters, bool trackChanges)
 	{
-		return await
+		try
+		{
+			return await
 			FindAll(trackChanges)
 			.OrderByDescending(c => c.PostedOn)
 			.Select(p => new Post
@@ -35,13 +37,21 @@ public class PostRepository : RepositoryBase<Post>, IPostRepository
 				PostedOn = p.PostedOn,
 				Title = p.Title,
 				IsAnonymous = p.IsAnonymous,
-				Username = p.IsAnonymous ? null : p.AppUser!.FullName,
-				PhotoUrl = p.IsAnonymous ? null : p.AppUser!.PhotoUrl,
+				Username = p.AppUser.FullName,
+				PhotoUrl = p.IsAnonymous ? null : p.AppUser.PhotoUrl,
 				PostPhotoUrl = p.PostPhotoUrl,
 				CommentsCount = p.Comments.Count()
 			})
 			.Paginate(parameters.PageNumber, parameters.PageSize)
 			.ToListAsync();
+		}
+		catch (Exception ex)
+		{
+			Console.WriteLine(ex.Message);
+		}
+
+		return null;
+
 	}
 
 	public async Task<IEnumerable<Post>> GetConfessionOnly(PostRequestParameters parameters, bool trackChanges)

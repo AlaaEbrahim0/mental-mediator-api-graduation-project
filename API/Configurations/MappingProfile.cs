@@ -1,6 +1,7 @@
 ﻿
 namespace API.Configurations;
 
+using Application.Dtos.AppointmentDtos;
 using Application.Dtos.AuthDtos;
 using Application.Dtos.CommentsDtos;
 using Application.Dtos.PostsDto;
@@ -60,5 +61,7 @@ public class MappingProfile : Profile
 			.ForMember(x => x.DoctorId, src => src.MapFrom(x => x.WeekDays.Select(x => x.DoctorId).First()))
 			.ForMember(x => x.WeekDays, src => src.MapFrom(x => x.WeekDays));
 
+		CreateMap<Appointment, AppointmentResponse>();
+		CreateMap<CreateAppointmentRequest, Appointment>();
 	}
 }

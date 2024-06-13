@@ -2,5 +2,5 @@
 
 public class User : BaseUser
 {
-	public List<Appointment>? Appointments { get; set; }
+	public List<Appointment> Appointments { get; set; } = new();
 }

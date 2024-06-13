@@ -1,58 +1,63 @@
 ﻿using System.Collections.Concurrent;
 using Application.Contracts;
-using Microsoft.Extensions.Caching.Distributed;
-using Newtonsoft.Json;
+using Microsoft.Extensions.Caching.Memory;
 
-namespace Infrastructure.Caching;
-public class InMemoryCacheService : ICacheService
+namespace Infrastructure.Caching
 {
-	private readonly IDistributedCache _distributedCache;
-	private readonly static ConcurrentDictionary<string, bool> CacheKeys = new();
-
-	public InMemoryCacheService(IDistributedCache distributedCache)
+	public class InMemoryCacheService : ICacheService
 	{
-		_distributedCache = distributedCache;
-	}
+		private readonly IMemoryCache _memoryCache;
+		private readonly ConcurrentDictionary<string, bool> _cacheKeys = new();
 
-	public async Task<T?> GetAsync<T>(string key) where T : class
-	{
-
-		var cachedValue = await _distributedCache.GetStringAsync(key);
-		if (cachedValue == null)
+		public InMemoryCacheService(IMemoryCache memoryCache)
 		{
-			return null;
+			_memoryCache = memoryCache;
 		}
 
-		var value = JsonConvert.DeserializeObject<T>(cachedValue);
-		return value;
-	}
-
-	public async Task RemoveAsync(string key)
-	{
-		await _distributedCache.RefreshAsync(key);
-
-		CacheKeys.TryRemove(key, out _);
-	}
-
-	public async Task RemoveByAsync(string prefix)
-	{
-		var tasks = CacheKeys
-			.Keys
-			.Where(k => k.StartsWith(prefix))
-			.Select(k => _distributedCache.RemoveAsync(k));
-
-		await Task.WhenAll(tasks);
-	}
-
-	public async Task SetAsync<T>(string key, T value, TimeSpan expirationTime)
-	{
-		string cachedValue = JsonConvert.SerializeObject(value);
-
-		await _distributedCache.SetStringAsync(key, cachedValue, new DistributedCacheEntryOptions
+		public Task<T?> GetAsync<T>(string key) where T : class
 		{
-			AbsoluteExpiration = DateTime.UtcNow + expirationTime
-		});
+			_memoryCache.TryGetValue(key, out T? value);
+			return Task.FromResult(value);
+		}
 
-		CacheKeys.TryAdd(key, false);
+		public Task RemoveAsync(string key)
+		{
+			_memoryCache.Remove(key);
+			_cacheKeys.TryRemove(key, out _);
+			return Task.CompletedTask;
+		}
+
+		public Task SetAsync<T>(string key, T value, TimeSpan expirationTime)
+		{
+			var cacheEntryOptions = new MemoryCacheEntryOptions
+			{
+				AbsoluteExpirationRelativeToNow = expirationTime
+			};
+
+			_memoryCache.Set(key, value, cacheEntryOptions);
+			_cacheKeys[key] = true;
+			return Task.CompletedTask;
+		}
+
+		public Task RemoveByAsync(string prefix)
+		{
+			var keysToRemove = _cacheKeys.Keys.Where(key => key.StartsWith(prefix)).ToList();
+			foreach (var key in keysToRemove)
+			{
+				_memoryCache.Remove(key);
+				_cacheKeys.TryRemove(key, out _);
+			}
+			return Task.CompletedTask;
+		}
+
+		public Task InvalidateAllCacheAsync()
+		{
+			foreach (var key in _cacheKeys.Keys.ToList())
+			{
+				_memoryCache.Remove(key);
+				_cacheKeys.TryRemove(key, out _);
+			}
+			return Task.CompletedTask;
+		}
 	}
 }

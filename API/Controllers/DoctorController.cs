@@ -30,6 +30,7 @@ public class DoctorController : ControllerBase
 		return Ok(result.Value);
 	}
 
+
 	[HttpPut("{id}")]
 	public async Task<IActionResult> UpdateDoctorProfile(string id, [FromForm] UpdateDoctorInfoRequest request)
 	{

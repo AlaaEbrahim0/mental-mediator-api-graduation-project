@@ -14,6 +14,10 @@ public class NotificationHub : Hub<INotificationClient>
 			.Caller
 			.ReceiveMessage("Hi: " + name);
 
+		await Clients
+			.Caller
+			.ReceiveMessage("You ConnectionId: " + Context.ConnectionId);
+
 		await base.OnConnectedAsync();
 	}
 }
