@@ -84,6 +84,7 @@ public class CommentService : ICommentService
 
 		comment.AppUserId = userId;
 		comment.PostId = postId;
+		comment.PhotoUrl = userPhotoUrl;
 		comment.CommentedAt = DateTime.UtcNow;
 
 		if (!post.IsAnonymous)
