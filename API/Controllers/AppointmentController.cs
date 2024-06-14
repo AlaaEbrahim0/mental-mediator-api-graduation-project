@@ -7,7 +7,6 @@ using Shared;
 namespace API.Controllers;
 [Route("api/appointments")]
 [ApiController]
-[Authorize]
 public class AppointmentController : ControllerBase
 {
 	private readonly IAppointmentService _appointmentService;
@@ -18,6 +17,7 @@ public class AppointmentController : ControllerBase
 	}
 
 	[HttpGet]
+	[Authorize(Roles = "Admin")]
 	public async Task<IActionResult> GetAll([FromQuery] RequestParameters request)
 	{
 		var result = await _appointmentService.GetAppointements(request);
@@ -28,7 +28,32 @@ public class AppointmentController : ControllerBase
 		return Ok(result.Value);
 	}
 
+	[HttpGet("doctors/me")]
+	[Authorize(Roles = "Doctor")]
+	public async Task<IActionResult> GetDoctorAppoinments([FromQuery] RequestParameters request)
+	{
+		var result = await _appointmentService.GetDoctorAppointments(request);
+		if (result.IsFailure)
+		{
+			return result.ToProblemDetails();
+		}
+		return Ok(result.Value);
+	}
+
+	[HttpGet("clients/me")]
+	[Authorize(Roles = "User")]
+	public async Task<IActionResult> GetClientAppoinments([FromQuery] RequestParameters request)
+	{
+		var result = await _appointmentService.GetClientAppointments(request);
+		if (result.IsFailure)
+		{
+			return result.ToProblemDetails();
+		}
+		return Ok(result.Value);
+	}
+
 	[HttpGet("{id:int}")]
+	[Authorize(Roles = "User, Doctor, Admin")]
 	public async Task<IActionResult> GetById(int id)
 	{
 		var result = await _appointmentService.GetAppointment(id);
@@ -40,6 +65,7 @@ public class AppointmentController : ControllerBase
 	}
 
 	[HttpPut("{id:int}/cancel")]
+	[Authorize(Roles = "User")]
 	public async Task<IActionResult> CancelAppointment(int id, [FromBody] string cancellationReason)
 	{
 		var result = await _appointmentService.CancelAppointment(id, cancellationReason);
@@ -51,6 +77,7 @@ public class AppointmentController : ControllerBase
 	}
 
 	[HttpPut("{id:int}/confirm")]
+	[Authorize(Roles = "Doctor")]
 	public async Task<IActionResult> ConfirmAppointment(int id)
 	{
 		var result = await _appointmentService.ConfirmAppointment(id);
@@ -62,6 +89,7 @@ public class AppointmentController : ControllerBase
 	}
 
 	[HttpPut("{id:int}/reject")]
+	[Authorize(Roles = "Doctor")]
 	public async Task<IActionResult> RejectAppointment(int id, [FromBody] string rejectionReason)
 	{
 		var result = await _appointmentService.RejectAppointment(id, rejectionReason);
@@ -73,6 +101,7 @@ public class AppointmentController : ControllerBase
 	}
 
 	[HttpPost]
+	[Authorize(Roles = "User")]
 	public async Task<IActionResult> CreateAppointment([FromQuery] string doctorId, [FromBody] CreateAppointmentRequest request)
 	{
 		var result = await _appointmentService.CreateAppointment(doctorId, request);
@@ -82,5 +111,7 @@ public class AppointmentController : ControllerBase
 		}
 		return CreatedAtAction(nameof(GetById), new { id = result.Value.Id }, result.Value);
 	}
+
+
 
 }

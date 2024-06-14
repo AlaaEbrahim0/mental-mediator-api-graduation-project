@@ -368,3 +368,5 @@ FodyWeavers.xsd
 /API/.env
 /Application.Tests/Application.Tests.csproj
 /query.sql
+/productionDb.sql
+/localDb.sql

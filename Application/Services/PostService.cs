@@ -28,9 +28,11 @@ namespace Application.Services
 
 		public async Task<Result<IEnumerable<PostResponse>>> GetPosts(PostRequestParameters parameters)
 		{
-			string postPageKey = $"all_posts_page_{parameters.PageNumber}";
+			string cacheKey = parameters.ConfessionsOnly ?
+				$"confessions_page_{parameters.PageNumber}" :
+				$"all_posts_page_{parameters.PageNumber}";
 
-			var cachedPosts = await _cacheService.GetAsync<List<PostResponse>>(postPageKey);
+			var cachedPosts = await _cacheService.GetAsync<List<PostResponse>>(cacheKey);
 
 			if (cachedPosts is not null)
 			{
@@ -49,7 +51,7 @@ namespace Application.Services
 
 			var postResponse = _mapper.Map<IEnumerable<PostResponse>>(posts);
 
-			await _cacheService.SetAsync(postPageKey, postResponse, TimeSpan.FromMinutes(5));
+			await _cacheService.SetAsync(cacheKey, postResponse, TimeSpan.FromMinutes(5));
 
 			return postResponse.ToList();
 		}
@@ -97,9 +99,10 @@ namespace Application.Services
 			}
 
 			_repos.Posts.CreatePost(post);
-			await _repos.SaveAsync();
 
+			await _repos.SaveAsync();
 			await _cacheService.RemoveByAsync("all_posts_");
+			await _cacheService.RemoveByAsync("confessions_page_");
 
 			var postResponse = _mapper.Map<PostResponse>(post);
 			return postResponse;
@@ -121,9 +124,8 @@ namespace Application.Services
 
 			_repos.Posts.DeletePost(post);
 			await _repos.SaveAsync();
-
 			await _cacheService.RemoveByAsync("all_posts_");
-
+			await _cacheService.RemoveByAsync("confessions_page_");
 
 			var postResponse = _mapper.Map<PostResponse>(post);
 			return postResponse;
@@ -166,7 +168,7 @@ namespace Application.Services
 			await _repos.SaveAsync();
 
 			await _cacheService.RemoveByAsync("all_posts_");
-
+			await _cacheService.RemoveByAsync("confessions_page_");
 
 			var postResponse = _mapper.Map<PostResponse>(post);
 			return postResponse;
@@ -177,7 +179,7 @@ namespace Application.Services
 			var currentUserId = _userClaimsService.GetUserId();
 			if (userId != currentUserId)
 			{
-				return Error.Forbidden("Users.Forbidden", "You don't have access on the required resource");
+				return Error.Forbidden("Users.Forbidden", "You don't have access to the required resource");
 			}
 
 			var posts = await _repos.Posts.GetPostsByUserId(userId, parameters, false);

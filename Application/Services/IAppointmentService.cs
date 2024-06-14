@@ -5,8 +5,8 @@ namespace Application.Services;
 public interface IAppointmentService
 {
 	Task<Result<List<AppointmentResponse>>> GetAppointements(RequestParameters request);
-	Task<Result<List<AppointmentResponse>>> GetDoctorAppointments(string doctorId, RequestParameters request);
-	Task<Result<List<AppointmentResponse>>> GetClientAppointments(string clientId, RequestParameters request);
+	Task<Result<List<AppointmentResponse>>> GetDoctorAppointments(RequestParameters request);
+	Task<Result<List<AppointmentResponse>>> GetClientAppointments(RequestParameters request);
 	Task<Result<AppointmentResponse?>> GetAppointment(int id);
 	Task<Result<AppointmentResponse>> CreateAppointment(string doctorId, CreateAppointmentRequest request);
 	Task<Result<AppointmentResponse?>> ConfirmAppointment(int id);
