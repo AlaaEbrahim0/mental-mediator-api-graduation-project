@@ -14,7 +14,6 @@ public class MailTemplates
 	{
 		string htmlTemplate = _fileProvider.ReadFromWebRoot("emailConfirmationTemplate.html");
 
-		// Replace placeholders with actual values
 		htmlTemplate = htmlTemplate.Replace("{username}", username)
 								   .Replace("{confirmationLink}", confirmationLink);
 

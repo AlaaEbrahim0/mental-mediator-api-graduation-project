@@ -13,8 +13,7 @@ public class DoctorScheduleRepository : RepositoryBase<DoctorScheduleWeekDay>, I
 
 	public async Task CreateDoctorWeeklySchedule(string doctorId, WeeklySchedule weeklySchedule)
 	{
-		await _dbContext
-			.AddRangeAsync(weeklySchedule.WeekDays);
+		await _dbContext.AddRangeAsync(weeklySchedule.WeekDays);
 	}
 
 	public void DeleteDoctorSchedule(WeeklySchedule schedule)
@@ -39,8 +38,17 @@ public class DoctorScheduleRepository : RepositoryBase<DoctorScheduleWeekDay>, I
 			.ToListAsync();
 
 		return new WeeklySchedule { WeekDays = weekDays };
-
 	}
+
+	//public async Task<List<WeeklySchedule>> GetSchedules(bool trackChanges)
+	//{
+	//	var weekDays = await FindAll(trackChanges)
+	//		.OrderBy(x => x.DayOfWeek)
+	//		.ToListAsync();
+
+	//}
+
+
 
 	public async Task<DoctorScheduleWeekDay?> GetScheduleWeekDay(string doctorId, DayOfWeek dayOfWeek, bool trackChanges)
 	{

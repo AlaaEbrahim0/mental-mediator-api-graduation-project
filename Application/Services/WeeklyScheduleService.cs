@@ -143,14 +143,13 @@ public class WeeklyScheduleService : IWeeklyScheduleService
 		return response;
 	}
 
+	public Task<Result<DoctorWeeklyScheduleResponse>> GetDoctorWeeklySchedule(string doctorId)
+	{
+		throw new NotImplementedException();
+	}
+
 	public async Task<Result<DoctorWeeklyScheduleResponse>> GetWeeklySchedule(string doctorId)
 	{
-		var currentUser = _userClaimsService.GetUserId();
-		if (currentUser != doctorId)
-		{
-			return Error.Forbidden("Users.ForbiddenInfo", "you don't have permission to access this resource");
-		}
-
 		var schedule = await _repoManager.DoctorSchedule.GetSchedule(doctorId, false);
 
 		if (!schedule.WeekDays.Any())
@@ -160,6 +159,11 @@ public class WeeklyScheduleService : IWeeklyScheduleService
 
 		var response = _mapper.Map<DoctorWeeklyScheduleResponse>(schedule);
 		return response;
+	}
+
+	public Task<Result<List<DoctorWeeklyScheduleResponse>>> GetWeeklySchedules()
+	{
+		throw new NotImplementedException();
 	}
 
 	public async Task<Result<WeekDayResponse>> UpdateDay(string doctorId, DayOfWeek dayOfWeek, UpdateScheduleWeekDayRequest request)

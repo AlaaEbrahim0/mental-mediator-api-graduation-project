@@ -178,7 +178,7 @@ public class AuthService : IAuthService
 			var externalUserEmail = externalUserInfo.Principal.FindFirstValue(ClaimTypes.Email);
 
 			var username = externalUserEmail!.Split('@')[0];
-			var name = externalUserInfo.Principal.Identity?.Name;
+			var name = externalUserInfo.Principal.Identity!.Name;
 
 			localUserAccount = new User()
 			{

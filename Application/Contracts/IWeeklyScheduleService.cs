@@ -6,6 +6,7 @@ namespace Application.Contracts;
 public interface IWeeklyScheduleService
 {
 	Task<Result<DoctorWeeklyScheduleResponse>> GetWeeklySchedule(string doctorId);
+	Task<Result<DoctorWeeklyScheduleResponse>> GetDoctorWeeklySchedule(string doctorId);
 	Task<Result<DoctorWeeklyScheduleResponse>> CreateWeeklySchedule(string doctorId, CreateDoctorWeeklyScheduleRequest request);
 	Task<Result<DoctorWeeklyScheduleResponse>> DeleteWeeklySchedule(string doctorId);
 	Task<Result<WeekDayResponse>> GetDay(string doctorId, DayOfWeek dayOfWeek);

@@ -118,7 +118,7 @@ public class AuthController : ControllerBase
 		{
 			return result.ToProblemDetails();
 		}
-		return Redirect($"{Request.Scheme}://{Request.Host}/static/successfulEmailConfirmation.html");
+		return Redirect($"{Request.Scheme}://{Request.Host}/successfulEmailConfirmation.html");
 	}
 
 }

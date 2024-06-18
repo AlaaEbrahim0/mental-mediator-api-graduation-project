@@ -3,6 +3,7 @@ using Application.Contracts;
 using Application.Dtos.UserDtos;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Shared;
 namespace API.Controllers;
 
 [ApiController]
@@ -17,6 +18,18 @@ public class DoctorController : ControllerBase
 	{
 		_doctorService = userService;
 		_notificationService = notificationService;
+	}
+
+	[HttpGet]
+	[AllowAnonymous]
+	public async Task<IActionResult> GetDoctors([FromQuery] RequestParameters request)
+	{
+		var result = await _doctorService.GetAll(request);
+		if (result.IsFailure)
+		{
+			return result.ToProblemDetails();
+		}
+		return Ok(result.Value);
 	}
 
 	[HttpGet("{id}")]

@@ -12,7 +12,6 @@ public class BaseUserInfoResponse
 	public string? PhotoUrl { get; set; }
 }
 
-
 public class UserInfoResponse : BaseUserInfoResponse { }
 
 public class DoctorInfoResponse : BaseUserInfoResponse

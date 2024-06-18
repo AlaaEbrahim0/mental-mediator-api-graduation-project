@@ -28,6 +28,7 @@ public class WeeklyScheduleController : ControllerBase
 		return Ok(result.Value);
 	}
 
+
 	[HttpGet("days/{day}")]
 	[AllowAnonymous]
 	public async Task<IActionResult> GetScheduleDay(string doctorId, DayOfWeek day)

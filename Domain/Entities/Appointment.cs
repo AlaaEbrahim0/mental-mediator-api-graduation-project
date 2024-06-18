@@ -10,6 +10,7 @@ public class Appointment
 	public int Id { get; set; }
 	public string UserId { get; set; } = string.Empty;
 	public User User { get; set; } = null!;
+
 	public string DoctorId { get; set; } = string.Empty;
 	public Doctor Doctor { get; set; } = null!;
 	public DateTime StartTime { get; set; }

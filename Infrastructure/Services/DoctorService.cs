@@ -28,11 +28,6 @@ public class DoctorService : IDoctorService
 
 	public async Task<Result<DoctorInfoResponse>> GetDoctorInfo(string id)
 	{
-		var currentUserId = _userClaimsService.GetUserId();
-		if (!currentUserId.Equals(id))
-		{
-			return Error.Forbidden("Users.ForbiddenInfo", "you don't have permission to access this resource");
-		}
 		var user = await _repoManager.Doctors.GetById(id, false);
 
 		if (user is null)
@@ -118,6 +113,10 @@ public class DoctorService : IDoctorService
 		return response;
 	}
 
-
-
+	public async Task<Result<IEnumerable<DoctorInfoResponse>>> GetAll(RequestParameters requestParameters)
+	{
+		var doctors = await _repoManager.Doctors.GetAll(requestParameters, false);
+		var response = _mapper.Map<List<DoctorInfoResponse>>(doctors);
+		return response;
+	}
 }
