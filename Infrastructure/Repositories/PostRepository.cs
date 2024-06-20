@@ -25,23 +25,23 @@ public class PostRepository : RepositoryBase<Post>, IPostRepository
 	public async Task<IEnumerable<Post>> GetAllPosts(PostRequestParameters parameters, bool trackChanges)
 	{
 		return await
-		FindByCondition(x => !x.IsAnonymous, trackChanges)
-		.OrderByDescending(c => c.PostedOn)
-		.Select(p => new Post
-		{
-			Id = p.Id,
-			AppUserId = p.AppUserId,
-			Content = p.Content,
-			PostedOn = p.PostedOn,
-			Title = p.Title,
-			IsAnonymous = p.IsAnonymous,
-			Username = p.AppUser.FullName,
-			PhotoUrl = p.AppUser.PhotoUrl,
-			PostPhotoUrl = p.PostPhotoUrl,
-			CommentsCount = p.Comments.Count()
-		})
-		.Paginate(parameters.PageNumber, parameters.PageSize)
-		.ToListAsync();
+			FindByCondition(x => !x.IsAnonymous, trackChanges)
+			.OrderByDescending(c => c.PostedOn)
+			.Select(p => new Post
+			{
+				Id = p.Id,
+				AppUserId = p.AppUserId,
+				Content = p.Content,
+				PostedOn = p.PostedOn,
+				Title = p.Title,
+				IsAnonymous = p.IsAnonymous,
+				Username = p.IsAnonymous ? null : p.AppUser!.FullName,
+				PhotoUrl = p.IsAnonymous ? null : p.AppUser!.PhotoUrl,
+				PostPhotoUrl = p.PostPhotoUrl,
+				CommentsCount = p.Comments.Count()
+			})
+			.Paginate(parameters.PageNumber, parameters.PageSize)
+			.ToListAsync();
 
 	}
 
