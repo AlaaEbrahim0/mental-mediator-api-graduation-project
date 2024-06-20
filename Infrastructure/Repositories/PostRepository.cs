@@ -36,7 +36,7 @@ public class PostRepository : RepositoryBase<Post>, IPostRepository
 			Title = p.Title,
 			IsAnonymous = p.IsAnonymous,
 			Username = p.AppUser.FullName,
-			PhotoUrl = p.IsAnonymous ? null : p.AppUser.PhotoUrl,
+			PhotoUrl = p.AppUser.PhotoUrl,
 			PostPhotoUrl = p.PostPhotoUrl,
 			CommentsCount = p.Comments.Count()
 		})
