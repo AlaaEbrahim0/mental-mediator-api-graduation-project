@@ -9,7 +9,7 @@ public class Post
 	public string AppUserId { get; set; } = null!;
 
 	[NotMapped]
-	public string Username { get; set; } = null!;
+	public string? Username { get; set; }
 
 	public string Title { get; set; } = null!;
 

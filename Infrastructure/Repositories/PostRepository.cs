@@ -25,7 +25,7 @@ public class PostRepository : RepositoryBase<Post>, IPostRepository
 	public async Task<IEnumerable<Post>> GetAllPosts(PostRequestParameters parameters, bool trackChanges)
 	{
 		return await
-		FindAll(trackChanges)
+		FindByCondition(x => !x.IsAnonymous, trackChanges)
 		.OrderByDescending(c => c.PostedOn)
 		.Select(p => new Post
 		{
