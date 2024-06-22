@@ -113,7 +113,7 @@ public class DoctorService : IDoctorService
 		return response;
 	}
 
-	public async Task<Result<IEnumerable<DoctorInfoResponse>>> GetAll(RequestParameters requestParameters)
+	public async Task<Result<IEnumerable<DoctorInfoResponse>>> GetAll(DoctorRequestParameters requestParameters)
 	{
 		var doctors = await _repoManager.Doctors.GetAll(requestParameters, false);
 		var response = _mapper.Map<List<DoctorInfoResponse>>(doctors);

@@ -21,6 +21,10 @@ public class AppointmentConfiguration : IEntityTypeConfiguration<Appointment>
 			.HasMaxLength(1000);
 
 		builder
+			.Property(x => x.Reason)
+			.HasMaxLength(1000);
+
+		builder
 			.Property(x => x.RejectionReason)
 			.HasMaxLength(1000);
 

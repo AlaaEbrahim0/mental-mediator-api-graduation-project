@@ -16,7 +16,10 @@ public class UserInfoResponse : BaseUserInfoResponse { }
 
 public class DoctorInfoResponse : BaseUserInfoResponse
 {
-	public string? Biography { get; set; }
-
+	public string Biography { get; set; } = string.Empty;
+	public string City { get; set; } = string.Empty;
+	public string Location { get; set; } = string.Empty;
+	public decimal SessionFees { get; set; }
 	public DoctorSpecialization Specialization { get; set; }
+
 }

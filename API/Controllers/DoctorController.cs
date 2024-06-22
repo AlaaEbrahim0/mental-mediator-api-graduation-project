@@ -1,6 +1,5 @@
 ﻿
 using Application.Contracts;
-using Application.Dtos.UserDtos;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Shared;
@@ -22,7 +21,7 @@ public class DoctorController : ControllerBase
 
 	[HttpGet]
 	[AllowAnonymous]
-	public async Task<IActionResult> GetDoctors([FromQuery] RequestParameters request)
+	public async Task<IActionResult> GetDoctors([FromQuery] DoctorRequestParameters request)
 	{
 		var result = await _doctorService.GetAll(request);
 		if (result.IsFailure)

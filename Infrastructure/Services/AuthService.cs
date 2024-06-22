@@ -184,7 +184,7 @@ public class AuthService : IAuthService
 			{
 				Email = externalUserEmail,
 				UserName = username,
-				FirstName = name,
+				FirstName = name!,
 			};
 
 			await _userManager.CreateAsync(localUserAccount);
