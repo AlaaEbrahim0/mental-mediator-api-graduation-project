@@ -6,8 +6,8 @@ public class Reply
 {
 	public int Id { get; set; }
 	public int CommentId { get; set; }
-	public string AppUserId { get; set; } = null!;
-	public string Content { get; set; } = null!;
+	public string AppUserId { get; set; } = string.Empty;
+	public string Content { get; set; } = string.Empty;
 	public DateTime RepliedAt { get; set; }
 
 	public BaseUser AppUser { get; set; } = null!;

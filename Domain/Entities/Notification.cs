@@ -10,7 +10,7 @@ public class Notification
 {
 	public int Id { get; set; }
 
-	public string? AppUserId { get; set; }
+	public string AppUserId { get; set; } = string.Empty;
 
 	public BaseUser? AppUser { get; set; }
 
@@ -18,7 +18,7 @@ public class Notification
 
 	public string? NotifierPhotoUrl { get; set; }
 
-	public string? Message { get; set; }
+	public string Message { get; set; } = string.Empty;
 
 	public DateTime DateCreated { get; set; }
 

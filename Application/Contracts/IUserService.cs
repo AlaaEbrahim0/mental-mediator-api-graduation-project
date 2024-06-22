@@ -10,3 +10,5 @@ public interface IUserService
 	Task<Result<UserInfoResponse>> UpdateCurrentUserInfo(UpdateUserInfoRequest updateRequest);
 }
 
+
+

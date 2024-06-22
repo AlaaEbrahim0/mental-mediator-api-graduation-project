@@ -24,6 +24,7 @@
     </PackageReference>
     <PackageReference Include="Microsoft.Extensions.Http" Version="8.0.0" />
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+    <PackageReference Include="RabbitMQ.Stream.Client" Version="1.8.7" />
   </ItemGroup>
 
   <ItemGroup>

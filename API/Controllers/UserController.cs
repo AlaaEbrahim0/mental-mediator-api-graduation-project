@@ -1,5 +1,7 @@
 ﻿using Application.Contracts;
+using Application.Dtos;
 using Application.Dtos.UserDtos;
+using Application.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -11,12 +13,14 @@ namespace API.Controllers;
 public class UserController : ControllerBase
 {
 	private readonly IUserService _userService;
+	private readonly MachineLearningService _machineLearningService;
 	private readonly INotificationService _notificationService;
 
-	public UserController(IUserService userService, INotificationService notificationService)
+	public UserController(IUserService userService, INotificationService notificationService, MachineLearningService machineLearingService)
 	{
 		_userService = userService;
 		_notificationService = notificationService;
+		_machineLearningService = machineLearingService;
 	}
 
 	[HttpGet("{id}")]
@@ -34,6 +38,17 @@ public class UserController : ControllerBase
 	public async Task<IActionResult> GetUserProfile()
 	{
 		var result = await _userService.GetCurrentUserInfo();
+		if (result.IsFailure)
+		{
+			return result.ToProblemDetails();
+		}
+		return Ok(result.Value);
+	}
+	[HttpPost("test-depression")]
+	[AllowAnonymous]
+	public async Task<IActionResult> TestDepression(DepressionTestRequest request)
+	{
+		var result = await _machineLearningService.IsDepressed(request);
 		if (result.IsFailure)
 		{
 			return result.ToProblemDetails();

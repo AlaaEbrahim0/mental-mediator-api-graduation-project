@@ -2,7 +2,7 @@
 
 public class DoctorScheduleWeekDay
 {
-	public string DoctorId { get; set; } = null!;
+	public string DoctorId { get; set; } = string.Empty;
 	public Doctor Doctor { get; set; } = null!;
 
 	public DayOfWeek DayOfWeek { get; set; }

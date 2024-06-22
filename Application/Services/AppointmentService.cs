@@ -134,12 +134,15 @@ public class AppointmentService : IAppointmentService
 		var userId = _userClaimsService.GetUserId();
 		var userName = _userClaimsService.GetUserName();
 		var photoUrl = _userClaimsService.GetPhotoUrl();
+		var userEmail = _userClaimsService.GetEmail();
 		var appointment = _mapper.Map<Appointment>(request);
 
 		appointment.DoctorId = doctorId;
 		appointment.UserId = userId;
 		appointment.Status = AppointmentStatus.Pending;
 		appointment.DoctorName = doctor.FullName;
+		appointment.DoctorEmail = doctor.Email!;
+		appointment.ClientEmail = userEmail;
 		appointment.ClientName = userName;
 		appointment.DoctorPhotoUrl = doctor.PhotoUrl;
 

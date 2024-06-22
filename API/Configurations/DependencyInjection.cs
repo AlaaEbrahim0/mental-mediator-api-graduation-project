@@ -124,6 +124,25 @@ public static class DependencyInjection
 	public static IServiceCollection ConfigureHttpClients(this IServiceCollection services, ConfigurationManager configuration, bool envIsDev)
 	{
 		services.AddScoped<IHateSpeechDetector, HateSpeechDetectorClient>();
+		services.AddScoped<IDepressionDetector, DepressionDetectorClient>();
+
+		if (!envIsDev)
+		{
+			services.AddHostedService<HostingRefresher>();
+
+
+		}
+		services.AddHttpClient<HostingRefresher>("self", config =>
+		{
+			var baseAddress = configuration["BaseAddress"];
+			config.BaseAddress = new Uri(baseAddress!);
+		});
+
+		services.AddHttpClient<DepressionDetectorClient>("ml-client", config =>
+		{
+			var baseAddress = configuration["MLServerAddress"];
+			config.BaseAddress = new Uri(baseAddress!);
+		});
 
 		services.AddHttpClient<HateSpeechDetectorClient>("ml-client", config =>
 		{
@@ -131,16 +150,6 @@ public static class DependencyInjection
 			config.BaseAddress = new Uri(baseAddress!);
 		});
 
-		if (envIsDev)
-		{
-			services.AddHostedService<HostingRefresher>();
-
-			services.AddHttpClient<HostingRefresher>("self", config =>
-			{
-				var baseAddress = configuration["BaseAddress"];
-				config.BaseAddress = new Uri(baseAddress!);
-			});
-		}
 
 		return services;
 	}
@@ -157,6 +166,7 @@ public static class DependencyInjection
 			.AddScoped<IAppointmentService, AppointmentService>()
 			.AddScoped<IWeeklyScheduleService, WeeklyScheduleService>()
 			.AddScoped<ClaimsPrincipal>()
+			.AddScoped<MachineLearningService>()
 			.AddTransient<MailTemplates>()
 			.AddScoped<IUserService, UserService>()
 			.AddScoped<IDoctorService, DoctorService>()

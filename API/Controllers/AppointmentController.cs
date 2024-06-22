@@ -1,5 +1,5 @@
-﻿using Application.Dtos.AppointmentDtos;
-using Application.Services;
+﻿using Application.Contracts;
+using Application.Dtos.AppointmentDtos;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Shared;

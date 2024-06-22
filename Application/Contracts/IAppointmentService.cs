@@ -1,7 +1,7 @@
 ﻿using Application.Dtos.AppointmentDtos;
 using Shared;
 
-namespace Application.Services;
+namespace Application.Contracts;
 public interface IAppointmentService
 {
 	Task<Result<List<AppointmentResponse>>> GetAppointements(RequestParameters request);

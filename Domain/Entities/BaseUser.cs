@@ -4,10 +4,10 @@ using Microsoft.AspNetCore.Identity;
 namespace Domain.Entities;
 public class BaseUser : IdentityUser
 {
-	public string FirstName { get; set; } = null!;
-	public string LastName { get; set; } = null!;
+	public string FirstName { get; set; } = string.Empty;
+	public string LastName { get; set; } = string.Empty;
 	public DateOnly BirthDate { get; set; }
-	public string Gender { get; set; } = null!;
+	public string Gender { get; set; } = string.Empty;
 
 	[NotMapped]
 	public string FullName => $"{FirstName} {LastName}";

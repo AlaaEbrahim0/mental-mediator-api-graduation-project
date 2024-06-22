@@ -6,14 +6,14 @@ public class Post
 {
 	public int Id { get; set; }
 
-	public string AppUserId { get; set; } = null!;
+	public string AppUserId { get; set; } = string.Empty;
 
 	[NotMapped]
 	public string? Username { get; set; }
 
-	public string Title { get; set; } = null!;
+	public string Title { get; set; } = string.Empty;
 
-	public string Content { get; set; } = null!;
+	public string Content { get; set; } = string.Empty;
 
 	public bool IsAnonymous { get; set; }
 

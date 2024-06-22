@@ -6,4 +6,5 @@ public interface IUserClaimsService
 	string GetUserName();
 	string GetRole();
 	string GetPhotoUrl();
+	string GetEmail();
 }

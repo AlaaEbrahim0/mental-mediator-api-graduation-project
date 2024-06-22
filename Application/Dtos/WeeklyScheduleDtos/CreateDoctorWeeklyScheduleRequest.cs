@@ -5,6 +5,8 @@ namespace Application.Dtos.WeeklyScheduleDtos;
 
 public class CreateDoctorWeeklyScheduleRequest
 {
+	public string Location { get; set; } = string.Empty;
+	public decimal Fees { get; set; }
 	public List<CreateScheduleWeekDayRequest> WeekDays { get; set; } = new();
 }
 
@@ -12,6 +14,13 @@ public class CreateDoctorWeeklyScheduleRequestValidator : AbstractValidator<Crea
 {
 	public CreateDoctorWeeklyScheduleRequestValidator()
 	{
+		RuleFor(x => x.Location)
+			.NotEmpty();
+
+		RuleFor(x => x.Fees)
+			.NotEmpty()
+			.GreaterThanOrEqualTo(1);
+
 		RuleFor(x => x.WeekDays)
 			.NotEmpty()
 			.WithMessage("Available days cannot be empty")
