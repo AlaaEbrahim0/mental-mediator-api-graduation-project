@@ -1,4 +1,5 @@
-﻿using System.ComponentModel.DataAnnotations.Schema;
+﻿
+using System.ComponentModel.DataAnnotations.Schema;
 using Domain.Enums;
 using Domain.States.AppointmentStates;
 using Shared;
@@ -50,6 +51,8 @@ public class Appointment
 	public string? CancellationReason { get; set; }
 
 	public string? RejectionReason { get; set; }
+
+	public decimal Fees { get; set; }
 
 	[NotMapped]
 	private IAppointmentState State => Status switch

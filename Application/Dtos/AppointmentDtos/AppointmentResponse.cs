@@ -10,6 +10,8 @@ public class AppointmentResponse
 	public DateTime StartTime { get; set; }
 	public TimeSpan Duration { get; set; }
 
+	public decimal Fees { get; set; }
+
 	public string ClientName { get; set; } = string.Empty;
 	public string ClientEmail { get; set; } = string.Empty;
 	public string? ClientPhotoUrl { get; set; }
