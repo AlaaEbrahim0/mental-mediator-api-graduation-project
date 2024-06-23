@@ -111,13 +111,14 @@ namespace Application.Services
 		public async Task<Result<PostResponse>> DeletePost(int id)
 		{
 			var userId = _userClaimsService.GetUserId();
+			var userRole = _userClaimsService.GetRole();
 
 			var post = await _repos.Posts.GetPostById(id, true);
 			if (post is null)
 			{
 				return PostErrors.NotFound(id);
 			}
-			if (!post.AppUserId!.Equals(userId))
+			if (!post.AppUserId!.Equals(userId) && userRole != "Admin")
 			{
 				return PostErrors.Forbidden(post.Id);
 			}

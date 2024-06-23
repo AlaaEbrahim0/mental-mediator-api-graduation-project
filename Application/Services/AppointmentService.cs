@@ -220,7 +220,7 @@ public class AppointmentService : IAppointmentService
 		return appointmentResponse;
 	}
 
-	public async Task<Result<List<AppointmentResponse>>> GetAppointements(RequestParameters request)
+	public async Task<Result<List<AppointmentResponse>>> GetAppointements(AppointmentRequestParameters request)
 	{
 		var appointments = await _repos.Appointements.GetAll(request, false);
 		var appointmentsResponse = _mapper.Map<List<AppointmentResponse>>(appointments);

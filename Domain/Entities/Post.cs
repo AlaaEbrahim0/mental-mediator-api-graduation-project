@@ -8,6 +8,7 @@ public class Post
 
 	public string AppUserId { get; set; } = string.Empty;
 
+
 	[NotMapped]
 	public string? Username { get; set; }
 

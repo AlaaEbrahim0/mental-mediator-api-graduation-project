@@ -5,7 +5,7 @@ namespace Domain.Repositories;
 
 public interface IAppointementRepository
 {
-	Task<IEnumerable<Appointment>> GetAll(RequestParameters request, bool trackChanges);
+	Task<IEnumerable<Appointment>> GetAll(AppointmentRequestParameters request, bool trackChanges);
 	Task<IEnumerable<Appointment>> GetByUserId(string userId, RequestParameters request, bool trackChanges);
 	Task<IEnumerable<Appointment>> GetByDoctorId(string userId, RequestParameters request, bool trackChanges);
 	void CreateAppointment(Appointment appointment);

@@ -24,8 +24,35 @@ public class PostRepository : RepositoryBase<Post>, IPostRepository
 
 	public async Task<IEnumerable<Post>> GetAllPosts(PostRequestParameters parameters, bool trackChanges)
 	{
-		return await
-			FindByCondition(x => !x.IsAnonymous, trackChanges)
+		var query = FindByCondition(x => !x.IsAnonymous, trackChanges);
+
+		if (!string.IsNullOrEmpty(parameters.Title))
+		{
+			query = query.Where(p => p.Title.Contains(parameters.Title));
+		}
+
+		if (!string.IsNullOrEmpty(parameters.Content))
+		{
+			query = query.Where(p => p.Content.Contains(parameters.Content));
+		}
+
+		if (!string.IsNullOrEmpty(parameters.Username))
+		{
+			query = query.Where(p => p.AppUser.FirstName.Contains(parameters.Username) || p.AppUser.LastName.Contains(parameters.Username));
+
+		}
+
+		if (parameters.StartTime != DateTime.MinValue)
+		{
+			query = query.Where(p => p.PostedOn >= parameters.StartTime);
+		}
+
+		if (parameters.EndTime != DateTime.MinValue)
+		{
+			query = query.Where(p => p.PostedOn <= parameters.EndTime);
+		}
+
+		var posts = await query
 			.OrderByDescending(c => c.PostedOn)
 			.Select(p => new Post
 			{
@@ -43,7 +70,9 @@ public class PostRepository : RepositoryBase<Post>, IPostRepository
 			.Paginate(parameters.PageNumber, parameters.PageSize)
 			.ToListAsync();
 
+		return posts;
 	}
+
 
 	public async Task<IEnumerable<Post>> GetConfessionOnly(PostRequestParameters parameters, bool trackChanges)
 	{

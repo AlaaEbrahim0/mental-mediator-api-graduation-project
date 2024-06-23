@@ -1,4 +1,5 @@
 ﻿using Domain.Entities;
+using Domain.Enums;
 using Domain.Repositories;
 using Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
@@ -20,35 +21,64 @@ public class AppointmentRepository : RepositoryBase<Appointment>, IAppointementR
 		Delete(appointment);
 	}
 
-	public async Task<IEnumerable<Appointment>> GetAll(RequestParameters requestParameters, bool trackChanges)
+	public async Task<IEnumerable<Appointment>> GetAll(AppointmentRequestParameters requestParameters, bool trackChanges)
 	{
-		return await
-			FindAll(trackChanges)
-			.Include(x => x.User)
-			.Include(x => x.Doctor)
-			.OrderByDescending(x => x.StartTime)
-			.Select(x => new Appointment
-			{
-				Id = x.Id,
-				DoctorId = x.DoctorId,
-				UserId = x.UserId,
-				ClientName = x.User.FullName,
-				DoctorName = x.Doctor.FullName,
-				DoctorPhotoUrl = x.Doctor.PhotoUrl,
-				ClientPhotoUrl = x.User.PhotoUrl,
-				ClientEmail = x.User.Email!,
-				DoctorEmail = x.Doctor.Email!,
-				Fees = x.Fees,
-				StartTime = x.StartTime,
-				Duration = x.Duration,
-				Status = x.Status,
-				Location = x.Location,
-				CancellationReason = x.CancellationReason,
-				RejectionReason = x.RejectionReason,
-			})
-			.Paginate(requestParameters.PageNumber, requestParameters.PageSize)
-			.ToListAsync();
+		var query = FindAll(trackChanges)
+					.Include(x => x.User)
+					.Include(x => x.Doctor)
+					.AsQueryable();
+
+		if (!string.IsNullOrEmpty(requestParameters.DoctorId))
+		{
+			query = query.Where(x => x.DoctorId == requestParameters.DoctorId);
+		}
+
+		if (!string.IsNullOrEmpty(requestParameters.UserId))
+		{
+			query = query.Where(x => x.UserId == requestParameters.UserId);
+		}
+
+		if (requestParameters.StartDate.HasValue)
+		{
+			query = query.Where(x => x.StartTime >= requestParameters.StartDate.Value);
+		}
+
+		if (requestParameters.EndDate.HasValue)
+		{
+			query = query.Where(x => x.StartTime <= requestParameters.EndDate.Value);
+		}
+
+		if (!string.IsNullOrEmpty(requestParameters.Status) &&
+			Enum.TryParse<AppointmentStatus>(requestParameters.Status, out AppointmentStatus status))
+		{
+			query = query.Where(x => x.Status == status);
+		}
+
+		return await query
+					.OrderByDescending(x => x.StartTime)
+					.Select(x => new Appointment
+					{
+						Id = x.Id,
+						DoctorId = x.DoctorId,
+						UserId = x.UserId,
+						ClientName = x.User.FullName,
+						DoctorName = x.Doctor.FullName,
+						DoctorPhotoUrl = x.Doctor.PhotoUrl,
+						ClientPhotoUrl = x.User.PhotoUrl,
+						ClientEmail = x.User.Email!,
+						DoctorEmail = x.Doctor.Email!,
+						Fees = x.Fees,
+						StartTime = x.StartTime,
+						Duration = x.Duration,
+						Status = x.Status,
+						Location = x.Location,
+						CancellationReason = x.CancellationReason,
+						RejectionReason = x.RejectionReason,
+					})
+					.Paginate(requestParameters.PageNumber, requestParameters.PageSize)
+					.ToListAsync();
 	}
+
 
 	public async Task<IEnumerable<Appointment>> GetByDoctorId(string doctorId, RequestParameters requestParameters, bool trackChanges)
 	{

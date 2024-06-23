@@ -56,11 +56,6 @@ public class DoctorService : IDoctorService
 
 	public async Task<Result<DoctorInfoResponse>> UpdateDoctorInfo(string doctorId, UpdateDoctorInfoRequest request)
 	{
-		var currentUserId = _userClaimsService.GetUserId();
-		if (!currentUserId.Equals(doctorId))
-		{
-			return Error.Forbidden("Users.ForbiddenInfo", "you don't have permission to access this resource");
-		}
 		var user = await _repoManager.Doctors.GetById(doctorId, true);
 
 		if (user is null)

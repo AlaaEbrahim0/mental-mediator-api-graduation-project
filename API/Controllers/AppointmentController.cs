@@ -18,7 +18,7 @@ public class AppointmentController : ControllerBase
 
 	[HttpGet]
 	[Authorize(Roles = "Admin")]
-	public async Task<IActionResult> GetAll([FromQuery] RequestParameters request)
+	public async Task<IActionResult> GetAll([FromQuery] AppointmentRequestParameters request)
 	{
 		var result = await _appointmentService.GetAppointements(request);
 		if (result.IsFailure)

@@ -20,6 +20,11 @@ public class RequestParameters
 
 public class PostRequestParameters : RequestParameters
 {
+	public string? Title { get; set; } = string.Empty;
+	public string? Content { get; set; } = string.Empty;
+	public string? Username { get; set; } = string.Empty;
+	public DateTime StartTime { get; set; }
+	public DateTime EndTime { get; set; }
 	public bool ConfessionsOnly { get; set; }
 }
 public class DoctorRequestParameters : RequestParameters
@@ -31,4 +36,11 @@ public class DoctorRequestParameters : RequestParameters
 	public decimal MinFees { get; set; }
 	public decimal MaxFees { get; set; }
 }
-
+public class AppointmentRequestParameters : RequestParameters
+{
+	public string? DoctorId { get; set; }
+	public string? UserId { get; set; }
+	public DateTime? StartDate { get; set; }
+	public DateTime? EndDate { get; set; }
+	public string? Status { get; set; }
+}

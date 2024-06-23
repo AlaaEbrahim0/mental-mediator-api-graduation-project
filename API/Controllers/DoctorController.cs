@@ -7,7 +7,7 @@ namespace API.Controllers;
 
 [ApiController]
 [Route("api/doctors")]
-[Authorize(Roles = "Doctor, Admin")]
+[Authorize(Roles = "Doctor")]
 public class DoctorController : ControllerBase
 {
 	private readonly IDoctorService _doctorService;
@@ -32,6 +32,7 @@ public class DoctorController : ControllerBase
 	}
 
 	[HttpGet("{id}")]
+	[Authorize("Admin")]
 	public async Task<IActionResult> GetDoctorProfile(string id)
 	{
 		var result = await _doctorService.GetDoctorInfo(id);
@@ -44,6 +45,7 @@ public class DoctorController : ControllerBase
 
 
 	[HttpPut("{id}")]
+	[Authorize("Admin")]
 	public async Task<IActionResult> UpdateDoctorProfile(string id, [FromForm] UpdateDoctorInfoRequest request)
 	{
 		var result = await _doctorService.UpdateDoctorInfo(id, request);

@@ -140,7 +140,8 @@ public class CommentService : ICommentService
 		}
 
 		var userId = _userClaimsService.GetUserId();
-		if (!comment.AppUserId!.Equals(userId))
+		var userRole = _userClaimsService.GetRole();
+		if (!comment.AppUserId!.Equals(userId) && userRole != "Admin")
 		{
 			return CommentErrors.Forbidden(commentId);
 		}

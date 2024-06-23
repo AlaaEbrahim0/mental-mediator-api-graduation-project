@@ -101,7 +101,9 @@ public class ReplyService : IReplyService
 		}
 
 		var userId = _userClaimsService.GetUserId();
-		if (!reply.AppUserId!.Equals(userId))
+		var userRole = _userClaimsService.GetRole();
+
+		if (!reply.AppUserId!.Equals(userId) && userRole != "Admin")
 		{
 			return ReplyErrors.Forbidden(replyId);
 		}

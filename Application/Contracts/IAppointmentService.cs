@@ -4,7 +4,7 @@ using Shared;
 namespace Application.Contracts;
 public interface IAppointmentService
 {
-	Task<Result<List<AppointmentResponse>>> GetAppointements(RequestParameters request);
+	Task<Result<List<AppointmentResponse>>> GetAppointements(AppointmentRequestParameters request);
 	Task<Result<List<AppointmentResponse>>> GetDoctorAppointments(RequestParameters request);
 	Task<Result<List<AppointmentResponse>>> GetClientAppointments(RequestParameters request);
 	Task<Result<AppointmentResponse?>> GetAppointment(int id);
