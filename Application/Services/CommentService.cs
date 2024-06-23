@@ -118,6 +118,9 @@ public class CommentService : ICommentService
 
 			await _notificationService.SendNotificationAsync(notification);
 		}
+		await _cacheService.RemoveByAsync("all_posts_");
+		await _cacheService.RemoveByAsync("confessions_page_");
+
 
 		var commentResponse = _mapper.Map<CommentResponse>(comment);
 		return commentResponse;
@@ -144,6 +147,9 @@ public class CommentService : ICommentService
 
 		_repos.Comments.DeleteComment(comment);
 		await _repos.SaveAsync();
+
+		await _cacheService.RemoveByAsync("all_posts_");
+		await _cacheService.RemoveByAsync("confessions_page_");
 
 		var commentResponse = _mapper.Map<CommentResponse>(comment);
 		return commentResponse;
@@ -179,6 +185,9 @@ public class CommentService : ICommentService
 
 		_repos.Comments.UpdateComment(comment);
 		await _repos.SaveAsync();
+
+		await _cacheService.RemoveByAsync("all_posts_");
+		await _cacheService.RemoveByAsync("confessions_page_");
 
 		var commentResponse = _mapper.Map<CommentResponse>(comment);
 		return commentResponse;

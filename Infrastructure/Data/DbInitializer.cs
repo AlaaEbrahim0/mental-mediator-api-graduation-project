@@ -1,7 +1,7 @@
 ﻿using Bogus;
 using Domain.Entities;
+using Domain.Enums;
 using Microsoft.AspNetCore.Builder;
-using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Infrastructure.Data;
@@ -32,34 +32,8 @@ public static class DbInitializer
 			return;
 		}
 
-		var rolesIds = Enumerable
-			.Range(1, 3)
-			.Select(x => Guid.NewGuid()
-			.ToString())
-			.ToArray();
-
-		var roles = new List<IdentityRole>()
-		{
-			new IdentityRole() { Id = rolesIds[0], Name = "User", NormalizedName = "USER"},
-
-			new IdentityRole() { Id = rolesIds[1], Name = "Admin", NormalizedName = "ADMIN"},
-
-			new IdentityRole() { Id = rolesIds[2], Name = "Doctor", NormalizedName = "DOCTOR"},
-		};
-
-		context.Roles.AddRange(roles);
-
-		var userIds = Enumerable
-			.Range(1, 25)
-			.Select(x => Guid.NewGuid().ToString())
-			.ToArray();
-
-		int id = 0;
-
-
-
 		var userFaker = new Faker<BaseUser>()
-			.RuleFor(u => u.Id, set => userIds[id++])
+			.RuleFor(u => u.Id, set => Guid.NewGuid().ToString())
 			.RuleFor(u => u.FirstName, set => set.Person.FirstName)
 			.RuleFor(u => u.LastName, set => set.Person.LastName)
 			.RuleFor(u => u.BirthDate, set => set.Date.BetweenDateOnly(new DateOnly(1950, 1, 1), new DateOnly(2003, 1, 1)))
@@ -72,65 +46,19 @@ public static class DbInitializer
 			.RuleFor(u => u.EmailConfirmed, set => true);
 
 
-
 		var users = userFaker.Generate(25);
+		var doctorFaker = new Faker<Doctor>()
+			.RuleFor(x => x.Biography, set => set.Lorem.Sentences(set.PickRandom(1, 2, 3)))
+			.RuleFor(x => x.SessionFees, set => set.Random.Number(100, 2000))
+			.RuleFor(x => x.Location, set => set.Address.FullAddress())
+			.RuleFor(x => x.Specialization, set => set.PickRandomParam(Enum.GetValues<DoctorSpecialization>())); ;
 
-		context.AddRange(users);
-
-		id = 0;
-
-		foreach (var user in users)
+		for (int i = 0; i < users.Count; ++i)
 		{
-			context.UserRoles.Add(new IdentityUserRole<string>()
-			{ UserId = user.Id, RoleId = rolesIds[0] });
+			doctorFaker.RuleFor(x => x.Id, setter => users[i].Id);
 		}
+		var doctor = doctorFaker.Generate(25);
 
-		var postFaker = new Faker<Post>();
 
-		var faker = new Faker();
-
-		string postTitle = faker.Lorem.Text();
-		string postBody = faker.Lorem.Sentences(faker.PickRandom(1, 2, 3, 4, 5, 6, 7, 8, 9, 10));
-
-		postTitle = postTitle.Substring(0, Math.Min(postTitle.Length, 255));
-		postBody = postBody.Substring(0, Math.Min(postBody.Length, 2047));
-
-		postFaker
-		.RuleFor(x => x.PostedOn, set => set.Date.Past())
-		.RuleFor(x => x.Title, postTitle)
-		.RuleFor(x => x.Content, postBody)
-		.RuleFor(x => x.AppUserId, set => set.Random.ArrayElement(userIds));
-
-		var posts = postFaker.Generate(100);
-		context.AddRange(posts);
-		var postIds = Enumerable.Range(1, 100).ToArray();
-
-		context.SaveChanges();
-
-		var commentFaker = new Faker<Comment>()
-			.RuleFor(c => c.AppUserId, set => set.Random.ArrayElement(userIds))
-			.RuleFor(c => c.CommentedAt, set => set.Date.Past())
-			.RuleFor(c => c.Content, set => set.Lorem.Sentences(set.PickRandom(1, 2, 3)))
-			.RuleFor(c => c.PostId, set => set.Random.ArrayElement(postIds));
-
-		var comments = commentFaker.Generate(250);
-		context.AddRange(comments);
-		var commentIds = Enumerable.Range(1, 250).ToArray();
-
-		context.SaveChanges();
-
-		var replyFaker = new Faker<Reply>()
-			.RuleFor(c => c.AppUserId, set => set.Random.ArrayElement(userIds))
-			.RuleFor(c => c.RepliedAt, set => set.Date.Past())
-			.RuleFor(c => c.Content, set => set.Lorem.Sentences(set.PickRandom(1, 2, 3)))
-			.RuleFor(c => c.CommentId, set => set.Random.ArrayElement(commentIds));
-
-		var replies = replyFaker.Generate(500);
-
-		context.Replies.AddRange(replies);
-
-		context.SaveChanges();
-
-		Console.WriteLine("database was seeded successfully");
 	}
 }
