@@ -28,31 +28,8 @@ namespace Application.Services
 
 		public async Task<Result<IEnumerable<PostResponse>>> GetPosts(PostRequestParameters parameters)
 		{
-			string cacheKey = parameters.ConfessionsOnly ?
-				$"confessions_page_{parameters.PageNumber}" :
-				$"all_posts_page_{parameters.PageNumber}";
-
-			var cachedPosts = await _cacheService.GetAsync<List<PostResponse>>(cacheKey);
-
-			if (cachedPosts is not null)
-			{
-				return cachedPosts;
-			}
-
-			IEnumerable<Post> posts;
-			if (parameters.ConfessionsOnly)
-			{
-				posts = await _repos.Posts.GetConfessionOnly(parameters, false);
-			}
-			else
-			{
-				posts = await _repos.Posts.GetAllPosts(parameters, false);
-			}
-
+			var posts = await _repos.Posts.GetConfessionOnly(parameters, false);
 			var postResponse = _mapper.Map<IEnumerable<PostResponse>>(posts);
-
-			await _cacheService.SetAsync(cacheKey, postResponse, TimeSpan.FromMinutes(5));
-
 			return postResponse.ToList();
 		}
 
@@ -101,8 +78,6 @@ namespace Application.Services
 			_repos.Posts.CreatePost(post);
 
 			await _repos.SaveAsync();
-			await _cacheService.RemoveByAsync("all_posts_");
-			await _cacheService.RemoveByAsync("confessions_page_");
 
 			var postResponse = _mapper.Map<PostResponse>(post);
 			return postResponse;
@@ -125,8 +100,6 @@ namespace Application.Services
 
 			_repos.Posts.DeletePost(post);
 			await _repos.SaveAsync();
-			await _cacheService.RemoveByAsync("all_posts_");
-			await _cacheService.RemoveByAsync("confessions_page_");
 
 			var postResponse = _mapper.Map<PostResponse>(post);
 			return postResponse;
@@ -168,8 +141,6 @@ namespace Application.Services
 			_repos.Posts.UpdatePost(post);
 			await _repos.SaveAsync();
 
-			await _cacheService.RemoveByAsync("all_posts_");
-			await _cacheService.RemoveByAsync("confessions_page_");
 
 			var postResponse = _mapper.Map<PostResponse>(post);
 			return postResponse;

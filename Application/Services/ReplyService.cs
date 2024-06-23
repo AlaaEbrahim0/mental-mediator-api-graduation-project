@@ -84,8 +84,6 @@ public class ReplyService : IReplyService
 
 			await _notificationService.SendNotificationAsync(notification);
 		}
-		await _cacheService.RemoveByAsync("all_posts_");
-		await _cacheService.RemoveByAsync("confessions_page_");
 
 		var replyResponse = _mapper.Map<ReplyResponse>(reply);
 		return replyResponse;
@@ -111,8 +109,6 @@ public class ReplyService : IReplyService
 		_repos.Replies.DeleteReply(reply);
 		await _repos.SaveAsync();
 
-		await _cacheService.RemoveByAsync("all_posts_");
-		await _cacheService.RemoveByAsync("confessions_page_");
 
 		var replyResponse = _mapper.Map<ReplyResponse>(reply);
 		return replyResponse;
@@ -166,10 +162,6 @@ public class ReplyService : IReplyService
 
 		_repos.Replies.UpdateReply(reply);
 		await _repos.SaveAsync();
-
-		await _cacheService.RemoveByAsync("all_posts_");
-		await _cacheService.RemoveByAsync("confessions_page_");
-
 
 		var replyResponse = _mapper.Map<ReplyResponse>(reply);
 		return replyResponse;
