@@ -1,4 +1,6 @@
 ﻿
+using FluentValidation;
+
 namespace Application.Dtos.AppointmentDtos;
 public class CreateAppointmentRequest
 {
@@ -25,7 +27,7 @@ public class CreateAppointmentRequestValidator : AbstractValidator<CreateAppoint
 			.NotEmpty().When(x => !string.IsNullOrEmpty(x.Location)).WithMessage("Location cannot be empty if specified.");
 
 		RuleFor(x => x.Reason)
-			.MaximumLength(500).WithMessage("Reason must not exceed 500 characters.");
+			.MaximumLength(1000).WithMessage("Reason must not exceed 500 characters.");
 
 		RuleFor(x => x.Fees)
 			.GreaterThanOrEqualTo(0).WithMessage("Fees must be greater than or equal to zero.");

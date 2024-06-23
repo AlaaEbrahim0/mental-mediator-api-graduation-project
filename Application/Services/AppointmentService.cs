@@ -145,6 +145,7 @@ public class AppointmentService : IAppointmentService
 		appointment.ClientEmail = userEmail;
 		appointment.ClientName = userName;
 		appointment.DoctorPhotoUrl = doctor.PhotoUrl;
+		appointment.ClientPhotoUrl = photoUrl;
 
 		_repos.Appointements.CreateAppointment(appointment);
 		await _repos.SaveAsync();

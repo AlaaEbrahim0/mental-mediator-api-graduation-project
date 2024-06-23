@@ -29,7 +29,8 @@ public class UserClaimsService : IUserClaimsService
 
 	public string GetEmail()
 	{
-		return _signInManager.Context.User.FindFirst(JwtRegisteredClaimNames.Email)!.Value;
+		var email = _signInManager.Context.User.FindFirst(JwtRegisteredClaimNames.Jti)!.Value;
+		return email;
 	}
 
 	public string GetRole()
