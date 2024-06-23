@@ -28,7 +28,7 @@ namespace Application.Services
 
 		public async Task<Result<IEnumerable<PostResponse>>> GetPosts(PostRequestParameters parameters)
 		{
-			var posts = await _repos.Posts.GetConfessionOnly(parameters, false);
+			var posts = await _repos.Posts.GetAllPosts(parameters, false);
 			var postResponse = _mapper.Map<IEnumerable<PostResponse>>(posts);
 			return postResponse.ToList();
 		}

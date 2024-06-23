@@ -24,7 +24,9 @@ public class PostRepository : RepositoryBase<Post>, IPostRepository
 
 	public async Task<IEnumerable<Post>> GetAllPosts(PostRequestParameters parameters, bool trackChanges)
 	{
-		var query = FindByCondition(x => x.IsAnonymous == parameters.ConfessionsOnly, trackChanges);
+		var query = FindAll(trackChanges);
+
+		query = query.Where(p => p.IsAnonymous == parameters.ConfessionsOnly);
 
 		if (!string.IsNullOrEmpty(parameters.Title))
 		{
