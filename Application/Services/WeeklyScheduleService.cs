@@ -71,8 +71,12 @@ public class WeeklyScheduleService : IWeeklyScheduleService
 		schedule = _mapper.Map<WeeklySchedule>(request);
 		schedule.WeekDays.ForEach(x => x.DoctorId = doctorId);
 
-		await _repoManager.DoctorSchedule.CreateDoctorWeeklySchedule(doctorId, schedule);
+		//doctor.SessionFees = request.SessionFees;
+		//doctor.Location = request.Location;
 
+		//_repoManager.Doctors.UpdateDoctor(doctor);
+
+		await _repoManager.DoctorSchedule.CreateDoctorWeeklySchedule(doctorId, schedule);
 		await _repoManager.SaveAsync();
 
 		var response = _mapper.Map<DoctorWeeklyScheduleResponse>(schedule);

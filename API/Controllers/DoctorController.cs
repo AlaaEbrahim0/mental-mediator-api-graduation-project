@@ -20,7 +20,7 @@ public class DoctorController : ControllerBase
 	}
 
 	[HttpGet]
-	[AllowAnonymous]
+	[Authorize]
 	public async Task<IActionResult> GetDoctors([FromQuery] DoctorRequestParameters request)
 	{
 		var result = await _doctorService.GetAll(request);
@@ -29,10 +29,11 @@ public class DoctorController : ControllerBase
 			return result.ToProblemDetails();
 		}
 		return Ok(result.Value);
+
 	}
 
 	[HttpGet("{id}")]
-	[Authorize("Admin")]
+	[Authorize]
 	public async Task<IActionResult> GetDoctorProfile(string id)
 	{
 		var result = await _doctorService.GetDoctorInfo(id);
