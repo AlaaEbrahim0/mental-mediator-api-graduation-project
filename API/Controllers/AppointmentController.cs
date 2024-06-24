@@ -53,7 +53,7 @@ public class AppointmentController : ControllerBase
 	}
 
 	[HttpGet("{id:int}")]
-	[Authorize(Roles = "User, Doctor, Admin")]
+	[Authorize]
 	public async Task<IActionResult> GetById(int id)
 	{
 		var result = await _appointmentService.GetAppointment(id);

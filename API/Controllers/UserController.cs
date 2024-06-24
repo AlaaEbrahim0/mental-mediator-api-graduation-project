@@ -24,6 +24,7 @@ public class UserController : ControllerBase
 	}
 
 	[HttpGet("{id}")]
+	[Authorize(Roles = "User, Admin")]
 	public async Task<IActionResult> GetUserProfile(string id)
 	{
 		var result = await _userService.GetUserInfo(id);
@@ -57,6 +58,7 @@ public class UserController : ControllerBase
 	}
 
 	[HttpPut("{id}")]
+	[Authorize(Roles = "User, Admin")]
 	public async Task<IActionResult> UpdateUserProfile(string id, [FromForm] UpdateUserInfoRequest request)
 	{
 		var result = await _userService.UpdateUserInfo(id, request);
@@ -68,6 +70,7 @@ public class UserController : ControllerBase
 	}
 
 	[HttpPut("me")]
+	[Authorize(Roles = "User")]
 	public async Task<IActionResult> UpdateUserProfile([FromForm] UpdateUserInfoRequest request)
 	{
 		var result = await _userService.UpdateCurrentUserInfo(request);

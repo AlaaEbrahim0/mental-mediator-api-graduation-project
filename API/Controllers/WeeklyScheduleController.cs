@@ -17,7 +17,7 @@ public class WeeklyScheduleController : ControllerBase
 	}
 
 	[HttpGet]
-	[AllowAnonymous]
+	[Authorize]
 	public async Task<IActionResult> GetSchedule(string doctorId)
 	{
 		var result = await _scheduleService.GetWeeklySchedule(doctorId);
@@ -30,7 +30,7 @@ public class WeeklyScheduleController : ControllerBase
 
 
 	[HttpGet("days/{day}")]
-	[AllowAnonymous]
+	[Authorize]
 	public async Task<IActionResult> GetScheduleDay(string doctorId, DayOfWeek day)
 	{
 		var result = await _scheduleService.GetDay(doctorId, day);
