@@ -86,10 +86,12 @@ public class CommentService : ICommentService
 		comment.PostId = postId;
 		comment.PhotoUrl = userPhotoUrl;
 		comment.CommentedAt = DateTime.UtcNow;
+		comment.Username = userName;
 
-		if (!post.IsAnonymous)
+		if (post.IsAnonymous && post.AppUserId == userId)
 		{
-			comment.Username = userName;
+			comment.Username = "Anonymous";
+			comment.PhotoUrl = null;
 		}
 
 		_repos.Comments.CreateComment(comment);
