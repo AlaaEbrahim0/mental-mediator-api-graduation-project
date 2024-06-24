@@ -63,8 +63,8 @@ public class PostRepository : RepositoryBase<Post>, IPostRepository
 				PostedOn = p.PostedOn,
 				Title = p.Title,
 				IsAnonymous = p.IsAnonymous,
-				Username = p.AppUser!.FullName,
-				PhotoUrl = p.AppUser!.PhotoUrl,
+				Username = p.IsAnonymous ? null : p.AppUser!.FullName,
+				PhotoUrl = p.IsAnonymous ? null : p.AppUser!.PhotoUrl,
 				PostPhotoUrl = p.PostPhotoUrl,
 				CommentsCount = p.Comments.Count()
 			})
