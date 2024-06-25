@@ -32,20 +32,22 @@ public class CommentService : ICommentService
 
 	public async Task<Result<IEnumerable<CommentResponse>>> GetCommentsByPostId(int postId)
 	{
-		var cachedComments = await _cacheService
-			.GetAsync<List<CommentResponse>>("comments");
-
-		if (cachedComments is not null)
-		{
-			return cachedComments;
-		}
-
 		var comments = await _repos.Comments
 			.GetAllCommentsByPostId(postId, false);
 
-		var commentsResponse = _mapper.Map<IEnumerable<CommentResponse>>(comments);
+		var userId = _userClaimsService.GetUserId();
 
-		//await _cacheService.SetAsync("comments", commentsResponse);
+		comments = comments
+			.Where(comment => comment.Post.IsAnonymous && comment.Post.AppUserId == userId)
+			.Select(comment =>
+			{
+				comment.PhotoUrl = null;
+				comment.Username = null;
+				return comment;
+			})
+			.ToList();
+
+		var commentsResponse = _mapper.Map<IEnumerable<CommentResponse>>(comments);
 
 		return commentsResponse.ToList();
 	}
@@ -90,7 +92,7 @@ public class CommentService : ICommentService
 
 		if (post.IsAnonymous && post.AppUserId == userId)
 		{
-			comment.Username = "Anonymous";
+			comment.Username = null;
 			comment.PhotoUrl = null;
 		}
 
