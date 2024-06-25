@@ -186,6 +186,7 @@ public class WeeklyScheduleService : IWeeklyScheduleService
 		}
 
 		weekDay = _mapper.Map<DoctorScheduleWeekDay>(request);
+		weekDay.DayOfWeek = dayOfWeek;
 		weekDay.DoctorId = doctorId;
 
 		_repoManager.DoctorSchedule.UpdateScheduleWeekDay(weekDay);
