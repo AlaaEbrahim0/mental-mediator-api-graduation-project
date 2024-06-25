@@ -10,13 +10,13 @@ using Shared;
 namespace Application.Services;
 public class CommentService : ICommentService
 {
-	private readonly IRepositoryManager _repos;
-	private readonly IMapper _mapper;
-	private readonly IUserClaimsService _userClaimsService;
 	private readonly UserManager<BaseUser> _userManager;
 	private readonly INotificationService _notificationService;
 	private readonly IHateSpeechDetector _hateSpeechDetector;
+	private readonly IUserClaimsService _userClaimsService;
+	private readonly IRepositoryManager _repos;
 	private readonly ICacheService _cacheService;
+	private readonly IMapper _mapper;
 
 	public CommentService(IRepositoryManager repos, IMapper mapper, IUserClaimsService userClaimsService, UserManager<BaseUser> userManager, INotificationService notificationService, IHateSpeechDetector hateSpeechDetector, ICacheService cacheService)
 	{
@@ -35,14 +35,15 @@ public class CommentService : ICommentService
 		var comments = await _repos.Comments
 			.GetAllCommentsByPostId(postId, false);
 
-		var userId = _userClaimsService.GetUserId();
-
 		comments = comments
-			.Where(comment => comment.Post.IsAnonymous && comment.Post.AppUserId == userId)
 			.Select(comment =>
 			{
-				comment.PhotoUrl = null;
-				comment.Username = null;
+				if (comment.Post.IsAnonymous &&
+					comment.Post.AppUserId == comment.AppUserId)
+				{
+					comment.PhotoUrl = null;
+					comment.Username = null;
+				}
 				return comment;
 			})
 			.ToList();
