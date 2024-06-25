@@ -20,7 +20,5 @@ public class CommentConfiguration : IEntityTypeConfiguration<Comment>
 			.WithOne(c => c.Comment)
 			.OnDelete(DeleteBehavior.Cascade);
 
-
-
 	}
 }

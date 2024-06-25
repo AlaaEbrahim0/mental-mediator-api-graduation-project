@@ -70,4 +70,9 @@ public class DoctorRepository : RepositoryBase<Doctor>, IDoctorRepository
 	{
 		Update(doctor);
 	}
+
+	public void DeleteDoctor(Doctor doctor)
+	{
+		Delete(doctor);
+	}
 }

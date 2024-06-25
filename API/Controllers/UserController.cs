@@ -4,6 +4,7 @@ using Application.Dtos.UserDtos;
 using Application.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Shared;
 
 namespace API.Controllers;
 
@@ -21,6 +22,18 @@ public class UserController : ControllerBase
 		_userService = userService;
 		_notificationService = notificationService;
 		_machineLearningService = machineLearingService;
+	}
+
+	[HttpGet]
+	[Authorize(Roles = "Admin")]
+	public async Task<IActionResult> GetAll([FromQuery] UserRequestParameters parameters)
+	{
+		var result = await _userService.GetAll(parameters);
+		if (result.IsFailure)
+		{
+			return result.ToProblemDetails();
+		}
+		return Ok(result.Value);
 	}
 
 	[HttpGet("{id}")]
@@ -74,6 +87,18 @@ public class UserController : ControllerBase
 	public async Task<IActionResult> UpdateUserProfile([FromForm] UpdateUserInfoRequest request)
 	{
 		var result = await _userService.UpdateCurrentUserInfo(request);
+		if (result.IsFailure)
+		{
+			return result.ToProblemDetails();
+		}
+		return Ok(result.Value);
+	}
+
+	[HttpDelete]
+	[Authorize(Roles = "Admin")]
+	public async Task<IActionResult> DeleteUser(string userId)
+	{
+		var result = await _userService.DeleteUser(userId);
 		if (result.IsFailure)
 		{
 			return result.ToProblemDetails();

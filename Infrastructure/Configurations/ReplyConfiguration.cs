@@ -13,5 +13,6 @@ public class ReplyConfiguration : IEntityTypeConfiguration<Reply>
 			.Property(x => x.Content)
 			.IsRequired()
 			.HasMaxLength(1000);
+
 	}
 }

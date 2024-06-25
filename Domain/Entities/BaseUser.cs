@@ -20,6 +20,7 @@ public class BaseUser : IdentityUser
 	public override string UserName => Email!.Split('@')[0];
 
 	public List<Post> Posts { get; set; } = new();
+
 	public List<Notification> Notifications { get; set; } = new();
 }
 

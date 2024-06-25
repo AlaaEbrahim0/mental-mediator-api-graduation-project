@@ -80,6 +80,18 @@ public class DoctorController : ControllerBase
 		return Ok(result.Value);
 	}
 
+	[HttpDelete]
+	[Authorize(Roles = "Admin")]
+	public async Task<IActionResult> DeleteUser(string userId)
+	{
+		var result = await _doctorService.DeleteDoctor(userId);
+		if (result.IsFailure)
+		{
+			return result.ToProblemDetails();
+		}
+		return Ok(result.Value);
+	}
+
 
 
 }

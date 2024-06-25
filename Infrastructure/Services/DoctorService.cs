@@ -114,4 +114,20 @@ public class DoctorService : IDoctorService
 		var response = _mapper.Map<List<DoctorInfoResponse>>(doctors);
 		return response;
 	}
+
+	public async Task<Result<DoctorInfoResponse>> DeleteDoctor(string doctorId)
+	{
+		var doctor = await _repoManager.Doctors.GetById(doctorId, true);
+
+		if (doctor is null)
+		{
+			return UserErrors.NotFound(doctorId);
+		}
+
+		_repoManager.Doctors.DeleteDoctor(doctor);
+		await _repoManager.SaveAsync();
+
+		var response = _mapper.Map<DoctorInfoResponse>(doctor);
+		return response;
+	}
 }

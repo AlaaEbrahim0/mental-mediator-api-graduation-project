@@ -36,6 +36,13 @@ public class DoctorRequestParameters : RequestParameters
 	public decimal MinFees { get; set; }
 	public decimal MaxFees { get; set; }
 }
+
+public class UserRequestParameters : RequestParameters
+{
+	public string? Name { get; set; }
+	public string? Gender { get; set; }
+}
+
 public class AppointmentRequestParameters : RequestParameters
 {
 	public string? DoctorId { get; set; }

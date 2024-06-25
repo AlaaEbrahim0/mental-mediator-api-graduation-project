@@ -72,7 +72,7 @@ namespace Infrastructure.Migrations
 
                     b.HasIndex("UserId");
 
-                    b.ToTable("Appointments");
+                    b.ToTable("Appointments", (string)null);
                 });
 
             modelBuilder.Entity("Domain.Entities.BaseUser", b =>
@@ -191,7 +191,7 @@ namespace Infrastructure.Migrations
 
                     b.HasIndex("PostId");
 
-                    b.ToTable("Comments");
+                    b.ToTable("Comments", (string)null);
                 });
 
             modelBuilder.Entity("Domain.Entities.DoctorScheduleWeekDay", b =>
@@ -213,7 +213,7 @@ namespace Infrastructure.Migrations
 
                     b.HasKey("DoctorId", "DayOfWeek");
 
-                    b.ToTable("ScheduleWeekDays");
+                    b.ToTable("ScheduleWeekDays", (string)null);
                 });
 
             modelBuilder.Entity("Domain.Entities.Notification", b =>
@@ -259,7 +259,7 @@ namespace Infrastructure.Migrations
 
                     b.HasIndex("AppUserId");
 
-                    b.ToTable("Notifications");
+                    b.ToTable("Notifications", (string)null);
                 });
 
             modelBuilder.Entity("Domain.Entities.Post", b =>
@@ -298,7 +298,7 @@ namespace Infrastructure.Migrations
 
                     b.HasIndex("PostedOn");
 
-                    b.ToTable("Posts");
+                    b.ToTable("Posts", (string)null);
                 });
 
             modelBuilder.Entity("Domain.Entities.Reply", b =>
@@ -330,7 +330,7 @@ namespace Infrastructure.Migrations
 
                     b.HasIndex("CommentId");
 
-                    b.ToTable("Replies");
+                    b.ToTable("Replies", (string)null);
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRole", b =>
@@ -470,7 +470,7 @@ namespace Infrastructure.Migrations
                 {
                     b.HasBaseType("Domain.Entities.BaseUser");
 
-                    b.ToTable("Admins");
+                    b.ToTable("Admins", (string)null);
                 });
 
             modelBuilder.Entity("Domain.Entities.Doctor", b =>

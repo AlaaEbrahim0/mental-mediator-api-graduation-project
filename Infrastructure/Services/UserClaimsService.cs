@@ -15,7 +15,7 @@ public class UserClaimsService : IUserClaimsService
 
 	public string GetUserId()
 	{
-		return _signInManager.Context.User.FindFirst("uid")?.Value ?? string.Empty;
+		return _signInManager.Context.User.FindFirst("uid")!.Value;
 	}
 
 	public string GetUserName()
