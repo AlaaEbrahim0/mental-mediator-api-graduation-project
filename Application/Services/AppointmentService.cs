@@ -261,4 +261,6 @@ public class AppointmentService : IAppointmentService
 		var appointmentsResponse = _mapper.Map<List<AppointmentResponse>>(appointments);
 		return appointmentsResponse;
 	}
+
+
 }

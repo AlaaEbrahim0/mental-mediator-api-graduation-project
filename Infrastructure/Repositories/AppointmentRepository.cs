@@ -113,6 +113,24 @@ public class AppointmentRepository : RepositoryBase<Appointment>, IAppointementR
 			.ToListAsync();
 	}
 
+	public async Task<IEnumerable<Appointment>> GetByDoctorIdAndDate(string doctorId, DateTime date, bool trackChanges)
+	{
+		return await
+			FindByCondition(x =>
+				x.DoctorId == doctorId &&
+				x.StartTime.Date == date
+				//(x.Status == AppointmentStatus.Rejected || x.Status == AppointmentStatus.Cancelled)
+				,
+				trackChanges)
+			.Select(x => new Appointment
+			{
+				StartTime = x.StartTime,
+				Duration = x.Duration,
+				Status = x.Status,
+			})
+			.ToListAsync();
+	}
+
 	public async Task<Appointment?> GetById(int appointementId, bool trackChanges)
 	{
 		return await

@@ -28,7 +28,18 @@ public class DoctorController : ControllerBase
 			return result.ToProblemDetails();
 		}
 		return Ok(result.Value);
+	}
 
+	[HttpGet("{id}/slots")]
+	[Authorize]
+	public async Task<IActionResult> GetAvailableSlots(string id, [FromQuery] DateTime dateTime)
+	{
+		var result = await _doctorService.GetAvailableSlots(id, dateTime);
+		if (result.IsFailure)
+		{
+			return result.ToProblemDetails();
+		}
+		return Ok(result.Value);
 	}
 
 	[HttpGet("{id}")]

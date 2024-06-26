@@ -23,5 +23,6 @@ public class AppUserConfiguration : IEntityTypeConfiguration<BaseUser>
 			.HasPrincipalKey(x => x.Id)
 			.OnDelete(DeleteBehavior.Cascade);
 
+		builder.HasQueryFilter(x => !x.isDeleted);
 	}
 }

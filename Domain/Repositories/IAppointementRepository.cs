@@ -12,4 +12,5 @@ public interface IAppointementRepository
 	void DeleteAppointment(Appointment appointment);
 	void UpdateAppointment(Appointment appointment);
 	Task<Appointment?> GetById(int appointementId, bool trackChanges);
+	Task<IEnumerable<Appointment>> GetByDoctorIdAndDate(string doctorId, DateTime date, bool trackChanges);
 }

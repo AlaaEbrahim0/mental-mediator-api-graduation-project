@@ -13,5 +13,7 @@ public interface IDoctorService
 	IWeeklyScheduleService WeeklyScheduleService { get; }
 
 	Task<Result<DoctorInfoResponse>> DeleteDoctor(string doctorId);
+	Task<Result<List<TimeSpan>>> GetAvailableSlots(string doctorId, DateTime date);
+
 }
 

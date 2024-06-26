@@ -51,3 +51,10 @@ public class AppointmentRequestParameters : RequestParameters
 	public DateTime? EndDate { get; set; }
 	public string? Status { get; set; }
 }
+
+public class DoctorAppoinmentsRequestParameters : RequestParameters
+{
+	public DateTime? StartDate { get; set; }
+	public DateTime? EndDate { get; set; }
+	public string? Status { get; set; }
+}

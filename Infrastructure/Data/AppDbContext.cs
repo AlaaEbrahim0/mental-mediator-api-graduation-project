@@ -16,6 +16,8 @@ public class AppDbContext : IdentityDbContext<BaseUser>
 		builder.ApplyConfigurationsFromAssembly(Assembly.GetExecutingAssembly());
 
 		base.OnModelCreating(builder);
+
+
 	}
 
 	public DbSet<Post> Posts { get; set; }

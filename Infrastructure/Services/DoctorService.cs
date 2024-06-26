@@ -1,6 +1,7 @@
 ﻿using Application.Contracts;
 using Application.Dtos.UserDtos;
 using AutoMapper;
+using Domain.Entities;
 using Domain.Errors;
 using Shared;
 
@@ -124,10 +125,85 @@ public class DoctorService : IDoctorService
 			return UserErrors.NotFound(doctorId);
 		}
 
-		_repoManager.Doctors.DeleteDoctor(doctor);
+		doctor.isDeleted = true;
+		_repoManager.Doctors.UpdateDoctor(doctor);
 		await _repoManager.SaveAsync();
 
 		var response = _mapper.Map<DoctorInfoResponse>(doctor);
 		return response;
+	}
+
+	public async Task<Result<List<TimeSpan>>> GetAvailableSlots(string doctorId, DateTime date)
+	{
+		var appointments = await _repoManager.Appointements.GetByDoctorIdAndDate(doctorId, date, false);
+
+		var doctorScheduleWeekday = await _repoManager.DoctorSchedule.GetScheduleWeekDay(doctorId, date.DayOfWeek, false);
+
+		if (doctorScheduleWeekday is null)
+		{
+			return Enumerable.Empty<TimeSpan>().ToList();
+		}
+
+		var slots = DivideTimeSpanInterval(doctorScheduleWeekday.StartTime, doctorScheduleWeekday.EndTime, doctorScheduleWeekday.SessionDuration);
+
+		var availableSlots = FilterAvailableSlots(slots, appointments.ToList());
+
+		return availableSlots;
+	}
+
+	private List<TimeSpan> DivideTimeSpanInterval(TimeSpan startTime, TimeSpan endTime, TimeSpan intervalDuration)
+	{
+		List<TimeSpan> intervals = new List<TimeSpan>();
+
+		TimeSpan currentTime = startTime;
+
+		while (currentTime < endTime)
+		{
+			intervals.Add(currentTime);
+			currentTime = currentTime.Add(intervalDuration);
+		}
+
+		if (currentTime <= endTime)
+		{
+			intervals.Add(endTime);
+		}
+
+		return intervals;
+	}
+
+	private List<TimeSpan> FilterAvailableSlots(List<TimeSpan> slots, List<Appointment> appointments)
+	{
+		List<TimeSpan> availableSlots = new List<TimeSpan>();
+
+		foreach (var slot in slots)
+		{
+			bool isSlotAvailable = true;
+
+			foreach (var appointment in appointments)
+			{
+				if (IsOverlap(slot, slot.Add(appointment.Duration), appointment.StartTime, appointment.EndTime))
+				{
+					isSlotAvailable = false;
+					break;
+				}
+			}
+
+			if (isSlotAvailable)
+			{
+				availableSlots.Add(slot);
+			}
+		}
+
+		return availableSlots;
+	}
+
+	private bool IsOverlap(TimeSpan slotStart, TimeSpan slotEnd, DateTime appointmentStart, DateTime appointmentEnd)
+	{
+		// Convert slotStart and slotEnd to DateTime for comparison
+		DateTime slotStartTime = DateTime.Today.Add(slotStart);
+		DateTime slotEndTime = DateTime.Today.Add(slotEnd);
+
+		// Check if there is any overlap between two time intervals
+		return slotStartTime < appointmentEnd && slotEndTime > appointmentStart;
 	}
 }
