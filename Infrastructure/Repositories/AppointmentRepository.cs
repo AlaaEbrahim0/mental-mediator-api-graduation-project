@@ -49,7 +49,7 @@ public class AppointmentRepository : RepositoryBase<Appointment>, IAppointmentRe
 		}
 
 		if (!string.IsNullOrEmpty(requestParameters.Status) &&
-			Enum.TryParse<AppointmentStatus>(requestParameters.Status, out AppointmentStatus status))
+			Enum.TryParse(requestParameters.Status, out AppointmentStatus status))
 		{
 			query = query.Where(x => x.Status == status);
 		}
@@ -79,7 +79,6 @@ public class AppointmentRepository : RepositoryBase<Appointment>, IAppointmentRe
 					.ToListAsync();
 	}
 
-
 	public async Task<IEnumerable<Appointment>> GetByDoctorId(string doctorId, RequestParameters requestParameters, bool trackChanges)
 	{
 		return await
@@ -108,7 +107,6 @@ public class AppointmentRepository : RepositoryBase<Appointment>, IAppointmentRe
 				CancellationReason = x.CancellationReason,
 				RejectionReason = x.RejectionReason,
 			})
-
 			.Paginate(requestParameters.PageNumber, requestParameters.PageSize)
 			.ToListAsync();
 	}
@@ -131,11 +129,11 @@ public class AppointmentRepository : RepositoryBase<Appointment>, IAppointmentRe
 			.ToListAsync();
 	}
 
-	public async Task<Appointment?> GetById(int appointementId, bool trackChanges)
+	public async Task<Appointment?> GetById(int appointmentId, bool trackChanges)
 	{
 		return await
 			FindByCondition(x =>
-				x.Id == appointementId,
+				x.Id == appointmentId,
 				trackChanges)
 			.Include(x => x.User)
 			.Include(x => x.Doctor)
