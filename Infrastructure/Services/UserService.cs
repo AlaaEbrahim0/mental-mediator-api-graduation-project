@@ -122,7 +122,7 @@ public class UserService : IUserService
 			return UserErrors.NotFound(userId);
 		}
 
-		user.isDeleted = true;
+		user.IsDeleted = true;
 		_repos.Users.UpdateUserInfo(user);
 		await _repos.SaveAsync();
 

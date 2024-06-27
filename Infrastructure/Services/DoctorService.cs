@@ -125,7 +125,7 @@ public class DoctorService : IDoctorService
 			return UserErrors.NotFound(doctorId);
 		}
 
-		doctor.isDeleted = true;
+		doctor.IsDeleted = true;
 		_repoManager.Doctors.UpdateDoctor(doctor);
 		await _repoManager.SaveAsync();
 
@@ -135,7 +135,7 @@ public class DoctorService : IDoctorService
 
 	public async Task<Result<List<TimeSpan>>> GetAvailableSlots(string doctorId, DateTime date)
 	{
-		var appointments = await _repoManager.Appointements.GetByDoctorIdAndDate(doctorId, date, false);
+		var appointments = await _repoManager.Appointments.GetByDoctorIdAndDate(doctorId, date, false);
 
 		var doctorScheduleWeekday = await _repoManager.DoctorSchedule.GetScheduleWeekDay(doctorId, date.DayOfWeek, false);
 

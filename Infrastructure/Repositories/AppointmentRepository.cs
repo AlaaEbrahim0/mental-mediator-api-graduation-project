@@ -7,7 +7,7 @@ using Shared;
 
 namespace Infrastructure.Repositories;
 
-public class AppointmentRepository : RepositoryBase<Appointment>, IAppointementRepository
+public class AppointmentRepository : RepositoryBase<Appointment>, IAppointmentRepository
 {
 	public AppointmentRepository(AppDbContext dbContext) : base(dbContext) { }
 
@@ -26,7 +26,7 @@ public class AppointmentRepository : RepositoryBase<Appointment>, IAppointementR
 		var query = FindAll(trackChanges)
 					.Include(x => x.User)
 					.Include(x => x.Doctor)
-					.AsQueryable();
+						.AsQueryable();
 
 		if (!string.IsNullOrEmpty(requestParameters.DoctorId))
 		{

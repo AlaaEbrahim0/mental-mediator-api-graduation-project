@@ -23,6 +23,6 @@ public class BaseUser : IdentityUser
 
 	public List<Notification> Notifications { get; set; } = new();
 
-	public bool isDeleted { get; set; }
+	public bool IsDeleted { get; set; }
 }
 

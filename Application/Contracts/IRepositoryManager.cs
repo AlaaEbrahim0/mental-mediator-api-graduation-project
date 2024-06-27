@@ -10,6 +10,6 @@ public interface IRepositoryManager
 	IDoctorRepository Doctors { get; }
 	IUserRepository Users { get; }
 	IDoctorScheduleRepository DoctorSchedule { get; }
-	IAppointementRepository Appointements { get; }
+	IAppointmentRepository Appointments { get; }
 	Task SaveAsync();
 }

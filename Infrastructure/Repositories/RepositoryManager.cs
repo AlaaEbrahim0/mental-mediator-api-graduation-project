@@ -13,7 +13,7 @@ public class RepositoryManager : IRepositoryManager
 	private readonly Lazy<INotificationRepository> notificationRepository;
 	private readonly Lazy<IDoctorRepository> doctorRepository;
 	private readonly Lazy<IUserRepository> userRepository;
-	private readonly Lazy<IAppointementRepository> appointementRepository;
+	private readonly Lazy<IAppointmentRepository> appointementRepository;
 	private readonly Lazy<IDoctorScheduleRepository> weeklyScheduleRepository;
 
 	public RepositoryManager(AppDbContext dbContext)
@@ -36,7 +36,7 @@ public class RepositoryManager : IRepositoryManager
 	public IDoctorRepository Doctors => doctorRepository.Value;
 	public IUserRepository Users => userRepository.Value;
 	public IDoctorScheduleRepository DoctorSchedule => weeklyScheduleRepository.Value;
-	public IAppointementRepository Appointements => appointementRepository.Value;
+	public IAppointmentRepository Appointments => appointementRepository.Value;
 
 
 	public async Task SaveAsync() => await _dbContext.SaveChangesAsync();

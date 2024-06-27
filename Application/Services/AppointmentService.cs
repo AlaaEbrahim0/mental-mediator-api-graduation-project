@@ -33,7 +33,7 @@ public class AppointmentService : IAppointmentService
 
 	public async Task<Result<AppointmentResponse?>> CancelAppointment(int id, string? cancellationReason)
 	{
-		var appointment = await _repos.Appointements.GetById(id, true);
+		var appointment = await _repos.Appointments.GetById(id, true);
 		if (appointment is null)
 		{
 			return Error.NotFound("Appointments.NotFound", $"appointment: {id} doesn't exist");
@@ -51,7 +51,7 @@ public class AppointmentService : IAppointmentService
 			return cancellationResult.Error;
 		}
 
-		_repos.Appointements.UpdateAppointment(appointment);
+		_repos.Appointments.UpdateAppointment(appointment);
 
 		var notification = Notification.CreateNotification(
 			appointment.DoctorId,
@@ -81,7 +81,7 @@ public class AppointmentService : IAppointmentService
 
 	public async Task<Result<AppointmentResponse?>> ConfirmAppointment(int id)
 	{
-		var appointment = await _repos.Appointements.GetById(id, true);
+		var appointment = await _repos.Appointments.GetById(id, true);
 		if (appointment is null)
 		{
 			return Error.NotFound("Appointments.NotFound", $"appointment: {id} doesn't exist");
@@ -98,7 +98,7 @@ public class AppointmentService : IAppointmentService
 			return confirmationResult.Error;
 		}
 
-		_repos.Appointements.UpdateAppointment(appointment);
+		_repos.Appointments.UpdateAppointment(appointment);
 
 		var notification = Notification.CreateNotification(
 			appointment.UserId,
@@ -147,7 +147,7 @@ public class AppointmentService : IAppointmentService
 		appointment.DoctorPhotoUrl = doctor.PhotoUrl;
 		appointment.ClientPhotoUrl = photoUrl;
 
-		_repos.Appointements.CreateAppointment(appointment);
+		_repos.Appointments.CreateAppointment(appointment);
 		await _repos.SaveAsync();
 
 		var notification = Notification.CreateNotification(
@@ -174,9 +174,9 @@ public class AppointmentService : IAppointmentService
 		return appointmentResponse;
 	}
 
-	public async Task<Result<AppointmentResponse?>> RejectAppointment(int id, string? rejectionReason)
+	public async Task<Result<AppointmentResponse?>> RejectAppointment(int id, RejectAppointmentRequest request)
 	{
-		var appointment = await _repos.Appointements.GetById(id, true);
+		var appointment = await _repos.Appointments.GetById(id, true);
 		if (appointment is null)
 		{
 			return Error.NotFound("Appointments.NotFound", $"appointment: {id} doesn't exist");
@@ -188,13 +188,13 @@ public class AppointmentService : IAppointmentService
 			return Error.Forbidden("Appointments.Forbidden", "you can't reject an appointment that you aren't part in");
 		}
 
-		var rejectionResult = appointment.Reject(rejectionReason);
+		var rejectionResult = appointment.Reject(request.RejectionReason);
 		if (rejectionResult.IsFailure)
 		{
 			return rejectionResult.Error;
 		}
 
-		_repos.Appointements.UpdateAppointment(appointment);
+		_repos.Appointments.UpdateAppointment(appointment);
 
 		var notification = Notification.CreateNotification(
 			appointment.UserId,
@@ -212,7 +212,7 @@ public class AppointmentService : IAppointmentService
 		{
 			ToEmail = appointment.ClientEmail,
 			Subject = "Appointment Rejection",
-			Body = $"Your appointment with ID {appointment.Id} has been rejected by Dr. {appointment.DoctorName}. Reason: {rejectionReason}."
+			Body = $"Your appointment with ID {appointment.Id} has been rejected by Dr. {appointment.DoctorName}. Reason: {request.RejectionReason}."
 		};
 		await _mailService.SendEmailAsync(mailRequest);
 
@@ -220,16 +220,16 @@ public class AppointmentService : IAppointmentService
 		return appointmentResponse;
 	}
 
-	public async Task<Result<List<AppointmentResponse>>> GetAppointements(AppointmentRequestParameters request)
+	public async Task<Result<List<AppointmentResponse>>> GetAppointments(AppointmentRequestParameters request)
 	{
-		var appointments = await _repos.Appointements.GetAll(request, false);
+		var appointments = await _repos.Appointments.GetAll(request, false);
 		var appointmentsResponse = _mapper.Map<List<AppointmentResponse>>(appointments);
 		return appointmentsResponse;
 	}
 
 	public async Task<Result<AppointmentResponse?>> GetAppointment(int id)
 	{
-		var appointment = await _repos.Appointements.GetById(id, false);
+		var appointment = await _repos.Appointments.GetById(id, false);
 		if (appointment is null)
 		{
 			return Error.NotFound("Appointments.NotFound", $"appointment: {id} doesn't exist");
@@ -249,7 +249,7 @@ public class AppointmentService : IAppointmentService
 	public async Task<Result<List<AppointmentResponse>>> GetClientAppointments(RequestParameters request)
 	{
 		var clientId = _userClaimsService.GetUserId();
-		var appointments = await _repos.Appointements.GetByUserId(clientId, request, false);
+		var appointments = await _repos.Appointments.GetByUserId(clientId, request, false);
 		var appointmentsResponse = _mapper.Map<List<AppointmentResponse>>(appointments);
 		return appointmentsResponse;
 	}
@@ -257,7 +257,7 @@ public class AppointmentService : IAppointmentService
 	public async Task<Result<List<AppointmentResponse>>> GetDoctorAppointments(RequestParameters request)
 	{
 		var doctorId = _userClaimsService.GetUserId();
-		var appointments = await _repos.Appointements.GetByDoctorId(doctorId, request, false);
+		var appointments = await _repos.Appointments.GetByDoctorId(doctorId, request, false);
 		var appointmentsResponse = _mapper.Map<List<AppointmentResponse>>(appointments);
 		return appointmentsResponse;
 	}
