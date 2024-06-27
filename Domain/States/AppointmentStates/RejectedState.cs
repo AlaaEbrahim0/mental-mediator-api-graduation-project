@@ -1,5 +1,6 @@
 ﻿using Domain.Entities;
 using Shared;
+// ReSharper disable All
 
 namespace Domain.States.AppointmentStates;
 

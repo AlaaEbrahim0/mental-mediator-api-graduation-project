@@ -20,7 +20,7 @@ public class AppointmentController : ControllerBase
 	[Authorize(Roles = "Admin")]
 	public async Task<IActionResult> GetAll([FromQuery] AppointmentRequestParameters request)
 	{
-		var result = await _appointmentService.GetAppointements(request);
+		var result = await _appointmentService.GetAppointments(request);
 		if (result.IsFailure)
 		{
 			return result.ToProblemDetails();
@@ -32,7 +32,8 @@ public class AppointmentController : ControllerBase
 	[Authorize(Roles = "Doctor")]
 	public async Task<IActionResult> GetDoctorAppoinments([FromQuery] RequestParameters request)
 	{
-		var result = await _appointmentService.GetDoctorAppointments(request);
+		var result = await _appointmentService.GetDoctorAppointments
+			(request);
 		if (result.IsFailure)
 		{
 			return result.ToProblemDetails();
@@ -90,9 +91,9 @@ public class AppointmentController : ControllerBase
 
 	[HttpPut("{id:int}/reject")]
 	[Authorize(Roles = "Doctor")]
-	public async Task<IActionResult> RejectAppointment(int id, [FromBody] string rejectionReason)
+	public async Task<IActionResult> RejectAppointment(int id, [FromBody] RejectAppointmentRequest request)
 	{
-		var result = await _appointmentService.RejectAppointment(id, rejectionReason);
+		var result = await _appointmentService.RejectAppointment(id, request);
 		if (result.IsFailure)
 		{
 			return result.ToProblemDetails();

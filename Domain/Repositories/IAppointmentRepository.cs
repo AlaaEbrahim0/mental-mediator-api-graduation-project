@@ -3,7 +3,7 @@ using Shared;
 
 namespace Domain.Repositories;
 
-public interface IAppointementRepository
+public interface IAppointmentRepository
 {
 	Task<IEnumerable<Appointment>> GetAll(AppointmentRequestParameters request, bool trackChanges);
 	Task<IEnumerable<Appointment>> GetByUserId(string userId, RequestParameters request, bool trackChanges);
@@ -11,6 +11,6 @@ public interface IAppointementRepository
 	void CreateAppointment(Appointment appointment);
 	void DeleteAppointment(Appointment appointment);
 	void UpdateAppointment(Appointment appointment);
-	Task<Appointment?> GetById(int appointementId, bool trackChanges);
+	Task<Appointment?> GetById(int appointmentId, bool trackChanges);
 	Task<IEnumerable<Appointment>> GetByDoctorIdAndDate(string doctorId, DateTime date, bool trackChanges);
 }
