@@ -43,7 +43,7 @@ public class AppointmentController : ControllerBase
 
 	[HttpGet("clients/me")]
 	[Authorize(Roles = "User")]
-	public async Task<IActionResult> GetClientAppoinments([FromQuery] MyAppointmentsRequestParameters request)
+	public async Task<IActionResult> GetClientAppointments([FromQuery] MyAppointmentsRequestParameters request)
 	{
 		var result = await _appointmentService.GetClientAppointments(request);
 		if (result.IsFailure)

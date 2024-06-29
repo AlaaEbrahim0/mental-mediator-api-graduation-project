@@ -1,6 +1,4 @@
-﻿using System.ComponentModel.DataAnnotations;
-
-namespace Shared;
+﻿namespace Shared;
 public class RequestParameters
 {
 	private const int maxPageSize = 50;
@@ -56,12 +54,10 @@ public class AppointmentRequestParameters : RequestParameters
 
 public class MyAppointmentsRequestParameters : RequestParameters
 {
-	[Length(0, 30)]
-	public string? ClientName { get; set; }
+	public string ClientName { get; set; } = string.Empty;
 
-	[Length(0, 30)]
-	public string? DoctorName { get; set; }
+	public string DoctorName { get; set; } = string.Empty;
 	public DateTime? StartDate { get; set; }
 	public DateTime? EndDate { get; set; }
-	public string? Status { get; set; }
+	public string Status { get; set; } = string.Empty;
 }
