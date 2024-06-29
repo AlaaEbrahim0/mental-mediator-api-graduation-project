@@ -88,8 +88,10 @@ public class AppointmentRepository : RepositoryBase<Appointment>, IAppointmentRe
 
 		if (!string.IsNullOrEmpty(requestParameters.ClientName))
 		{
-			query = query.Where(x => x.ClientName.Contains(requestParameters.ClientName));
+			query = query.Where(x => x.User.FirstName.Contains(requestParameters.ClientName) || x.User.LastName.Contains(requestParameters.ClientName));
 		}
+
+		;
 
 		if (requestParameters.StartDate.HasValue)
 		{
@@ -185,14 +187,14 @@ public class AppointmentRepository : RepositoryBase<Appointment>, IAppointmentRe
 
 	public async Task<IEnumerable<Appointment>> GetByUserId(string userId, MyAppointmentsRequestParameters requestParameters, bool trackChanges)
 	{
-		var query = FindByCondition(x => x.UserId == userId, trackChanges)
+		var query = FindByCondition(x => x.DoctorId == userId, trackChanges)
 			.Include(x => x.User)
 			.Include(x => x.Doctor)
 			.AsQueryable();
 
 		if (!string.IsNullOrEmpty(requestParameters.DoctorName))
 		{
-			query = query.Where(x => x.DoctorName.Contains(requestParameters.DoctorName));
+			query = query.Where(x => x.Doctor.FirstName.Contains(requestParameters.DoctorName) || x.Doctor.LastName.Contains(requestParameters.DoctorName));
 		}
 
 		if (requestParameters.StartDate.HasValue)
