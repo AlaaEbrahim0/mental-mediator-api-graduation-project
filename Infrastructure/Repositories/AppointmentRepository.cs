@@ -81,7 +81,7 @@ public class AppointmentRepository : RepositoryBase<Appointment>, IAppointmentRe
 
 	public async Task<IEnumerable<Appointment>> GetByDoctorId(string doctorId, MyAppointmentsRequestParameters requestParameters, bool trackChanges)
 	{
-		var query = FindAll(trackChanges)
+		var query = FindByCondition(x => x.DoctorId == doctorId, trackChanges)
 			.Include(x => x.User)
 			.Include(x => x.Doctor)
 			.AsQueryable();
@@ -101,6 +101,7 @@ public class AppointmentRepository : RepositoryBase<Appointment>, IAppointmentRe
 		{
 			query = query.Where(x => x.Status == status);
 		}
+
 
 		return await query
 			.OrderByDescending(x => x.StartTime)
