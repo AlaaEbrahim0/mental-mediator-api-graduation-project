@@ -91,8 +91,6 @@ public class AppointmentRepository : RepositoryBase<Appointment>, IAppointmentRe
 			query = query.Where(x => x.User.FirstName.Contains(requestParameters.ClientName) || x.User.LastName.Contains(requestParameters.ClientName));
 		}
 
-		;
-
 		if (requestParameters.StartDate.HasValue)
 		{
 			query = query.Where(x => x.StartTime >= requestParameters.StartDate.Value);
@@ -187,7 +185,7 @@ public class AppointmentRepository : RepositoryBase<Appointment>, IAppointmentRe
 
 	public async Task<IEnumerable<Appointment>> GetByUserId(string userId, MyAppointmentsRequestParameters requestParameters, bool trackChanges)
 	{
-		var query = FindByCondition(x => x.DoctorId == userId, trackChanges)
+		var query = FindByCondition(x => x.UserId == userId, trackChanges)
 			.Include(x => x.User)
 			.Include(x => x.Doctor)
 			.AsQueryable();
