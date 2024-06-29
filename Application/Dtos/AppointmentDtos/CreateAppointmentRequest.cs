@@ -1,5 +1,4 @@
-﻿
-using FluentValidation;
+﻿using FluentValidation;
 
 namespace Application.Dtos.AppointmentDtos;
 public class CreateAppointmentRequest
@@ -17,7 +16,8 @@ public class CreateAppointmentRequestValidator : AbstractValidator<CreateAppoint
 	{
 		RuleFor(x => x.StartTime)
 			.NotEmpty().WithMessage("Start time is required.")
-			.Must(BeAValidDate).WithMessage("Start time must be a valid date.");
+			.Must(BeAValidDate).WithMessage("Start time must be a valid date.")
+			.Must(x => x > DateTime.UtcNow);
 
 		RuleFor(x => x.Duration)
 			.GreaterThan(TimeSpan.Zero).WithMessage("Duration must be greater than zero.");

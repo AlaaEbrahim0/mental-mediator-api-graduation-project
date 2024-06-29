@@ -86,6 +86,11 @@ public class AppointmentRepository : RepositoryBase<Appointment>, IAppointmentRe
 			.Include(x => x.Doctor)
 			.AsQueryable();
 
+		if (!string.IsNullOrEmpty(requestParameters.ClientName))
+		{
+			query = query.Where(x => x.ClientName.Contains(requestParameters.ClientName));
+		}
+
 		if (requestParameters.StartDate.HasValue)
 		{
 			query = query.Where(x => x.StartTime >= requestParameters.StartDate.Value);
@@ -134,7 +139,7 @@ public class AppointmentRepository : RepositoryBase<Appointment>, IAppointmentRe
 			FindByCondition(x =>
 				x.DoctorId == doctorId &&
 				x.StartTime >= date && x.StartTime < date.AddDays(1) &&
-				x.Status != AppointmentStatus.Confirmed             //x.Status != AppointmentStatus.Pending
+				x.Status != AppointmentStatus.Confirmed
 				,
 				trackChanges)
 			.Select(x => new Appointment
@@ -184,6 +189,11 @@ public class AppointmentRepository : RepositoryBase<Appointment>, IAppointmentRe
 			.Include(x => x.User)
 			.Include(x => x.Doctor)
 			.AsQueryable();
+
+		if (!string.IsNullOrEmpty(requestParameters.DoctorName))
+		{
+			query = query.Where(x => x.DoctorName.Contains(requestParameters.DoctorName));
+		}
 
 		if (requestParameters.StartDate.HasValue)
 		{
