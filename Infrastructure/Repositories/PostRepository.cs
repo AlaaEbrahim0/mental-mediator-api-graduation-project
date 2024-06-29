@@ -40,7 +40,7 @@ public class PostRepository : RepositoryBase<Post>, IPostRepository
 
 		if (!string.IsNullOrEmpty(parameters.Username))
 		{
-			query = query.Where(p => p.AppUser.FirstName.Contains(parameters.Username) || p.AppUser.LastName.Contains(parameters.Username));
+			query = query.Where(x => string.Concat(x.AppUser.FirstName, " ", x.AppUser.LastName).Contains(parameters.Username));
 		}
 
 		if (parameters.StartTime != DateTime.MinValue)

@@ -88,7 +88,7 @@ public class AppointmentRepository : RepositoryBase<Appointment>, IAppointmentRe
 
 		if (!string.IsNullOrEmpty(requestParameters.ClientName))
 		{
-			query = query.Where(x => x.User.FirstName.Contains(requestParameters.ClientName) || x.User.LastName.Contains(requestParameters.ClientName));
+			query = query.Where(x => string.Concat(x.User.FirstName, " ", x.User.LastName).Contains(requestParameters.ClientName));
 		}
 
 		if (requestParameters.StartDate.HasValue)
@@ -192,7 +192,7 @@ public class AppointmentRepository : RepositoryBase<Appointment>, IAppointmentRe
 
 		if (!string.IsNullOrEmpty(requestParameters.DoctorName))
 		{
-			query = query.Where(x => x.Doctor.FirstName.Contains(requestParameters.DoctorName) || x.Doctor.LastName.Contains(requestParameters.DoctorName));
+			query = query.Where(x => string.Concat(x.Doctor.FirstName, " ", x.Doctor.LastName).Contains(requestParameters.DoctorName));
 		}
 
 		if (requestParameters.StartDate.HasValue)
