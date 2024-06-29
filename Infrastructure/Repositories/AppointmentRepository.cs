@@ -79,14 +79,30 @@ public class AppointmentRepository : RepositoryBase<Appointment>, IAppointmentRe
 					.ToListAsync();
 	}
 
-	public async Task<IEnumerable<Appointment>> GetByDoctorId(string doctorId, RequestParameters requestParameters, bool trackChanges)
+	public async Task<IEnumerable<Appointment>> GetByDoctorId(string doctorId, MyAppointmentsRequestParameters requestParameters, bool trackChanges)
 	{
-		return await
-			FindByCondition(x =>
-				x.DoctorId == doctorId,
-				trackChanges)
+		var query = FindAll(trackChanges)
 			.Include(x => x.User)
 			.Include(x => x.Doctor)
+			.AsQueryable();
+
+		if (requestParameters.StartDate.HasValue)
+		{
+			query = query.Where(x => x.StartTime >= requestParameters.StartDate.Value);
+		}
+
+		if (requestParameters.EndDate.HasValue)
+		{
+			query = query.Where(x => x.StartTime <= requestParameters.EndDate.Value);
+		}
+
+		if (!string.IsNullOrEmpty(requestParameters.Status) &&
+			Enum.TryParse(requestParameters.Status, out AppointmentStatus status))
+		{
+			query = query.Where(x => x.Status == status);
+		}
+
+		return await query
 			.OrderByDescending(x => x.StartTime)
 			.Select(x => new Appointment
 			{
@@ -99,10 +115,10 @@ public class AppointmentRepository : RepositoryBase<Appointment>, IAppointmentRe
 				ClientPhotoUrl = x.User.PhotoUrl,
 				ClientEmail = x.User.Email!,
 				DoctorEmail = x.Doctor.Email!,
+				Fees = x.Fees,
 				StartTime = x.StartTime,
 				Duration = x.Duration,
 				Status = x.Status,
-				Fees = x.Fees,
 				Location = x.Location,
 				CancellationReason = x.CancellationReason,
 				RejectionReason = x.RejectionReason,
@@ -116,8 +132,8 @@ public class AppointmentRepository : RepositoryBase<Appointment>, IAppointmentRe
 		return await
 			FindByCondition(x =>
 				x.DoctorId == doctorId &&
-				x.StartTime.Date == date
-				//(x.Status == AppointmentStatus.Rejected || x.Status == AppointmentStatus.Cancelled)
+				x.StartTime >= date && x.StartTime < date.AddDays(1) &&
+				x.Status != AppointmentStatus.Confirmed             //x.Status != AppointmentStatus.Pending
 				,
 				trackChanges)
 			.Select(x => new Appointment
@@ -161,7 +177,7 @@ public class AppointmentRepository : RepositoryBase<Appointment>, IAppointmentRe
 
 	}
 
-	public async Task<IEnumerable<Appointment>> GetByUserId(string userId, RequestParameters requestParameters, bool trackChanges)
+	public async Task<IEnumerable<Appointment>> GetByUserId(string userId, MyAppointmentsRequestParameters requestParameters, bool trackChanges)
 	{
 		return await
 			FindByCondition(x =>

@@ -30,7 +30,7 @@ public class AppointmentController : ControllerBase
 
 	[HttpGet("doctors/me")]
 	[Authorize(Roles = "Doctor")]
-	public async Task<IActionResult> GetDoctorAppoinments([FromQuery] RequestParameters request)
+	public async Task<IActionResult> GetDoctorAppoinments([FromQuery] MyAppointmentsRequestParameters request)
 	{
 		var result = await _appointmentService.GetDoctorAppointments
 			(request);
@@ -43,7 +43,7 @@ public class AppointmentController : ControllerBase
 
 	[HttpGet("clients/me")]
 	[Authorize(Roles = "User")]
-	public async Task<IActionResult> GetClientAppoinments([FromQuery] RequestParameters request)
+	public async Task<IActionResult> GetClientAppoinments([FromQuery] MyAppointmentsRequestParameters request)
 	{
 		var result = await _appointmentService.GetClientAppointments(request);
 		if (result.IsFailure)

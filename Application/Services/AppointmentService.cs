@@ -246,7 +246,7 @@ public class AppointmentService : IAppointmentService
 		return appointmentsResponse;
 	}
 
-	public async Task<Result<List<AppointmentResponse>>> GetClientAppointments(RequestParameters request)
+	public async Task<Result<List<AppointmentResponse>>> GetClientAppointments(MyAppointmentsRequestParameters request)
 	{
 		var clientId = _userClaimsService.GetUserId();
 		var appointments = await _repos.Appointments.GetByUserId(clientId, request, false);
@@ -254,7 +254,7 @@ public class AppointmentService : IAppointmentService
 		return appointmentsResponse;
 	}
 
-	public async Task<Result<List<AppointmentResponse>>> GetDoctorAppointments(RequestParameters request)
+	public async Task<Result<List<AppointmentResponse>>> GetDoctorAppointments(MyAppointmentsRequestParameters request)
 	{
 		var doctorId = _userClaimsService.GetUserId();
 		var appointments = await _repos.Appointments.GetByDoctorId(doctorId, request, false);

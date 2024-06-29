@@ -14,7 +14,7 @@ builder.Services
 	.ConfigureIdentity()
 	.ConfigureAuthentication(builder.Configuration)
 	.ConfigureAuthorization()
-	.ConfigureRepositores()
+	.ConfigureRepositories()
 	.ConfigureAutoMapper()
 	.ConfigureServices()
 	.ConfigureCaching()

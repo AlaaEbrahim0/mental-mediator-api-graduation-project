@@ -126,6 +126,7 @@ namespace Application.Services
 			{
 				return PostErrors.NotFound(id);
 			}
+
 			if (!post.AppUserId!.Equals(userId))
 			{
 				return PostErrors.Forbidden(id);

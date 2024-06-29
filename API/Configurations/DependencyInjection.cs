@@ -107,7 +107,7 @@ public static class DependencyInjection
 
 		return services;
 	}
-	public static IServiceCollection ConfigureRepositores(this IServiceCollection services)
+	public static IServiceCollection ConfigureRepositories(this IServiceCollection services)
 	{
 		services.AddScoped<IRepositoryManager, RepositoryManager>();
 		services.AddScoped<IPostRepository, PostRepository>();

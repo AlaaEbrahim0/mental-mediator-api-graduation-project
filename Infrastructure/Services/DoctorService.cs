@@ -1,4 +1,5 @@
-﻿using Application.Contracts;
+﻿
+using Application.Contracts;
 using Application.Dtos.UserDtos;
 using AutoMapper;
 using Domain.Entities;
@@ -136,17 +137,15 @@ public class DoctorService : IDoctorService
 	public async Task<Result<List<TimeSpan>>> GetAvailableSlots(string doctorId, DateTime date)
 	{
 		var appointments = await _repoManager.Appointments.GetByDoctorIdAndDate(doctorId, date, false);
-
 		var doctorScheduleWeekday = await _repoManager.DoctorSchedule.GetScheduleWeekDay(doctorId, date.DayOfWeek, false);
 
 		if (doctorScheduleWeekday is null)
 		{
-			return Enumerable.Empty<TimeSpan>().ToList();
+			return Error.NotFound("NotFound", "No schedule available for the given date.");
 		}
 
 		var slots = DivideTimeSpanInterval(doctorScheduleWeekday.StartTime, doctorScheduleWeekday.EndTime, doctorScheduleWeekday.SessionDuration);
-
-		var availableSlots = FilterAvailableSlots(slots, appointments.ToList());
+		var availableSlots = FilterAvailableSlots(slots, doctorScheduleWeekday.SessionDuration, appointments.ToList());
 
 		return availableSlots;
 	}
@@ -156,32 +155,30 @@ public class DoctorService : IDoctorService
 		List<TimeSpan> intervals = new List<TimeSpan>();
 
 		TimeSpan currentTime = startTime;
-
 		while (currentTime < endTime)
 		{
 			intervals.Add(currentTime);
 			currentTime = currentTime.Add(intervalDuration);
 		}
 
-		if (currentTime <= endTime)
-		{
-			intervals.Add(endTime);
-		}
-
 		return intervals;
 	}
 
-	private List<TimeSpan> FilterAvailableSlots(List<TimeSpan> slots, List<Appointment> appointments)
+	private List<TimeSpan> FilterAvailableSlots(List<TimeSpan> slots, TimeSpan duration, List<Appointment> appointments)
 	{
 		List<TimeSpan> availableSlots = new List<TimeSpan>();
 
 		foreach (var slot in slots)
 		{
 			bool isSlotAvailable = true;
+			var slotEnd = slot.Add(duration);                               // Assuming 30-minute slots for simplicity
 
 			foreach (var appointment in appointments)
 			{
-				if (IsOverlap(slot, slot.Add(appointment.Duration), appointment.StartTime, appointment.EndTime))
+				var appointmentStart = appointment.StartTime.TimeOfDay;
+				var appointmentEnd = appointment.EndTime.TimeOfDay;
+
+				if (IsOverlap(slot, slotEnd, appointmentStart, appointmentEnd))
 				{
 					isSlotAvailable = false;
 					break;
@@ -197,13 +194,8 @@ public class DoctorService : IDoctorService
 		return availableSlots;
 	}
 
-	private bool IsOverlap(TimeSpan slotStart, TimeSpan slotEnd, DateTime appointmentStart, DateTime appointmentEnd)
+	private bool IsOverlap(TimeSpan slotStart, TimeSpan slotEnd, TimeSpan appointmentStart, TimeSpan appointmentEnd)
 	{
-		// Convert slotStart and slotEnd to DateTime for comparison
-		DateTime slotStartTime = DateTime.Today.Add(slotStart);
-		DateTime slotEndTime = DateTime.Today.Add(slotEnd);
-
-		// Check if there is any overlap between two time intervals
-		return slotStartTime < appointmentEnd && slotEndTime > appointmentStart;
+		return slotStart < appointmentEnd && slotEnd > appointmentStart;
 	}
 }
