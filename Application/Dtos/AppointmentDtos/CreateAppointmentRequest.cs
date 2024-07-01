@@ -38,3 +38,5 @@ public class CreateAppointmentRequestValidator : AbstractValidator<CreateAppoint
 		return !date.Equals(default(DateTime));
 	}
 }
+
+

@@ -125,6 +125,7 @@ public static class DependencyInjection
 	{
 		services.AddScoped<IHateSpeechDetector, HateSpeechDetectorClient>();
 		services.AddScoped<IDepressionDetector, DepressionDetectorClient>();
+		services.AddScoped<INewsService, NewsApiClient>();
 
 		if (!envIsDev)
 		{
@@ -136,6 +137,14 @@ public static class DependencyInjection
 		{
 			var baseAddress = configuration["BaseAddress"];
 			config.BaseAddress = new Uri(baseAddress!);
+		});
+
+		services.AddHttpClient<NewsApiClient>("news-api-client", config =>
+		{
+			var newsApiConfig = configuration.GetSection("NewsApi");
+			config.BaseAddress = new Uri(newsApiConfig["Address"]!);
+			config.DefaultRequestHeaders.Add("X-Api-Key", newsApiConfig["ApiKey"]!);
+			config.DefaultRequestHeaders.UserAgent.ParseAdd("Nexus");
 		});
 
 		services.AddHttpClient<DepressionDetectorClient>("ml-client", config =>

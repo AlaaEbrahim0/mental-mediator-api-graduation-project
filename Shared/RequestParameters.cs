@@ -27,6 +27,7 @@ public class PostRequestParameters : RequestParameters
 	public DateTime EndTime { get; set; }
 	public bool ConfessionsOnly { get; set; }
 }
+
 public class DoctorRequestParameters : RequestParameters
 {
 	public string? Name { get; set; }
@@ -54,10 +55,9 @@ public class AppointmentRequestParameters : RequestParameters
 
 public class MyAppointmentsRequestParameters : RequestParameters
 {
-	public string ClientName { get; set; } = string.Empty;
-
-	public string DoctorName { get; set; } = string.Empty;
+	public string? ClientName { get; set; }
+	public string? DoctorName { get; set; }
 	public DateTime? StartDate { get; set; }
 	public DateTime? EndDate { get; set; }
-	public string Status { get; set; } = string.Empty;
+	public string? Status { get; set; }
 }
