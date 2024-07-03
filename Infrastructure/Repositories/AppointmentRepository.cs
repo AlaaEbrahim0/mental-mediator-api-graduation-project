@@ -140,7 +140,7 @@ public class AppointmentRepository : RepositoryBase<Appointment>, IAppointmentRe
 			FindByCondition(x =>
 				x.DoctorId == doctorId &&
 				x.StartTime >= date && x.StartTime < date.AddDays(1) &&
-				x.Status != AppointmentStatus.Confirmed
+				x.Status == AppointmentStatus.Confirmed
 				,
 				trackChanges)
 			.Select(x => new Appointment
@@ -266,6 +266,7 @@ public class AppointmentRepository : RepositoryBase<Appointment>, IAppointmentRe
 				DayOfWeek = x.Key,
 				Count = x.Count()
 			})
+			.OrderBy(x => x.DayOfWeek)
 			.ToList();
 
 		var monthlyCounts = appointments
