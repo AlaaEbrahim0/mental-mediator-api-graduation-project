@@ -1,4 +1,5 @@
-﻿using Application.Dtos.UserDtos;
+﻿using Application.Dtos;
+using Application.Dtos.UserDtos;
 using Shared;
 
 namespace Application.Contracts;
@@ -14,6 +15,6 @@ public interface IDoctorService
 
 	Task<Result<DoctorInfoResponse>> DeleteDoctor(string doctorId);
 	Task<Result<List<TimeSpan>>> GetAvailableSlots(string doctorId, DateTime date);
-
+	Task<Result<DoctorReportResponse>> GetReports();
 }
 

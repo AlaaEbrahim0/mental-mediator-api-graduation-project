@@ -1,5 +1,5 @@
-﻿
-using Application.Contracts;
+﻿using Application.Contracts;
+using Application.Dtos;
 using Application.Dtos.UserDtos;
 using AutoMapper;
 using Domain.Entities;
@@ -198,4 +198,24 @@ public class DoctorService : IDoctorService
 	{
 		return slotStart < appointmentEnd && slotEnd > appointmentStart;
 	}
+
+	public async Task<Result<DoctorReportResponse>> GetReports()
+	{
+		var doctorId = _userClaimsService.GetUserId();
+		var stats = await _repoManager.Appointments.GetDoctorStats(doctorId);
+		var (appointmentWeeklyCount, appoinmentMonthlyCount) = await _repoManager.Appointments.GetDoctorAppointmentCounts(doctorId);
+		var statusCount = await _repoManager.Appointments.GetAppointmentStatusCounts(doctorId);
+
+		var response = new DoctorReportResponse
+		{
+			TotalAppointments = stats.totalAppointments,
+			TotalProfit = stats.totalProfit,
+			AppointmentsPerMonth = appoinmentMonthlyCount,
+			AppointmentsPerWeekday = appointmentWeeklyCount,
+			StatusCounts = statusCount
+		};
+
+		return response;
+	}
+
 }

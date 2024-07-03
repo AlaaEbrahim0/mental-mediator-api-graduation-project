@@ -1,6 +1,7 @@
 ﻿using Domain.Entities;
 using Domain.Enums;
 using Domain.Repositories;
+using Domain.Value_Objects;
 using Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using Shared;
@@ -241,5 +242,58 @@ public class AppointmentRepository : RepositoryBase<Appointment>, IAppointmentRe
 	{
 		Update(appointment);
 	}
+
+	public async Task<(int totalAppointments, decimal totalProfit)> GetDoctorStats(string doctorId)
+	{
+		var result = await FindByCondition(x => x.DoctorId == doctorId, false)
+			.Select(x => new { x.Fees, x.Status }) // Include fields needed for both total count and profit
+			.ToListAsync();
+
+		var totalAppointments = result.Count();
+		var totalProfit = result.Sum(x => x.Fees);
+
+		return (totalAppointments, totalProfit);
+	}
+	public async Task<(List<WeekdayAppointmentCount> weekdayCounts, List<MonthlyAppointmentCount> monthlyCounts)> GetDoctorAppointmentCounts(string doctorId)
+	{
+		var appointments = await FindByCondition(x => x.DoctorId == doctorId, false)
+			.ToListAsync();
+
+		var weekdayCounts = appointments
+			.GroupBy(x => x.StartTime.DayOfWeek)
+			.Select(x => new WeekdayAppointmentCount
+			{
+				DayOfWeek = x.Key,
+				Count = x.Count()
+			})
+			.ToList();
+
+		var monthlyCounts = appointments
+			.GroupBy(x => x.StartTime.Month)
+			.Select(x => new MonthlyAppointmentCount
+			{
+				Month = x.Key,
+				Count = x.Count()
+			})
+			.ToList();
+
+		return (weekdayCounts, monthlyCounts);
+	}
+	public async Task<List<AppointmentStatusCount>> GetAppointmentStatusCounts(string doctorId)
+	{
+		var statusCounts = await FindByCondition(x => x.DoctorId == doctorId, false)
+			.GroupBy(x => x.Status)
+			.Select(x => new AppointmentStatusCount
+			{
+				Status = x.Key,
+				Count = x.Count()
+			})
+			.ToListAsync();
+
+		return statusCounts;
+	}
+
+
+
 }
 

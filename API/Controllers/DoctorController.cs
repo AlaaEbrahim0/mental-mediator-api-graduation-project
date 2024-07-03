@@ -103,6 +103,18 @@ public class DoctorController : ControllerBase
 		return Ok(result.Value);
 	}
 
+	[HttpGet("me/report")]
+	[Authorize(Roles = "Doctor")]
+	public async Task<IActionResult> GetReport()
+	{
+		var result = await _doctorService.GetReports();
+		if (result.IsFailure)
+		{
+			return result.ToProblemDetails();
+		}
+		return Ok(result.Value);
+	}
+
 
 
 }

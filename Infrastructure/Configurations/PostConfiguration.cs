@@ -20,6 +20,14 @@ public class PostConfiguration : IEntityTypeConfiguration<Post>
 			.HasMaxLength(1000);
 
 		builder
+			.Property(p => p.Title)
+			.HasMaxLength(2000);
+
+		builder
+			.Property(p => p.Content)
+			.HasMaxLength(10000);
+
+		builder
 			.HasIndex(p => p.PostedOn);
 
 	}

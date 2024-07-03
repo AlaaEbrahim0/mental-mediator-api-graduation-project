@@ -9,8 +9,7 @@ namespace API.Controllers;
 public class ArticlesController : ControllerBase
 {
 	private readonly INewsService _newsService;
-
-	public ArticlesController(INewsService newsService)
+	public ArticlesController(INewsService newsService, IRepositoryManager repos)
 	{
 		_newsService = newsService;
 	}
@@ -25,4 +24,5 @@ public class ArticlesController : ControllerBase
 		}
 		return Ok(result.Value);
 	}
+
 }

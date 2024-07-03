@@ -24,11 +24,11 @@ public class CreatePostRequestValidator : AbstractValidator<CreatePostRequest>
 	{
 		RuleFor(x => x.Content)
 			.NotEmpty()
-			.Length(1, 4000);
+			.Length(1, 10000);
 
 		RuleFor(x => x.Title)
 			.NotEmpty()
-			.Length(1, 1000);
+			.Length(1, 2000);
 
 		RuleFor(x => x.PhotoPost)
 			.SetValidator(new PhotoValidator()!);

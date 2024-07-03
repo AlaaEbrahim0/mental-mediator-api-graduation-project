@@ -24,7 +24,7 @@ public class CreateAppointmentRequestValidator : AbstractValidator<CreateAppoint
 
 		RuleFor(x => x.Location)
 			.MaximumLength(100).WithMessage("Location must not exceed 100 characters.")
-			.NotEmpty().When(x => !string.IsNullOrEmpty(x.Location)).WithMessage("Location cannot be empty if specified.");
+			.NotEmpty().WithMessage("Location cannot be empty if specified.");
 
 		RuleFor(x => x.Reason)
 			.MaximumLength(1000).WithMessage("Reason must not exceed 500 characters.");
