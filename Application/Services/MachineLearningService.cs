@@ -12,7 +12,7 @@ public class MachineLearningService
 		_depressionDetector = depressionDetector;
 	}
 
-	public async Task<Result<bool>> IsDepressed(DepressionTestRequest request)
+	public async Task<Result<string>> IsDepressed(DepressionTestRequest request)
 	{
 		return await _depressionDetector.IsDepressed(request);
 	}

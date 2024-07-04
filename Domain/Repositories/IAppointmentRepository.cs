@@ -18,3 +18,4 @@ public interface IAppointmentRepository
 	Task<(List<WeekdayAppointmentCount> weekdayCounts, List<MonthlyAppointmentCount> monthlyCounts)> GetDoctorAppointmentCounts(string doctorId);
 	Task<List<AppointmentStatusCount>> GetAppointmentStatusCounts(string doctorId);
 }
+

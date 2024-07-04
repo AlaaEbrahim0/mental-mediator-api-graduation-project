@@ -171,7 +171,7 @@ public class DoctorService : IDoctorService
 		foreach (var slot in slots)
 		{
 			bool isSlotAvailable = true;
-			var slotEnd = slot.Add(duration);                               // Assuming 30-minute slots for simplicity
+			var slotEnd = slot.Add(duration);
 
 			foreach (var appointment in appointments)
 			{

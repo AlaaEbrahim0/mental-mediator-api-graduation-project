@@ -111,6 +111,7 @@ public class AppointmentRepository : RepositoryBase<Appointment>, IAppointmentRe
 
 		return await query
 			.OrderByDescending(x => x.StartTime)
+			.ThenBy(x => x.Status)
 			.Select(x => new Appointment
 			{
 				Id = x.Id,

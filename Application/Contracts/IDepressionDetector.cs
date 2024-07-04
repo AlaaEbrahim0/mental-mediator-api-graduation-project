@@ -5,6 +5,6 @@ namespace Application.Contracts;
 
 public interface IDepressionDetector
 {
-	Task<Result<bool>> IsDepressed(DepressionTestRequest request);
+	Task<Result<string>> IsDepressed(DepressionTestRequest request);
 }
 
