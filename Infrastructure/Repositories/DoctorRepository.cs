@@ -75,4 +75,9 @@ public class DoctorRepository : RepositoryBase<Doctor>, IDoctorRepository
 	{
 		Delete(doctor);
 	}
+
+	public async Task<int> GetCount()
+	{
+		return await FindAll(false).CountAsync();
+	}
 }

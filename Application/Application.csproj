@@ -9,8 +9,11 @@
 
   <ItemGroup>
     <Compile Remove="Controllers\**" />
+    <Compile Remove="Dtos\DepressionTestRequest.cs\**" />
     <EmbeddedResource Remove="Controllers\**" />
+    <EmbeddedResource Remove="Dtos\DepressionTestRequest.cs\**" />
     <None Remove="Controllers\**" />
+    <None Remove="Dtos\DepressionTestRequest.cs\**" />
   </ItemGroup>
 
   <ItemGroup>

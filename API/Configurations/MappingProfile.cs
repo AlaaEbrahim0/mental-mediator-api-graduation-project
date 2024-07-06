@@ -1,9 +1,9 @@
-﻿
-namespace API.Configurations;
+﻿namespace API.Configurations;
 
 using Application.Dtos.AppointmentDtos;
 using Application.Dtos.AuthDtos;
 using Application.Dtos.CommentsDtos;
+using Application.Dtos.DepressionTestDtos;
 using Application.Dtos.PostsDto;
 using Application.Dtos.ReplyDtos;
 using Application.Dtos.UserDtos;
@@ -63,5 +63,8 @@ public class MappingProfile : Profile
 
 		CreateMap<Appointment, AppointmentResponse>();
 		CreateMap<CreateAppointmentRequest, Appointment>();
+
+		CreateMap<DepressionTestResult, DepressionTestResultResponse>();
+
 	}
 }

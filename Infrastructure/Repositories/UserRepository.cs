@@ -51,4 +51,9 @@ public class UserRepository : RepositoryBase<User>, IUserRepository
 		return users;
 	}
 
+	public async Task<int> GetCount()
+	{
+		return await FindAll(false).CountAsync();
+	}
+
 }

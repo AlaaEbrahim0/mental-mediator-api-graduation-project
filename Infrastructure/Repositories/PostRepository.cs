@@ -148,4 +148,9 @@ public class PostRepository : RepositoryBase<Post>, IPostRepository
 	{
 		Update(post);
 	}
+
+	public async Task<int> GetCount()
+	{
+		return await FindAll(false).CountAsync();
+	}
 }

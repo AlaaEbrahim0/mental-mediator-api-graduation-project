@@ -61,3 +61,8 @@ public class MyAppointmentsRequestParameters : RequestParameters
 	public DateTime? EndDate { get; set; }
 	public string? Status { get; set; }
 }
+
+public class DepressionTestsRequestParameters : RequestParameters
+{
+
+}

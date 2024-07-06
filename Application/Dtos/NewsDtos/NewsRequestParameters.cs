@@ -11,3 +11,9 @@ public class NewsRequestParameters
 	[DefaultValue("en")]
 	public string Language { get; set; } = "en";
 }
+
+
+public class DepressionTestResultsRequestParameters
+{
+
+}

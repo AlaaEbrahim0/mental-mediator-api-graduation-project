@@ -1,6 +1,6 @@
 ﻿using System.Net.Http.Json;
 using Application.Contracts;
-using Application.Dtos.WeeklyScheduleDtos;
+using Application.Dtos.DepressionTestDtos;
 using Shared;
 
 namespace Infrastructure.Clients;

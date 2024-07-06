@@ -129,4 +129,5 @@ public class UserService : IUserService
 		var response = _mapper.Map<UserInfoResponse>(user);
 		return response;
 	}
+
 }

@@ -9,4 +9,5 @@ public interface IDoctorRepository
 	Task<Doctor?> GetById(string id, bool trackChanges);
 	void UpdateDoctor(Doctor doctor);
 	void DeleteDoctor(Doctor doctor);
+	Task<int> GetCount();
 }

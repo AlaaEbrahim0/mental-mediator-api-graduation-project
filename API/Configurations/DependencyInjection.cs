@@ -118,6 +118,7 @@ public static class DependencyInjection
 		services.AddScoped<IUserRepository, UserRepository>();
 		services.AddScoped<IAppointmentRepository, AppointmentRepository>();
 		services.AddScoped<IDoctorScheduleRepository, DoctorScheduleRepository>();
+		services.AddScoped<IDepressionTestResultRepository, DepressionTestResultRepository>();
 		return services;
 	}
 
@@ -182,6 +183,8 @@ public static class DependencyInjection
 			.AddScoped<IStorageService, CloudinaryStorageService>()
 			.AddScoped<IWebRootFileProvider, WebRootFileProvider>()
 			.AddTransient<IMailService, MailService>()
+			.AddScoped<IDepressionTestService, DepressionTestService>()
+			.AddScoped<IAdminService, AdminService>()
 			.AddSignalR();
 
 		return services;

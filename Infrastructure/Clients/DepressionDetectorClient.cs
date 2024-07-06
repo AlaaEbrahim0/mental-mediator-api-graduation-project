@@ -1,7 +1,6 @@
 ﻿using System.Net.Http.Json;
 using Application.Contracts;
 using Application.Dtos;
-using Application.Dtos.WeeklyScheduleDtos;
 using Shared;
 
 namespace Infrastructure.Clients;
@@ -21,19 +20,16 @@ public class DepressionDetectorClient : IDepressionDetector
 		var response = await httpClient.PostAsJsonAsync("/predict_DP", request);
 		if (response.IsSuccessStatusCode)
 		{
-			var data = await response.Content.ReadFromJsonAsync<DepressionTestResult>();
-			if (data!.Prediction.Equals("normal", StringComparison.InvariantCultureIgnoreCase))
+			var data = await response.Content.ReadFromJsonAsync<DepressionTestResponse>();
+			if (data!.Prediction!.Equals("normal", StringComparison.InvariantCultureIgnoreCase))
 			{
 				return "Normal";
 			}
-			else if (data.Prediction.Equals("negative", StringComparison.InvariantCultureIgnoreCase))
+			if (data.Prediction.Equals("negative", StringComparison.InvariantCultureIgnoreCase))
 			{
 				return "Negative";
 			}
-			else
-			{
-				return "Depressed";
-			}
+			return "Depressed";
 		}
 		return Error.ServiceUnavailable("ExternalServices.DepressionTestServiceUnavailable", "failed to fetch data from ml server");
 	}

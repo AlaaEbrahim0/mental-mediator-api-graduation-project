@@ -1,4 +1,5 @@
-﻿using Domain.Entities;
+﻿using System.Globalization;
+using Domain.Entities;
 using Domain.Enums;
 using Domain.Repositories;
 using Domain.Value_Objects;
@@ -274,13 +275,15 @@ public class AppointmentRepository : RepositoryBase<Appointment>, IAppointmentRe
 			.GroupBy(x => x.StartTime.Month)
 			.Select(x => new MonthlyAppointmentCount
 			{
-				Month = x.Key,
+				Month = CultureInfo.CurrentCulture.DateTimeFormat.GetAbbreviatedMonthName(x.Key),
 				Count = x.Count()
 			})
+			.OrderBy(x => DateTime.ParseExact(x.Month, "MMM", CultureInfo.CurrentCulture).Month)
 			.ToList();
 
 		return (weekdayCounts, monthlyCounts);
 	}
+
 	public async Task<List<AppointmentStatusCount>> GetAppointmentStatusCounts(string doctorId)
 	{
 		var statusCounts = await FindByCondition(x => x.DoctorId == doctorId, false)
@@ -295,7 +298,9 @@ public class AppointmentRepository : RepositoryBase<Appointment>, IAppointmentRe
 		return statusCounts;
 	}
 
-
-
+	public async Task<int> GetTotalAppointments()
+	{
+		return await FindAll(false).CountAsync();
+	}
 }
 

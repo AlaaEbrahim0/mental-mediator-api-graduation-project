@@ -2,7 +2,6 @@
 
 namespace Application.Dtos;
 
-
 public class DoctorReportResponse
 {
 	public int TotalAppointments { get; set; }
@@ -10,4 +9,7 @@ public class DoctorReportResponse
 	public List<WeekdayAppointmentCount> AppointmentsPerWeekday { get; set; } = [];
 	public List<AppointmentStatusCount> StatusCounts { get; set; } = [];
 	public List<MonthlyAppointmentCount> AppointmentsPerMonth { get; set; } = [];
+	public Dictionary<string, int> TestResultsCount { get; set; } = [];
+	public Dictionary<string, GenderDistribution> TestResultsGenderDistributions { get; set; } = [];
+	public Dictionary<string, AgeGroupDistribution> TestResultsAgeGroupDistributions { get; set; } = [];
 }

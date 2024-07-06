@@ -159,5 +159,6 @@ namespace Application.Services
 			var postResponse = _mapper.Map<IEnumerable<PostResponse>>(posts);
 			return postResponse.ToList();
 		}
+
 	}
 }
