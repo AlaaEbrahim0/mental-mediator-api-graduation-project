@@ -1,9 +1,9 @@
 ﻿
+using Application.Contracts;
 using Application.Dtos.PostsDto;
-using Application.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Shared;
+using Shared.RequestParameters;
 
 namespace API.Controllers;
 

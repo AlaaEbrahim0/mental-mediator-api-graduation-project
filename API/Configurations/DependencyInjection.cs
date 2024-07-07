@@ -211,24 +211,26 @@ public static class DependencyInjection
 				options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
 				options.DefaultScheme = JwtBearerDefaults.AuthenticationScheme;
 			})
-			.AddGoogle(options =>
-			{
-				options.ClientId = configuration["GoogleAuthentication:Id"]!;
-				options.ClientSecret = configuration["GoogleAuthentication:Secret"]!;
-
-			})
 			.AddJwtBearer(config =>
 			{
 				config.TokenValidationParameters = new()
 				{
 					ValidIssuer = configuration["JwtSettings:Issuer"],
 					ValidAudience = configuration["JwtSettings:Audience"],
-					IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(configuration["JwtSettings:Key"]!)),
+					IssuerSigningKey =
+						new SymmetricSecurityKey(Encoding.UTF8.GetBytes(configuration["JwtSettings:Key"]!)),
 					ValidateIssuer = true,
 					ValidateAudience = true,
 					ValidateIssuerSigningKey = true,
 					ValidateLifetime = true,
 				};
+			})
+			.AddGoogle(options =>
+			{
+				options.ClientId = configuration["GoogleAuthentication:Id"]!;
+				options.ClientSecret = configuration["GoogleAuthentication:Secret"]!;
+				options.CallbackPath = new PathString("/signin-google");
+
 			});
 
 

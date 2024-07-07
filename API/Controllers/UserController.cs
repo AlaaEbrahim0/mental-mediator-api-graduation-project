@@ -1,10 +1,10 @@
 ﻿using Application.Contracts;
-using Application.Dtos;
+using Application.Dtos.DepressionTestDtos;
 using Application.Dtos.UserDtos;
 using Application.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Shared;
+using Shared.RequestParameters;
 
 namespace API.Controllers;
 

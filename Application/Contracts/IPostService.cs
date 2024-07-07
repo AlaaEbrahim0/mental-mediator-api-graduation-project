@@ -1,8 +1,8 @@
 ﻿using Application.Dtos.PostsDto;
 using Shared;
+using Shared.RequestParameters;
 
-
-namespace Application.Services;
+namespace Application.Contracts;
 public interface IPostService
 {
 	Task<Result<IEnumerable<PostResponse>>> GetPosts(PostRequestParameters parameters);

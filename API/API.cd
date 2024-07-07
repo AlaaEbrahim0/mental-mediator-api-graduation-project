@@ -1,0 +1,95 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<ClassDiagram MajorVersion="1" MinorVersion="1" MembersFormat="FullSignature">
+  <Class Name="API.Controllers.AdminController">
+    <Position X="15.5" Y="9.75" Width="3.25" />
+    <TypeIdentifier>
+      <HashCode>AAAAABAAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAA=</HashCode>
+      <FileName>Controllers\AdminController.cs</FileName>
+    </TypeIdentifier>
+  </Class>
+  <Class Name="API.Controllers.AppointmentController">
+    <Position X="7.25" Y="16.75" Width="6" />
+    <TypeIdentifier>
+      <HashCode>AAAAAABAQAAAAAAEAAAAAAAAAAAAAAAAAgCAQAAIAYA=</HashCode>
+      <FileName>Controllers\AppointmentController.cs</FileName>
+    </TypeIdentifier>
+  </Class>
+  <Class Name="API.Controllers.ArticlesController">
+    <Position X="21.75" Y="10.5" Width="4.75" />
+    <TypeIdentifier>
+      <HashCode>AAAAAAAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAIAAAAA=</HashCode>
+      <FileName>Controllers\ArticlesController.cs</FileName>
+    </TypeIdentifier>
+  </Class>
+  <Class Name="API.Controllers.AuthController">
+    <Position X="21.75" Y="12.75" Width="5.5" />
+    <TypeIdentifier>
+      <HashCode>AAAAAACAQAAAAAAAAABBAgAgAAABAIAAAAEBAAAAAAA=</HashCode>
+      <FileName>Controllers\AuthController.cs</FileName>
+    </TypeIdentifier>
+  </Class>
+  <Class Name="API.Controllers.CommentController">
+    <Position X="7.25" Y="13.5" Width="7.5" />
+    <TypeIdentifier>
+      <HashCode>ABAAAAAAEAAAAAAAAAAAQAAAAAAgAAAAAAgAAAAASAA=</HashCode>
+      <FileName>Controllers\CommentController.cs</FileName>
+    </TypeIdentifier>
+  </Class>
+  <Class Name="API.Controllers.DepressionTestController">
+    <Position X="15.5" Y="15.25" Width="5.75" />
+    <TypeIdentifier>
+      <HashCode>AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAIAAEAAAEAAAA=</HashCode>
+      <FileName>Controllers\DepressionTestController.cs</FileName>
+    </TypeIdentifier>
+  </Class>
+  <Class Name="API.Controllers.DoctorController">
+    <Position X="21.75" Y="16.5" Width="5.75" />
+    <TypeIdentifier>
+      <HashCode>AAAAAABAEAACAAAEAAAAAAAQAAAAAAAhAAAAAAAAABA=</HashCode>
+      <FileName>Controllers\DoctorController.cs</FileName>
+    </TypeIdentifier>
+  </Class>
+  <Class Name="API.Controllers.NotificationController">
+    <Position X="15.5" Y="17.75" Width="5.75" />
+    <TypeIdentifier>
+      <HashCode>AAAAwAAAEAAAACAAAAAgAABAAAAAAAAAAAAAAAAAAAA=</HashCode>
+      <FileName>Controllers\NotificationController.cs</FileName>
+    </TypeIdentifier>
+  </Class>
+  <Class Name="API.Controllers.PostController">
+    <Position X="15.5" Y="12" Width="5.75" />
+    <TypeIdentifier>
+      <HashCode>AAAAAAAAAAAAAAAQAAAAAAAAAIAAAAAAIEAAAiAAIAA=</HashCode>
+      <FileName>Controllers\PostController.cs</FileName>
+    </TypeIdentifier>
+  </Class>
+  <Class Name="API.Controllers.ReplyController">
+    <Position X="15.5" Y="6.5" Width="6.5" />
+    <TypeIdentifier>
+      <HashCode>CAAAAAAAAAIBAAQAAAAAAABAAAAAAABAAAAAAAAAAAA=</HashCode>
+      <FileName>Controllers\ReplyContoller.cs</FileName>
+    </TypeIdentifier>
+  </Class>
+  <Class Name="API.Controllers.UserController">
+    <Position X="7.25" Y="9.75" Width="8" />
+    <TypeIdentifier>
+      <HashCode>AAAAAAAIEAAAAAAEAAAABAAAAAQAAAAAAgAEAAEAAAA=</HashCode>
+      <FileName>Controllers\UserController.cs</FileName>
+    </TypeIdentifier>
+  </Class>
+  <Class Name="API.Controllers.WeeklyScheduleController">
+    <Position X="7.25" Y="6.5" Width="7.5" />
+    <TypeIdentifier>
+      <HashCode>AAAAAAEAQAAAAAAAAAAAQAQAAAAAABCAABAAAAAAAAQ=</HashCode>
+      <FileName>Controllers\WeeklyScheduleController.cs</FileName>
+    </TypeIdentifier>
+  </Class>
+  <Class Name="API.Configurations.DependencyInjection">
+    <Position X="22.5" Y="6.5" Width="8" />
+    <TypeIdentifier>
+      <HashCode>AAAAAAEEQAAABBAAIAAAAkEAAAAEAAAAIAAACAABAAA=</HashCode>
+      <FileName>Configurations\DependencyInjection.cs</FileName>
+    </TypeIdentifier>
+  </Class>
+  <Font Name="Segoe UI" Size="9" />
+</ClassDiagram>

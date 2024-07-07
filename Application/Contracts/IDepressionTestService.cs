@@ -1,6 +1,6 @@
-﻿using Application.Dtos;
-using Application.Dtos.DepressionTestDtos;
+﻿using Application.Dtos.DepressionTestDtos;
 using Shared;
+using Shared.RequestParameters;
 
 namespace Application.Contracts;
 public interface IDepressionTestService

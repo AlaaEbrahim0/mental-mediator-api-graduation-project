@@ -1,0 +1,267 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<ClassDiagram MajorVersion="1" MinorVersion="1" MembersFormat="FullSignature">
+  <Class Name="Infrastructure.Clients.DepressionDetectorClient">
+    <Position X="12" Y="9" Width="4.5" />
+    <TypeIdentifier>
+      <HashCode>AACAAAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAAA=</HashCode>
+      <FileName>Clients\DepressionDetectorClient.cs</FileName>
+    </TypeIdentifier>
+  </Class>
+  <Class Name="Infrastructure.Clients.HateSpeechDetectorClient">
+    <Position X="14" Y="11.25" Width="4.25" />
+    <TypeIdentifier>
+      <HashCode>AACAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQA=</HashCode>
+      <FileName>Clients\HateSpeechDetectorClient.cs</FileName>
+    </TypeIdentifier>
+  </Class>
+  <Class Name="Infrastructure.Clients.NewsApiClient">
+    <Position X="8.25" Y="11.25" Width="5.25" />
+    <TypeIdentifier>
+      <HashCode>AACAAAAAAAAAAAAAAAAAAAAAAAAAAAABAAAAAAAAAAA=</HashCode>
+      <FileName>Clients\NewsApiClient.cs</FileName>
+    </TypeIdentifier>
+  </Class>
+  <Class Name="Infrastructure.Data.AppDbContext">
+    <Position X="19" Y="8" Width="4.5" />
+    <TypeIdentifier>
+      <HashCode>AAAAAAAAAAAgAAAABCAQARAAUAAAAAAAAgAAAAAIIAA=</HashCode>
+      <FileName>Data\AppDbContext.cs</FileName>
+    </TypeIdentifier>
+  </Class>
+  <Class Name="Infrastructure.Data.DbInitializer">
+    <Position X="25" Y="5.5" Width="3.5" />
+    <TypeIdentifier>
+      <HashCode>AAAgAAAAAIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=</HashCode>
+      <FileName>Data\DbInitializer.cs</FileName>
+    </TypeIdentifier>
+  </Class>
+  <Class Name="Infrastructure.Hubs.NotificationHub">
+    <Position X="15.5" Y="14.5" Width="2.25" />
+    <TypeIdentifier>
+      <HashCode>AAAAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAAAAA=</HashCode>
+      <FileName>Hubs\NotificationHub.cs</FileName>
+    </TypeIdentifier>
+  </Class>
+  <Class Name="Infrastructure.Repositories.AppointmentRepository">
+    <Position X="10.5" Y="28.25" Width="9" />
+    <InheritanceLine Type="Infrastructure.Repositories.RepositoryBase&lt;T&gt;" ManuallyRouted="true">
+      <Path>
+        <Point X="21.875" Y="16.017" />
+        <Point X="21.875" Y="21.88" />
+        <Point X="18.167" Y="21.88" />
+        <Point X="18.167" Y="27.875" />
+        <Point X="15" Y="27.875" />
+        <Point X="15" Y="28.25" />
+      </Path>
+    </InheritanceLine>
+    <TypeIdentifier>
+      <HashCode>AEAAAAAAAAkAAAAAAAAVAAAAAAAAAEAAEgAQQAAAAIA=</HashCode>
+      <FileName>Repositories\AppointmentRepository.cs</FileName>
+    </TypeIdentifier>
+    <Lollipop Position="0.2" />
+  </Class>
+  <Class Name="Infrastructure.Repositories.CommentRepository">
+    <Position X="12" Y="21" Width="5.75" />
+    <TypeIdentifier>
+      <HashCode>ABAAAAAAEAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAQIA=</HashCode>
+      <FileName>Repositories\CommentRepository.cs</FileName>
+    </TypeIdentifier>
+    <Lollipop Position="0.2" />
+  </Class>
+  <Class Name="Infrastructure.Repositories.DepressionTestResultRepository">
+    <Position X="28.5" Y="19.5" Width="7.5" />
+    <TypeIdentifier>
+      <HashCode>AEQAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAgABAAIAAoA=</HashCode>
+      <FileName>Repositories\DepressionTestResultRepository.cs</FileName>
+    </TypeIdentifier>
+    <Lollipop Position="0.2" />
+  </Class>
+  <Class Name="Infrastructure.Repositories.DoctorRepository">
+    <Position X="34.25" Y="29" Width="6.5" />
+    <InheritanceLine Type="Infrastructure.Repositories.RepositoryBase&lt;T&gt;" ManuallyRouted="true" FixedToPoint="true">
+      <Path>
+        <Point X="21.875" Y="16.017" />
+        <Point X="21.875" Y="18.146" />
+        <Point X="25.199" Y="18.146" Type="JumpStart" />
+        <Point X="25.366" Y="18.146" Type="JumpEnd" />
+        <Point X="27.388" Y="18.146" Type="JumpStart" />
+        <Point X="27.555" Y="18.146" Type="JumpEnd" />
+        <Point X="37.062" Y="18.146" />
+        <Point X="37.062" Y="29" />
+      </Path>
+    </InheritanceLine>
+    <TypeIdentifier>
+      <HashCode>AAQAAAAAAAAAAAAAAAAAAAABAAAAAAAAAgAABAAAAIA=</HashCode>
+      <FileName>Repositories\DoctorRepository.cs</FileName>
+    </TypeIdentifier>
+    <Lollipop Position="0.2" />
+  </Class>
+  <Class Name="Infrastructure.Repositories.DoctorScheduleRepository">
+    <Position X="8.25" Y="24.25" Width="7.25" />
+    <InheritanceLine Type="Infrastructure.Repositories.RepositoryBase&lt;T&gt;" ManuallyRouted="true">
+      <Path>
+        <Point X="21.875" Y="16.017" />
+        <Point X="21.875" Y="17.347" />
+        <Point X="11.875" Y="17.347" />
+        <Point X="11.875" Y="24.25" />
+      </Path>
+    </InheritanceLine>
+    <TypeIdentifier>
+      <HashCode>AAAAAAAAgAIAAAACACAAABQAAAAAACAAAAAAAAAAAAA=</HashCode>
+      <FileName>Repositories\DoctorScheduleRepository.cs</FileName>
+    </TypeIdentifier>
+    <Lollipop Position="0.2" />
+  </Class>
+  <Class Name="Infrastructure.Repositories.NotificationRepository">
+    <Position X="18.75" Y="23" Width="7" />
+    <TypeIdentifier>
+      <HashCode>AEAAQAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAAAAIA=</HashCode>
+      <FileName>Repositories\NotificationRepository.cs</FileName>
+    </TypeIdentifier>
+    <Lollipop Position="0.2" />
+  </Class>
+  <Class Name="Infrastructure.Repositories.PostRepository">
+    <Position X="28.5" Y="25.75" Width="7.25" />
+    <InheritanceLine Type="Infrastructure.Repositories.RepositoryBase&lt;T&gt;" ManuallyRouted="true">
+      <Path>
+        <Point X="21.875" Y="16.017" />
+        <Point X="21.875" Y="17.506" />
+        <Point X="25.283" Y="17.506" />
+        <Point X="25.283" Y="22.683" />
+        <Point X="27.388" Y="22.683" Type="JumpStart" />
+        <Point X="27.555" Y="22.683" Type="JumpEnd" />
+        <Point X="32.125" Y="22.683" />
+        <Point X="32.125" Y="25.75" />
+      </Path>
+    </InheritanceLine>
+    <TypeIdentifier>
+      <HashCode>AAQAAAAAAIAAAAAQAAIAAAAAAIAAAAAAIAAAAiAAAAA=</HashCode>
+      <FileName>Repositories\PostRepository.cs</FileName>
+    </TypeIdentifier>
+    <Lollipop Position="0.2" />
+  </Class>
+  <Class Name="Infrastructure.Repositories.ReplyRepository">
+    <Position X="37.75" Y="23" Width="5.75" />
+    <InheritanceLine Type="Infrastructure.Repositories.RepositoryBase&lt;T&gt;" ManuallyRouted="true">
+      <Path>
+        <Point X="21.875" Y="16.017" />
+        <Point X="21.875" Y="16.535" />
+        <Point X="40.625" Y="16.535" />
+        <Point X="40.625" Y="23" />
+      </Path>
+    </InheritanceLine>
+    <TypeIdentifier>
+      <HashCode>AAAAAAAAAAABAEAAAAAAAAAAAAAAAABAAAAAAAAQAIA=</HashCode>
+      <FileName>Repositories\ReplyRepository.cs</FileName>
+    </TypeIdentifier>
+    <Lollipop Position="0.2" />
+  </Class>
+  <Class Name="Infrastructure.Repositories.RepositoryBase&lt;T&gt;">
+    <Position X="19" Y="13.5" Width="5.75" />
+    <TypeIdentifier>
+      <HashCode>AAQBAAAAAAAAEAAAAAAQAAAAAAEAAEAAAAAAAAAAAAA=</HashCode>
+      <FileName>Repositories\RepositoryBase.cs</FileName>
+    </TypeIdentifier>
+    <Lollipop Position="0.2" />
+  </Class>
+  <Class Name="Infrastructure.Repositories.RepositoryManager">
+    <Position X="24.75" Y="7.25" Width="4.75" />
+    <TypeIdentifier>
+      <HashCode>AIABACAAEBAgAAAABCAggAAAQIAAAAIAAgAMAIAIIQA=</HashCode>
+      <FileName>Repositories\RepositoryManager.cs</FileName>
+    </TypeIdentifier>
+    <ShowAsAssociation>
+      <Field Name="_dbContext" />
+    </ShowAsAssociation>
+  </Class>
+  <Class Name="Infrastructure.Repositories.UserRepository">
+    <Position X="22.25" Y="29.75" Width="6.25" />
+    <InheritanceLine Type="Infrastructure.Repositories.RepositoryBase&lt;T&gt;" ManuallyRouted="true">
+      <Path>
+        <Point X="21.875" Y="16.017" />
+        <Point X="21.875" Y="17.187" />
+        <Point X="27.472" Y="17.187" />
+        <Point X="27.472" Y="26.566" />
+        <Point X="25.375" Y="26.566" />
+        <Point X="25.375" Y="29.75" />
+      </Path>
+    </InheritanceLine>
+    <TypeIdentifier>
+      <HashCode>AAQAAAAQAAAAAAAEAAAAAAAAAAAAAAAAAgAAAAAAAIA=</HashCode>
+      <FileName>Repositories\UserRepository.cs</FileName>
+    </TypeIdentifier>
+    <Lollipop Position="0.2" />
+  </Class>
+  <Class Name="Infrastructure.Services.AuthService">
+    <Position X="30.25" Y="5" Width="12.5" />
+    <TypeIdentifier>
+      <HashCode>AAAABAAgQAAAAAAABABBBAEAAAAAIAAoAAECAQAAAAA=</HashCode>
+      <FileName>Services\AuthService.cs</FileName>
+    </TypeIdentifier>
+  </Class>
+  <Class Name="Infrastructure.Services.MailService">
+    <Position X="39.25" Y="14.25" Width="3.5" />
+    <TypeIdentifier>
+      <HashCode>AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQQAAAAA=</HashCode>
+      <FileName>Services\MailService.cs</FileName>
+    </TypeIdentifier>
+  </Class>
+  <Class Name="Infrastructure.Services.NotificationSender">
+    <Position X="30.25" Y="10" Width="6.5" />
+    <TypeIdentifier>
+      <HashCode>AAAAAAAAEAAAAEAAAAABAAAAAAAAAAAAAAAAAAAAAAA=</HashCode>
+      <FileName>Services\NotificationSender.cs</FileName>
+    </TypeIdentifier>
+  </Class>
+  <Class Name="Infrastructure.Services.CloudinaryStorageService">
+    <Position X="39.25" Y="12" Width="3.75" />
+    <TypeIdentifier>
+      <HashCode>QAAAAAAAAAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAA=</HashCode>
+      <FileName>Services\StorageService.cs</FileName>
+    </TypeIdentifier>
+  </Class>
+  <Class Name="Infrastructure.Services.UserClaimsService">
+    <Position X="26" Y="13.25" Width="4.25" />
+    <TypeIdentifier>
+      <HashCode>AAgAAAEACAAAAAAAAQBAAAAAAACAAAAAAAAAAAAAAAA=</HashCode>
+      <FileName>Services\UserClaimsService.cs</FileName>
+    </TypeIdentifier>
+  </Class>
+  <Class Name="Infrastructure.Services.UserFactory">
+    <Position X="37.25" Y="10" Width="4.75" />
+    <TypeIdentifier>
+      <HashCode>AAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=</HashCode>
+      <FileName>Services\UserFactory.cs</FileName>
+    </TypeIdentifier>
+  </Class>
+  <Class Name="Infrastructure.Services.UserService">
+    <Position X="31" Y="12.5" Width="7.75" />
+    <TypeIdentifier>
+      <HashCode>AAAAAAKSAAAAAAAEAAABQAAAAAAAABAAAgAAAAAABAA=</HashCode>
+      <FileName>Services\UserService.cs</FileName>
+    </TypeIdentifier>
+  </Class>
+  <Class Name="Infrastructure.Utilities.JwtTokenGenerator">
+    <Position X="17.75" Y="5.25" Width="6" />
+    <TypeIdentifier>
+      <HashCode>AAAABAAAAAgEAAAAAAAAAAAAAAAAAAAAAABAAAAAAAA=</HashCode>
+      <FileName>Utilities\JwtTokenGenerator.cs</FileName>
+    </TypeIdentifier>
+  </Class>
+  <Class Name="Infrastructure.Repositories.CopyOfCommentRepository">
+    <Position X="3.75" Y="20.5" Width="5.75" />
+    <TypeIdentifier>
+      <HashCode>ABAAAAAAEAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAQIA=</HashCode>
+      <FileName>Repositories\CommentRepository.cs</FileName>
+    </TypeIdentifier>
+    <Lollipop Position="0.2" />
+  </Class>
+  <Interface Name="Infrastructure.Hubs.INotificationClient">
+    <Position X="11" Y="14.5" Width="4" />
+    <TypeIdentifier>
+      <HashCode>AAAAAAAAAAAAAAAAAAAAAAAAACAAAAAAEAAAAAAAAAA=</HashCode>
+      <FileName>Hubs\NotificationHub.cs</FileName>
+    </TypeIdentifier>
+  </Interface>
+  <Font Name="Segoe UI" Size="9" />
+</ClassDiagram>

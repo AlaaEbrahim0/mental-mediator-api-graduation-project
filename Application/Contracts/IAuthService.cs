@@ -1,10 +1,11 @@
 ﻿using Application.Dtos.AuthDtos;
 using Microsoft.AspNetCore.Authentication;
 using Shared;
-namespace Application.Services;
+
+namespace Application.Contracts;
 public interface IAuthService
 {
-	Task<Result<RegisterationResponse>> RegisterAsync(RegisterationRequest RegistrationRequest);
+	Task<Result<RegisterationResponse>> RegisterAsync(RegisterationRequest registrationRequest);
 	Task<Result<AuthResponse>> SignInAsync(SignInRequest signInModel);
 	Task<Result<EmailConfirmationResponse>> SendEmailConfirmationLink(string email);
 	Task<Result<EmailConfirmationResponse>> ConfirmEmailAsync(string id, string token);

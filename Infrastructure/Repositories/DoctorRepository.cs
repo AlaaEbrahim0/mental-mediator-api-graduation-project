@@ -3,7 +3,7 @@ using Domain.Enums;
 using Domain.Repositories;
 using Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
-using Shared;
+using Shared.RequestParameters;
 
 namespace Infrastructure.Repositories;
 

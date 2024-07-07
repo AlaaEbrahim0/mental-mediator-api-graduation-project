@@ -1,4 +1,6 @@
-﻿namespace API.Configurations;
+﻿using Application.Dtos.NotificationDtos;
+
+namespace API.Configurations;
 
 using Application.Dtos.AppointmentDtos;
 using Application.Dtos.AuthDtos;

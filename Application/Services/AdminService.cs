@@ -1,5 +1,5 @@
 ﻿using Application.Contracts;
-using Application.Dtos;
+using Application.Dtos.ReportsDtos;
 using AutoMapper;
 using Shared;
 
@@ -45,9 +45,4 @@ public class AdminService : IAdminService
 
 		return response;
 	}
-}
-
-public interface IAdminService
-{
-	Task<Result<AdminReportResponse>> GetSystemSummary();
 }

@@ -1,6 +1,6 @@
 ﻿using Domain.Entities;
 using Domain.Value_Objects;
-using Shared;
+using Shared.RequestParameters;
 
 namespace Domain.Repositories;
 

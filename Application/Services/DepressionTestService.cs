@@ -1,9 +1,9 @@
 ﻿using Application.Contracts;
-using Application.Dtos;
 using Application.Dtos.DepressionTestDtos;
 using AutoMapper;
 using Domain.Entities;
 using Shared;
+using Shared.RequestParameters;
 
 namespace Application.Services;
 public class DepressionTestService : IDepressionTestService

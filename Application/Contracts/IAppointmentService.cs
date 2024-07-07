@@ -1,5 +1,6 @@
 ﻿using Application.Dtos.AppointmentDtos;
 using Shared;
+using Shared.RequestParameters;
 
 namespace Application.Contracts;
 public interface IAppointmentService

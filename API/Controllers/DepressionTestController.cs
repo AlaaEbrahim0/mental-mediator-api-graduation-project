@@ -1,8 +1,8 @@
 ﻿using Application.Contracts;
-using Application.Dtos;
+using Application.Dtos.DepressionTestDtos;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Shared;
+using Shared.RequestParameters;
 
 namespace API.Controllers;
 [Route("api/depression-tests")]

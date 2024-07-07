@@ -4,10 +4,11 @@ using AutoMapper;
 using Domain.Entities;
 using Domain.Errors;
 using Shared;
+using Shared.RequestParameters;
 
 namespace Application.Services
 {
-	public class PostService : IPostService
+    public class PostService : IPostService
 	{
 		private readonly IRepositoryManager _repos;
 		private readonly IMapper _mapper;

@@ -1,4 +1,4 @@
-﻿using Application.Dtos;
+﻿using Application.Dtos.DepressionTestDtos;
 using Shared;
 
 namespace Application.Contracts;

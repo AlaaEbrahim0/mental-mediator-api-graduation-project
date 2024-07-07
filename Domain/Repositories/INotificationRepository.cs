@@ -1,5 +1,5 @@
 ﻿using Domain.Entities;
-using Shared;
+using Shared.RequestParameters;
 
 namespace Domain.Repositories;
 

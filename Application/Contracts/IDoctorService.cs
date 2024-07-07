@@ -1,6 +1,7 @@
-﻿using Application.Dtos;
+﻿using Application.Dtos.ReportsDtos;
 using Application.Dtos.UserDtos;
 using Shared;
+using Shared.RequestParameters;
 
 namespace Application.Contracts;
 

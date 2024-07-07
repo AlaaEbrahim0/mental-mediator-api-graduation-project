@@ -370,3 +370,4 @@ FodyWeavers.xsd
 /query.sql
 /productionDb.sql
 /localDb.sql
+/Application.Tests/Application.Tests.csproj

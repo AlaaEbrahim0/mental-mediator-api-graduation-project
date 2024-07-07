@@ -1,7 +1,7 @@
 ﻿using Application.Contracts;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Shared;
+using Shared.RequestParameters;
 
 namespace API.Controllers;
 

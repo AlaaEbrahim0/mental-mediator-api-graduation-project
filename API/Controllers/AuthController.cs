@@ -1,4 +1,5 @@
-﻿using Application.Dtos.AuthDtos;
+﻿using Application.Contracts;
+using Application.Dtos.AuthDtos;
 using Application.Services;
 using Domain.Entities;
 using Microsoft.AspNetCore.Identity;

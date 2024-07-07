@@ -1,5 +1,5 @@
 ﻿
-namespace Shared;
+namespace Application.Dtos.NotificationDtos;
 public record NotificationResponse
 {
 	public int Id { get; set; }

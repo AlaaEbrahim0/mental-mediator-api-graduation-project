@@ -3,7 +3,7 @@ using FluentValidation;
 
 namespace Application.Dtos.AuthDtos;
 
-public record RegisterationRequest
+public class RegisterationRequest
 {
 
 	[DefaultValue("name")]

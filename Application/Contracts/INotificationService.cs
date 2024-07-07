@@ -1,5 +1,7 @@
-﻿using Domain.Entities;
+﻿using Application.Dtos.NotificationDtos;
+using Domain.Entities;
 using Shared;
+using Shared.RequestParameters;
 
 namespace Application.Contracts;
 public interface INotificationService

@@ -1,6 +1,6 @@
-﻿using Application.Dtos.NotificationDtos;
+﻿using Application.Contracts;
+using Application.Dtos.NotificationDtos;
 using Application.Options;
-using Application.Services;
 using MailKit.Net.Smtp;
 using MailKit.Security;
 using Microsoft.Extensions.Options;
@@ -28,12 +28,10 @@ public class MailService : IMailService
 		bodyBuilder.HtmlBody = mailRequest.Body;
 		email.Body = bodyBuilder.ToMessageBody();
 
-		using (var smtp = new SmtpClient())
-		{
-			smtp.Connect(_mailSettings.Host, _mailSettings.Port, SecureSocketOptions.StartTls);
-			smtp.Authenticate(_mailSettings.Username, _mailSettings.Password);
-			await smtp.SendAsync(email);
-			smtp.Disconnect(true);
-		}
+		using var smtp = new SmtpClient();
+		smtp.Connect(_mailSettings.Host, _mailSettings.Port, SecureSocketOptions.StartTls);
+		smtp.Authenticate(_mailSettings.Username, _mailSettings.Password);
+		await smtp.SendAsync(email);
+		smtp.Disconnect(true);
 	}
 }

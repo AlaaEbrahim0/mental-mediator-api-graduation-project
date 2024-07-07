@@ -2,7 +2,7 @@
 using Application.Dtos.AppointmentDtos;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Shared;
+using Shared.RequestParameters;
 
 namespace API.Controllers;
 [Route("api/appointments")]

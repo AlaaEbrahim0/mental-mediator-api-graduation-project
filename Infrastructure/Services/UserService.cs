@@ -4,6 +4,7 @@ using Application.Dtos.UserDtos;
 using AutoMapper;
 using Domain.Errors;
 using Shared;
+using Shared.RequestParameters;
 
 namespace Infrastructure.Services;
 public class UserService : IUserService

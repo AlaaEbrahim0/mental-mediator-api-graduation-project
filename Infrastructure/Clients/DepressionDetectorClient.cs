@@ -1,6 +1,6 @@
 ﻿using System.Net.Http.Json;
 using Application.Contracts;
-using Application.Dtos;
+using Application.Dtos.DepressionTestDtos;
 using Shared;
 
 namespace Infrastructure.Clients;

@@ -2,9 +2,9 @@
 using System.Net;
 using System.Security.Claims;
 using System.Text;
+using Application.Contracts;
 using Application.Dtos.AuthDtos;
 using Application.Dtos.NotificationDtos;
-using Application.Services;
 using Application.Utilities;
 using AutoMapper;
 using Domain.Entities;
@@ -112,7 +112,7 @@ public class AuthService : IAuthService
 			$"token={WebUtility.UrlEncode(token)}";
 	}
 
-	private string generateResetPasswordLink(string email, string token)
+	private string GenerateResetPasswordLink(string email, string token)
 	{
 		return
 			$"{_signInManager.Context.Request.Scheme}://" +
@@ -253,7 +253,7 @@ public class AuthService : IAuthService
 		}
 
 		var token = await _userManager.GeneratePasswordResetTokenAsync(user);
-		var resetPasswordLink = generateResetPasswordLink(email, token);
+		var resetPasswordLink = GenerateResetPasswordLink(email, token);
 
 		await _mailService.SendEmailAsync(new MailRequest
 		{

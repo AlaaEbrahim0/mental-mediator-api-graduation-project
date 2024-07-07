@@ -1,6 +1,7 @@
-﻿using Application.Dtos.UserDtos;
-using Domain.Enums;
+﻿using Domain.Enums;
 using FluentValidation;
+
+namespace Application.Dtos.UserDtos;
 
 public class UpdateDoctorInfoRequest : UpdateUserInfoRequest
 {
@@ -21,22 +22,22 @@ public class UpdateDoctorInfoRequestValidator : AbstractValidator<UpdateDoctorIn
 
 		RuleFor(x => x.City)
 			.NotEmpty()
-				.WithMessage("City is required.")
+			.WithMessage("City is required.")
 			.MaximumLength(100)
-				.WithMessage("City cannot be longer than 100 characters.");
+			.WithMessage("City cannot be longer than 100 characters.");
 
 		RuleFor(x => x.Location)
 			.NotEmpty()
-				.WithMessage("Location is required.")
+			.WithMessage("Location is required.")
 			.MaximumLength(200)
-				.WithMessage("Location cannot be longer than 200 characters.");
+			.WithMessage("Location cannot be longer than 200 characters.");
 
 		RuleFor(x => x.SessionFees)
 			.GreaterThanOrEqualTo(0)
-				.WithMessage("Session fees must be a positive number.");
+			.WithMessage("Session fees must be a positive number.");
 
 		RuleFor(x => x.Specialization)
 			.IsInEnum()
-				.WithMessage("Specialization is required and must be a valid value.");
+			.WithMessage("Specialization is required and must be a valid value.");
 	}
 }

@@ -5,6 +5,7 @@ using AutoMapper;
 using Domain.Entities;
 using Domain.Enums;
 using Shared;
+using Shared.RequestParameters;
 
 namespace Application.Services;
 

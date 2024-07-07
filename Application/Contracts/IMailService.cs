@@ -1,8 +1,7 @@
 ﻿using Application.Dtos.NotificationDtos;
-using Shared;
 
-namespace Application.Services;
+namespace Application.Contracts;
 public interface IMailService
 {
-    Task SendEmailAsync(MailRequest mailRequest);
+	Task SendEmailAsync(MailRequest mailRequest);
 }

@@ -1,0 +1,375 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<ClassDiagram MajorVersion="1" MinorVersion="1" MembersFormat="FullSignature">
+  <Class Name="Domain.Entities.Admin">
+    <Position X="25.5" Y="11.75" Width="1.5" />
+    <InheritanceLine Type="Domain.Entities.BaseUser" ManuallyRouted="true">
+      <Path>
+        <Point X="31" Y="8.848" />
+        <Point X="31" Y="9.351" />
+        <Point X="26.25" Y="9.351" />
+        <Point X="26.25" Y="11.75" />
+      </Path>
+    </InheritanceLine>
+    <TypeIdentifier>
+      <HashCode>AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=</HashCode>
+      <FileName>Entities\Admin.cs</FileName>
+    </TypeIdentifier>
+  </Class>
+  <Class Name="Domain.Entities.Appointment">
+    <Position X="21" Y="14.75" Width="4" />
+    <TypeIdentifier>
+      <HashCode>AAIDAAAESAASAAIAAAIABAgAIAAiQAwAQAAABQCAAIA=</HashCode>
+      <FileName>Entities\Appointment.cs</FileName>
+    </TypeIdentifier>
+  </Class>
+  <Class Name="Domain.Entities.BaseUser">
+    <Position X="29.5" Y="5.5" Width="3" />
+    <TypeIdentifier>
+      <HashCode>AAAAAEAAAAAgAICIhAAAAAQAQAAAAAAAAQAAAQAAAAg=</HashCode>
+      <FileName>Entities\BaseUser.cs</FileName>
+    </TypeIdentifier>
+  </Class>
+  <Class Name="Domain.Entities.Comment">
+    <Position X="39.5" Y="14.75" Width="2.75" />
+    <TypeIdentifier>
+      <HashCode>AAACAAAAAgAAAAEAgQAEAAIACAAAEAAAAAACAAAIAAA=</HashCode>
+      <FileName>Entities\Comment.cs</FileName>
+    </TypeIdentifier>
+  </Class>
+  <Class Name="Domain.Entities.DepressionTestResult">
+    <Position X="39.75" Y="18" Width="2.25" />
+    <TypeIdentifier>
+      <HashCode>AAADAAAAAAAAAACAAEAAAAwAAAAAAAABAAAAAAAAAAA=</HashCode>
+      <FileName>Entities\DepressionTestResult.cs</FileName>
+    </TypeIdentifier>
+  </Class>
+  <Class Name="Domain.Entities.Doctor">
+    <Position X="28.25" Y="11.75" Width="4.75" />
+    <InheritanceLine Type="Domain.Entities.BaseUser" ManuallyRouted="true" FixedToPoint="true">
+      <Path>
+        <Point X="31" Y="8.848" />
+        <Point X="31" Y="11.626" />
+        <Point X="31" Y="11.626" />
+        <Point X="31" Y="11.75" />
+      </Path>
+    </InheritanceLine>
+    <AssociationLine Name="DoctorScheduleWeekDays" Type="Domain.Entities.DoctorScheduleWeekDay" FixedFromPoint="true" FixedToPoint="true">
+      <Path>
+        <Point X="28.75" Y="13.752" />
+        <Point X="28.75" Y="20.273" />
+        <Point X="28" Y="20.273" />
+      </Path>
+    </AssociationLine>
+    <TypeIdentifier>
+      <HashCode>AAAABAAAAAAAAAAIAAIAAAAAQAAAAAAAAAAAAAAAEEA=</HashCode>
+      <FileName>Entities\Doctor.cs</FileName>
+    </TypeIdentifier>
+    <ShowAsCollectionAssociation>
+      <Property Name="DoctorScheduleWeekDays" />
+      <Property Name="Appointments" />
+    </ShowAsCollectionAssociation>
+  </Class>
+  <Class Name="Domain.Entities.DoctorScheduleWeekDay">
+    <Position X="25.25" Y="19.25" Width="2.75" />
+    <TypeIdentifier>
+      <HashCode>AAAAAAAAAAAAAAAAAgAAAAAAIAAiAAQAAAAEAAAAAAA=</HashCode>
+      <FileName>Entities\DoctorScheduleWeekDay.cs</FileName>
+    </TypeIdentifier>
+  </Class>
+  <Class Name="Domain.Entities.Notification">
+    <Position X="29" Y="14.75" Width="10" />
+    <TypeIdentifier>
+      <HashCode>AQACQAAAIAAAAAAMAAAEEAIAAAACAAAAAQAEIAAAAAA=</HashCode>
+      <FileName>Entities\Notification.cs</FileName>
+    </TypeIdentifier>
+  </Class>
+  <Class Name="Domain.Entities.Post">
+    <Position X="25.25" Y="14.75" Width="3" />
+    <TypeIdentifier>
+      <HashCode>AAACAAAAAgCAAEgAgQAGAAIAAAAAAAAAAAAAAAAAIAA=</HashCode>
+      <FileName>Entities\Post.cs</FileName>
+    </TypeIdentifier>
+  </Class>
+  <Class Name="Domain.Entities.Reply">
+    <Position X="36.5" Y="18.75" Width="2.5" />
+    <TypeIdentifier>
+      <HashCode>AAACAIAEAgAAAAAAgQAEAAIAAAAAAAAgAAAAAAAAAAA=</HashCode>
+      <FileName>Entities\Reply.cs</FileName>
+    </TypeIdentifier>
+  </Class>
+  <Class Name="Domain.Entities.HateSpeechReport">
+    <Position X="30.75" Y="34.5" Width="2.75" />
+    <TypeIdentifier>
+      <HashCode>AAACAAAAAAAAAAEAAAAAABAAAAAAAAAgAAAAAAEAAAA=</HashCode>
+      <FileName>Entities\Report.cs</FileName>
+    </TypeIdentifier>
+  </Class>
+  <Class Name="Domain.Entities.User">
+    <Position X="35" Y="11.75" Width="3.25" />
+    <InheritanceLine Type="Domain.Entities.BaseUser" ManuallyRouted="true">
+      <Path>
+        <Point X="31" Y="8.848" />
+        <Point X="31" Y="9.331" />
+        <Point X="36.625" Y="9.331" />
+        <Point X="36.625" Y="11.75" />
+      </Path>
+    </InheritanceLine>
+    <TypeIdentifier>
+      <HashCode>AAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAA=</HashCode>
+      <FileName>Entities\User.cs</FileName>
+    </TypeIdentifier>
+  </Class>
+  <Class Name="Domain.Entities.WeeklySchedule">
+    <Position X="32" Y="20.5" Width="3.75" />
+    <TypeIdentifier>
+      <HashCode>ACAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=</HashCode>
+      <FileName>Entities\WeeklySchedule.cs</FileName>
+    </TypeIdentifier>
+    <ShowAsCollectionAssociation>
+      <Property Name="WeekDays" />
+    </ShowAsCollectionAssociation>
+  </Class>
+  <Class Name="Domain.Errors.StorageErrors">
+    <Position X="32.5" Y="18.75" Width="3.5" />
+    <TypeIdentifier>
+      <HashCode>AAAAAIAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAA=</HashCode>
+      <FileName>Errors\StorageErrors.cs</FileName>
+    </TypeIdentifier>
+  </Class>
+  <Class Name="Domain.States.AppointmentStates.CancelledState" BaseTypeListCollapsed="true">
+    <Position X="11" Y="33.5" Width="4" />
+    <AssociationLine Name="_appointment" Type="Domain.Entities.Appointment" ManuallyRouted="true">
+      <Path>
+        <Point X="15" Y="34.436" />
+        <Point X="17.29" Y="34.436" />
+        <Point X="17.29" Y="19.333" />
+        <Point X="21" Y="19.333" />
+      </Path>
+    </AssociationLine>
+    <TypeIdentifier>
+      <HashCode>AAAAAAAAQAAQAAIAAAAAAAAAAAAAAAAAAABAAAAAAIA=</HashCode>
+      <FileName>States\AppointmentStates\CancelledState.cs</FileName>
+    </TypeIdentifier>
+    <ShowAsAssociation>
+      <Field Name="_appointment" />
+    </ShowAsAssociation>
+    <Lollipop Position="0.2" />
+  </Class>
+  <Class Name="Domain.States.AppointmentStates.CompletedState" BaseTypeListCollapsed="true">
+    <Position X="11" Y="30.75" Width="4" />
+    <AssociationLine Name="_appointment" Type="Domain.Entities.Appointment" ManuallyRouted="true" FixedFromPoint="true" FixedToPoint="true">
+      <Path>
+        <Point X="15" Y="31.686" />
+        <Point X="15.612" Y="31.686" />
+        <Point X="15.612" Y="17.5" />
+        <Point X="21" Y="17.5" />
+      </Path>
+    </AssociationLine>
+    <TypeIdentifier>
+      <HashCode>AAAAAAAAQAAQAAIAAAAAAAAAAAAAAAAAAABAAAAAAIA=</HashCode>
+      <FileName>States\AppointmentStates\CompletedState.cs</FileName>
+    </TypeIdentifier>
+    <ShowAsAssociation>
+      <Field Name="_appointment" />
+    </ShowAsAssociation>
+    <Lollipop Position="0.2" />
+  </Class>
+  <Class Name="Domain.States.AppointmentStates.ConfirmedState" BaseTypeListCollapsed="true">
+    <Position X="11" Y="25" Width="4" />
+    <AssociationLine Name="_appointment" Type="Domain.Entities.Appointment" FixedFromPoint="true" FixedToPoint="true">
+      <Path>
+        <Point X="14.906" Y="25" />
+        <Point X="14.906" Y="16.812" />
+        <Point X="21" Y="16.812" />
+      </Path>
+    </AssociationLine>
+    <TypeIdentifier>
+      <HashCode>AAAAAAAAQAAQAAIAAAAAAAAAAAAAAAAAAABAAAAAAIA=</HashCode>
+      <FileName>States\AppointmentStates\ConfirmedState.cs</FileName>
+    </TypeIdentifier>
+    <ShowAsAssociation>
+      <Field Name="_appointment" />
+    </ShowAsAssociation>
+    <Lollipop Position="0.2" />
+  </Class>
+  <Class Name="Domain.States.AppointmentStates.PendingState" BaseTypeListCollapsed="true">
+    <Position X="10.75" Y="22.5" Width="4" />
+    <AssociationLine Name="_appointment" Type="Domain.Entities.Appointment" ManuallyRouted="true" FixedFromPoint="true" FixedToPoint="true">
+      <Path>
+        <Point X="13.75" Y="22.5" />
+        <Point X="13.75" Y="15.812" />
+        <Point X="21" Y="15.812" />
+      </Path>
+    </AssociationLine>
+    <TypeIdentifier>
+      <HashCode>AAAAAAAAQAAQAAIAAAAAAAAAAAAAAAAAAABAAAAAAIA=</HashCode>
+      <FileName>States\AppointmentStates\PendingState.cs</FileName>
+    </TypeIdentifier>
+    <ShowAsAssociation>
+      <Field Name="_appointment" />
+    </ShowAsAssociation>
+    <Lollipop Position="0.2" />
+  </Class>
+  <Class Name="Domain.States.AppointmentStates.RejectedState" BaseTypeListCollapsed="true">
+    <Position X="11" Y="27.75" Width="4" />
+    <AssociationLine Name="_appointment" Type="Domain.Entities.Appointment" ManuallyRouted="true" FixedFromPoint="true" FixedToPoint="true">
+      <Path>
+        <Point X="15" Y="28.686" />
+        <Point X="15.529" Y="28.686" Type="JumpStart" />
+        <Point X="15.695" Y="28.686" Type="JumpEnd" />
+        <Point X="16.345" Y="28.686" />
+        <Point X="16.345" Y="18.5" />
+        <Point X="21" Y="18.5" />
+      </Path>
+    </AssociationLine>
+    <TypeIdentifier>
+      <HashCode>AAAAAAAAQAAQAAIAAAAAAAAAAAAAAAAAAABAAAAAAIA=</HashCode>
+      <FileName>States\AppointmentStates\RejectedState.cs</FileName>
+    </TypeIdentifier>
+    <ShowAsAssociation>
+      <Field Name="_appointment" />
+    </ShowAsAssociation>
+    <Lollipop Position="0.2" />
+  </Class>
+  <Class Name="Domain.Value_Objects.AgeGroupDistribution">
+    <Position X="33.75" Y="34.5" Width="2.25" />
+    <TypeIdentifier>
+      <HashCode>AAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=</HashCode>
+      <FileName>Value Objects\AgeGroupDistribution.cs</FileName>
+    </TypeIdentifier>
+  </Class>
+  <Class Name="Domain.Value_Objects.AppointmentStatusCount">
+    <Position X="30.75" Y="36.5" Width="2.75" />
+    <TypeIdentifier>
+      <HashCode>AAAAAAAEAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAA=</HashCode>
+      <FileName>Value Objects\AppointmentStatusCount.cs</FileName>
+    </TypeIdentifier>
+  </Class>
+  <Class Name="Domain.Value_Objects.GenderDistribution">
+    <Position X="33.75" Y="36.5" Width="2" />
+    <TypeIdentifier>
+      <HashCode>BAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAIAAAA=</HashCode>
+      <FileName>Value Objects\GenderDistribution.cs</FileName>
+    </TypeIdentifier>
+  </Class>
+  <Class Name="Domain.Value_Objects.MonthlyAppointmentCount">
+    <Position X="36.25" Y="34.5" Width="2.25" />
+    <TypeIdentifier>
+      <HashCode>AAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAEAAAAAAAAAAA=</HashCode>
+      <FileName>Value Objects\MonthlyAppointmentCount.cs</FileName>
+    </TypeIdentifier>
+  </Class>
+  <Class Name="Domain.Value_Objects.WeekdayAppointmentCount">
+    <Position X="36" Y="36.5" Width="2.75" />
+    <TypeIdentifier>
+      <HashCode>AAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAEAAAAAAA=</HashCode>
+      <FileName>Value Objects\WeekdayAppointmentCount.cs</FileName>
+    </TypeIdentifier>
+  </Class>
+  <Interface Name="Domain.Entities.IAppointmentState">
+    <Position X="28.25" Y="31.25" Width="4" />
+    <TypeIdentifier>
+      <HashCode>AAAAAAAAQAAQAAIAAAAAAAAAAAAAAAAAAAAAAAAAAIA=</HashCode>
+      <FileName>Entities\Appointment.cs</FileName>
+    </TypeIdentifier>
+  </Interface>
+  <Interface Name="Domain.Repositories.IAppointmentRepository">
+    <Position X="19.25" Y="22.25" Width="8.5" />
+    <TypeIdentifier>
+      <HashCode>AEAAAAAAAAkAAAAAAAAVAAAAAAAAAEAAEgAQQAAAAIA=</HashCode>
+      <FileName>Repositories\IAppointmentRepository.cs</FileName>
+    </TypeIdentifier>
+  </Interface>
+  <Interface Name="Domain.Repositories.ICommentRepository">
+    <Position X="35.5" Y="22.25" Width="5.75" />
+    <TypeIdentifier>
+      <HashCode>ABAAAAAAEAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAQIA=</HashCode>
+      <FileName>Repositories\ICommentRepository.cs</FileName>
+    </TypeIdentifier>
+  </Interface>
+  <Interface Name="Domain.Repositories.IDepressionTestResultRepository">
+    <Position X="26.75" Y="28" Width="7.5" />
+    <TypeIdentifier>
+      <HashCode>AEQAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAgABAAIAAoA=</HashCode>
+      <FileName>Repositories\IDepressionTestResultRepository.cs</FileName>
+    </TypeIdentifier>
+  </Interface>
+  <Interface Name="Domain.Repositories.IDoctorRepository">
+    <Position X="34.5" Y="28" Width="6.5" />
+    <TypeIdentifier>
+      <HashCode>AAQAAAAAAAAAAAAAAAAAAAABAAAAAAAAAgAABAAAAIA=</HashCode>
+      <FileName>Repositories\IDoctorRepository.cs</FileName>
+    </TypeIdentifier>
+  </Interface>
+  <Interface Name="Domain.Repositories.IDoctorScheduleRepository">
+    <Position X="28" Y="22.25" Width="7.25" />
+    <TypeIdentifier>
+      <HashCode>AAAAAAAAgAIAAAACACAAABQAAAAAACAAAAAAAAAAAAA=</HashCode>
+      <FileName>Repositories\IDoctorScheduleWeekDay.cs</FileName>
+    </TypeIdentifier>
+  </Interface>
+  <Interface Name="Domain.Repositories.INotificationRepository">
+    <Position X="25.25" Y="25.75" Width="7" />
+    <TypeIdentifier>
+      <HashCode>AEAAQAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAAAAIA=</HashCode>
+      <FileName>Repositories\INotificationRepository.cs</FileName>
+    </TypeIdentifier>
+  </Interface>
+  <Interface Name="Domain.Repositories.IPostRepository">
+    <Position X="19.25" Y="28" Width="7.25" />
+    <TypeIdentifier>
+      <HashCode>AAQAAAAAAIAAAAAQAAIAAAAAAIAAAAAAIAAAAiAAAAA=</HashCode>
+      <FileName>Repositories\IPostRepository.cs</FileName>
+    </TypeIdentifier>
+  </Interface>
+  <Interface Name="Domain.Repositories.IReplyRepository">
+    <Position X="19.25" Y="25.75" Width="5.75" />
+    <TypeIdentifier>
+      <HashCode>AAAAAAAAAAABAEAAAAAAAAAAAAAAAABAAAAAAAAQAIA=</HashCode>
+      <FileName>Repositories\IReplyRepository.cs</FileName>
+    </TypeIdentifier>
+  </Interface>
+  <Interface Name="Domain.Repositories.IUserRepository">
+    <Position X="32.5" Y="25.75" Width="5.75" />
+    <TypeIdentifier>
+      <HashCode>AAQAAAAQAAAAAAAEAAAAAAAAAAAAAAAAAgAAAAAAAIA=</HashCode>
+      <FileName>Repositories\IUserRepository.cs</FileName>
+    </TypeIdentifier>
+  </Interface>
+  <Enum Name="Domain.Enums.AppointmentStatus">
+    <Position X="19.75" Y="34.5" Width="1.75" />
+    <TypeIdentifier>
+      <HashCode>AAAAAAAAACQAAAIAAAAAAAAAAAAAAAAAAAAgIAAAAAA=</HashCode>
+      <FileName>Enums\AppointmentStatus.cs</FileName>
+    </TypeIdentifier>
+  </Enum>
+  <Enum Name="Domain.Enums.DoctorSpecialization">
+    <Position X="21.75" Y="34.5" Width="1.75" />
+    <TypeIdentifier>
+      <HashCode>AAAAAAAAAAAAAAAAARAAAAgAAQAAAAAAgAAAAAACBAA=</HashCode>
+      <FileName>Enums\DoctorSpecialization.cs</FileName>
+    </TypeIdentifier>
+  </Enum>
+  <Enum Name="Domain.Enums.Gender">
+    <Position X="28" Y="34.5" Width="1.5" />
+    <TypeIdentifier>
+      <HashCode>AgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAA=</HashCode>
+      <FileName>Enums\Gender.cs</FileName>
+    </TypeIdentifier>
+  </Enum>
+  <Enum Name="Domain.Enums.NotificationType">
+    <Position X="23.75" Y="34.5" Width="2" />
+    <TypeIdentifier>
+      <HashCode>AAAAAQAEAAAAAQAAAAAQAAAAAAAAAAAAAAAAgAAQAAA=</HashCode>
+      <FileName>Enums\NotificationTypes.cs</FileName>
+    </TypeIdentifier>
+  </Enum>
+  <Enum Name="Domain.Enums.ReportType">
+    <Position X="26" Y="34.5" Width="1.75" />
+    <TypeIdentifier>
+      <HashCode>AAAAAAABAAAAAAAAAAAAAAAAAEAIAAAAAAAAAAAAAAA=</HashCode>
+      <FileName>Enums\ReportType.cs</FileName>
+    </TypeIdentifier>
+  </Enum>
+  <Font Name="Segoe UI" Size="9" />
+</ClassDiagram>

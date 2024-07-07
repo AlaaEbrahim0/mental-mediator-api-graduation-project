@@ -1,5 +1,6 @@
 ﻿using Application.Dtos.UserDtos;
 using Shared;
+using Shared.RequestParameters;
 
 namespace Application.Contracts;
 public interface IUserService

@@ -4,7 +4,7 @@ using Domain.Repositories;
 using Domain.Value_Objects;
 using Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
-using Shared;
+using Shared.RequestParameters;
 
 namespace Infrastructure.Repositories;
 public class DepressionTestResultRepository : RepositoryBase<DepressionTestResult>,
