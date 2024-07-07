@@ -1,9 +1,10 @@
 ﻿using Application.Contracts;
 using Application.Dtos.AuthDtos;
-using Application.Services;
 using Domain.Entities;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Caching.Memory;
+
 namespace API.Controllers;
 
 [Route("api/auth")]
@@ -12,11 +13,15 @@ public class AuthController : ControllerBase
 {
 	private readonly IAuthService _authService;
 	private readonly SignInManager<BaseUser> _signInManager;
+	private readonly IConfiguration _configuration;
+	private readonly IMemoryCache _cache;
 
-	public AuthController(IAuthService authService, SignInManager<BaseUser> signInManager)
+	public AuthController(IAuthService authService, SignInManager<BaseUser> signInManager, IMemoryCache cache, IConfiguration configuration)
 	{
 		_authService = authService;
 		_signInManager = signInManager;
+		_cache = cache;
+		_configuration = configuration;
 	}
 
 	[HttpPost("register")]
@@ -53,6 +58,7 @@ public class AuthController : ControllerBase
 	[HttpGet("external-login")]
 	public IActionResult ExternalLogin()
 	{
+
 		var provider = "Google";
 		var redirectUrl = Url.Action("ExternalLoginCallback", "Auth", new { }, Request.Scheme);
 		var properties = _authService.GetExternalAuthenticationProperties(provider, redirectUrl);
@@ -69,8 +75,30 @@ public class AuthController : ControllerBase
 			return result.ToProblemDetails();
 		}
 
-		return Ok(result.Value);
+		var authResponse = result.Value;
+
+		var temporaryToken = Guid.NewGuid().ToString();
+
+		_cache.Set(temporaryToken, authResponse, TimeSpan.FromMinutes(10));
+
+		var callerUrl = _configuration["ClientUI"];
+		var redirectUrl = $"{callerUrl}?temporaryToken={temporaryToken}";
+
+		return Redirect(redirectUrl);
 	}
+
+	[HttpGet("exchange-token")]
+	public IActionResult ExchangeToken([FromQuery] string temporaryToken)
+	{
+		if (_cache.TryGetValue(temporaryToken, out AuthResponse? authResponse))
+		{
+			_cache.Remove(temporaryToken);
+			return Ok(authResponse);
+		}
+
+		return Unauthorized("Invalid or expired token.");
+	}
+
 
 	[HttpPost("send-email-confirmation-link")]
 	public async Task<IActionResult> SendEmailConfirmationLink([FromQuery] string email)

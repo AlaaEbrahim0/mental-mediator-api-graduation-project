@@ -153,7 +153,7 @@ public class AuthService : IAuthService
 		}
 
 		var response = new RegisterationResponse();
-		response.Message = $"User: [{request.Email}] has been created successfully";
+		response.Message = $"User: [{request.Email}] has been created successfully, please confirm your email address to continue.";
 
 		return response;
 	}
@@ -201,7 +201,7 @@ public class AuthService : IAuthService
 		authModel.Token = new JwtSecurityTokenHandler().WriteToken(token);
 		authModel.ExpiresOn = token.ValidTo;
 		authModel.Roles = roles.ToList();
-		authModel.Message = $"User: [{localUserAccount.Email}] has been created and confirmed succesfully";
+		authModel.Message = $"User: [{localUserAccount.Email}] has been created and confirmed successfully";
 
 		return authModel;
 	}
