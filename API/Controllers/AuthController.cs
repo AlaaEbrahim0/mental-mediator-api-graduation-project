@@ -58,9 +58,9 @@ public class AuthController : ControllerBase
 	[HttpGet("external-login")]
 	public IActionResult ExternalLogin()
 	{
-
 		var provider = "Google";
-		var redirectUrl = Url.Action("ExternalLoginCallback", "Auth", new { }, Request.Scheme);
+		var redirectUrl = Url.Action("ExternalLoginCallback", "Auth", new { }, "https", Request.Host.Value);
+
 		Console.WriteLine(redirectUrl);
 		var properties = _authService.GetExternalAuthenticationProperties(provider, redirectUrl);
 

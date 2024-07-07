@@ -230,6 +230,7 @@ public static class DependencyInjection
 				options.ClientId = configuration["GoogleAuthentication:Id"]!;
 				options.ClientSecret = configuration["GoogleAuthentication:Secret"]!;
 				options.CallbackPath = new PathString("/signin-google");
+				Console.WriteLine(options.CallbackPath);
 
 			});
 
