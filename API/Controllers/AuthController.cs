@@ -61,6 +61,7 @@ public class AuthController : ControllerBase
 
 		var provider = "Google";
 		var redirectUrl = Url.Action("ExternalLoginCallback", "Auth", new { }, Request.Scheme);
+		Console.WriteLine(redirectUrl);
 		var properties = _authService.GetExternalAuthenticationProperties(provider, redirectUrl);
 
 		return Challenge(properties, provider);
@@ -82,6 +83,7 @@ public class AuthController : ControllerBase
 		_cache.Set(temporaryToken, authResponse, TimeSpan.FromMinutes(10));
 
 		var callerUrl = _configuration["ClientUI"];
+
 		var redirectUrl = $"{callerUrl}?temporaryToken={temporaryToken}";
 
 		return Redirect(redirectUrl);
