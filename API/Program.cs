@@ -34,6 +34,8 @@ app.UseHttpsRedirection();
 
 app.UseStaticFiles();
 
+app.UseForwardedHeaders();
+
 app.UseCors("Default");
 
 app.UseAuthentication();

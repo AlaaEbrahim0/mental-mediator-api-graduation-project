@@ -18,6 +18,7 @@ using Infrastructure.Repositories;
 using Infrastructure.Services;
 using Infrastructure.Utilities;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
@@ -187,6 +188,11 @@ public static class DependencyInjection
 			.AddScoped<IAdminService, AdminService>()
 			.AddSignalR();
 
+		services.Configure<ForwardedHeadersOptions>(options =>
+		{
+			options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+		});
+
 		return services;
 	}
 	public static IServiceCollection ConfigureCaching(this IServiceCollection services)
@@ -197,6 +203,7 @@ public static class DependencyInjection
 
 		return services;
 	}
+
 
 
 	public static IServiceCollection ConfigureAuthentication(this IServiceCollection services, ConfigurationManager configuration)
@@ -229,9 +236,6 @@ public static class DependencyInjection
 			{
 				options.ClientId = configuration["GoogleAuthentication:Id"]!;
 				options.ClientSecret = configuration["GoogleAuthentication:Secret"]!;
-				options.CallbackPath = new PathString("/signin-google");
-				Console.WriteLine(options.CallbackPath);
-
 			});
 
 
