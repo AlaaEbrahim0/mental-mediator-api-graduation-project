@@ -110,7 +110,7 @@ public class CommentService : ICommentService
 
 			var notification = Notification.CreateNotification(
 				post.AppUserId!,
-			$"has commented on your post",
+			$"{userName} has commented on your post",
 				notificationResources,
 				userName,
 				userPhotoUrl,

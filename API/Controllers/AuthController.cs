@@ -59,14 +59,11 @@ public class AuthController : ControllerBase
 	public IActionResult ExternalLogin()
 	{
 		var provider = "Google";
-		var scheme = Request.Scheme;  // Log the scheme
+		var scheme = Request.Scheme;
 		var host = Request.Host.Value;
 		var redirectUrl = Url.Action("ExternalLoginCallback", "Auth", new { }, scheme, host);
 
 		var properties = _authService.GetExternalAuthenticationProperties(provider, redirectUrl);
-		Console.WriteLine($"Scheme: {scheme}");
-		Console.WriteLine($"Host: {host}");
-		Console.WriteLine($"Redirect URL: {redirectUrl}");
 
 		return Challenge(properties, provider);
 	}

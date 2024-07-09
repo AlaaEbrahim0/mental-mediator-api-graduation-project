@@ -72,7 +72,7 @@ public class ReplyService : IReplyService
 
 			var notification = Notification.CreateNotification(
 				comment.AppUserId!,
-				$"has replied to your comment",
+				$"{userName} has replied to your comment",
 				replyResources,
 				userName,
 				userPhotoUrl,
