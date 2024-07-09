@@ -17,6 +17,12 @@ public class ArticlesController : ControllerBase
 	[HttpGet]
 	public async Task<IActionResult> GetArticles([FromQuery] NewsRequestParameters parameters)
 	{
+		var refererUrl = Request.Headers["Referer"].ToString();
+		var clientIpAddress = HttpContext.Connection.RemoteIpAddress?.ToString();
+		Console.WriteLine(refererUrl);
+		Console.WriteLine(clientIpAddress);
+
+
 		var result = await _newsService.GetNews(parameters);
 		if (result.IsFailure)
 		{
