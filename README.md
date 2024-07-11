@@ -30,9 +30,6 @@ Nexus is a comprehensive platform developed as part of my final year project in 
 - **External Login Provider**: Integrated Google for external login.
 - **Insights**: Provides doctors and admins with insights about appointments, profits, depression test results, etc.
 
-### CRUD Operations
-- **Full CRUD Operations**: Implemented for posts, comments, replies, and doctor schedules.
-
 ## Development and Deployment
 - **Entity Framework Core**: For optimized SQL queries and LINQ operations.
 - **Pagination and Filtering**: Implemented for efficient data retrieval.
