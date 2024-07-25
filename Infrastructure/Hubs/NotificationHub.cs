@@ -1,7 +1,6 @@
 ﻿using Application.Dtos.NotificationDtos;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.SignalR;
-using Shared;
 
 namespace Infrastructure.Hubs;
 
@@ -22,6 +21,7 @@ public class NotificationHub : Hub<INotificationClient>
 		await base.OnConnectedAsync();
 	}
 }
+
 
 public interface INotificationClient
 {

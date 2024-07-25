@@ -10,7 +10,6 @@ using Domain.Entities;
 using Domain.Repositories;
 using FluentValidation;
 using FluentValidation.AspNetCore;
-using Infrastructure.BackgroundJobs;
 using Infrastructure.Caching;
 using Infrastructure.Clients;
 using Infrastructure.Data;
@@ -129,17 +128,16 @@ public static class DependencyInjection
 		services.AddScoped<IDepressionDetector, DepressionDetectorClient>();
 		services.AddScoped<INewsService, NewsApiClient>();
 
-		if (!envIsDev)
-		{
-			services.AddHostedService<HostingRefresher>();
+		//if (!envIsDev)
+		//{
+		//	services.AddHostedService<HostingRefresher>();
+		//}
 
-
-		}
-		services.AddHttpClient<HostingRefresher>("self", config =>
-		{
-			var baseAddress = configuration["BaseAddress"];
-			config.BaseAddress = new Uri(baseAddress!);
-		});
+		//services.AddHttpClient<HostingRefresher>("self", config =>
+		//{
+		//	var baseAddress = configuration["BaseAddress"];
+		//	config.BaseAddress = new Uri(baseAddress!);
+		//});
 
 		services.AddHttpClient<NewsApiClient>("news-api-client", config =>
 		{
