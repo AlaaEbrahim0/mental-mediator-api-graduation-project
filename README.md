@@ -1,30 +1,52 @@
-# Project: Nexus (Graduation Project)
+# Nexus
 
-## Description:
-Nexus is a comprehensive project developed as part of my final year in computer science college. It serves as a testament to my proficiency in backend development using ASP.NET Core. Currently in the development phase, Nexus prioritizes the implementation of a robust RESTful API adhering to Onion Architecture principles, clean code practices, and sound design principles.
+## Description
+Nexus is a comprehensive platform developed as part of my final year project in Computer Science. It serves as a supportive community for individuals dealing with mental disorders such as depression and stress. The platform allows users to share their thoughts publicly or anonymously and receive advice from other users or professional doctors. Nexus is designed with robust backend solutions using ASP.NET Core, adhering to Onion Architecture principles, clean code practices, and respecting the SOLID principles as much as possible.
 
-## Features:
-- Utilized Entity Framework Core (EF Core) for optimized SQL queries and LINQ operations'
-- Implemented pagination for efficient data retrieval.
-- Integrated Google SMTP server for mailing services to enhance communication capabilities.
-- Integrated Cloudinary api for image storage services
-- Developed a Unified Api Response using the Result Pattern
-- Collaborated with Flutter and React teams to facilitate understanding of data structures and API responses.
-- Created comprehensive class diagrams and sequence diagrams for clear communication.
-- Implemented JWT Bearer authentication scheme for enhanced security and scalability with role-based access mechanisms
-- Containerized the application with Docker for seamless deployment.
-- Leveraged AutoMapper for efficient mapping between DTOs and entities.
-- Used Bogus library for database seeding to facilitate testing.
-- Developed a detailed Postman collection for API testing and documentation.
-- Added real time notification system using SignalR
+## Features
 
-## Technologies Used:
-- ASP.NET Core 8
-- SQL Server
-- EF Core
-- Docker
-- Postman
+### Core Functionalities
+- **Community Support**: Users can share their thoughts and receive comments and advice from both other users and professional doctors.
+- **Anonymity**: Option to share thoughts anonymously for privacy.
 
-This project showcases my ability to architect, develop, and optimize robust backend solutions, demonstrating proficiency in a range of modern technologies and best practices in software engineering.
+### Machine Learning Integration
+- **Hate Speech and Offensive Language Detection**: Ensures a safe, respectful, and clean community.
+- **Depression Detection**: Helps in identifying signs of depression.
 
---- 
+### Appointment System
+- **Doctor Scheduling**: Doctors can create their weekly schedules.
+- **Appointment Booking**: Users can book offline appointments with specific doctors in available slots.
+- **Confirmation/Rejection**: Doctors can confirm or reject appointments.
+
+### Notifications and Communication
+- **Mailing Service**: Integrated Google SMTP server for enhanced communication.
+- **Real-Time Notifications**: Implemented using SignalR.
+
+### Additional Features
+- **Image Storage**: Integrated Cloudinary API for storing images.
+- **News Integration**: Uses News API to fetch relevant articles for users and doctors.
+- **Unified API Response**: Developed using the Result Pattern.
+- **Token-Based Authentication**: Implemented JWT Bearer authentication with role-based access mechanisms.
+- **External Login Provider**: Integrated Google for external login.
+- **Insights**: Provides doctors and admins with insights about appointments, profits, depression test results, etc.
+
+## Development and Deployment
+- **Entity Framework Core**: For optimized SQL queries and LINQ operations.
+- **Pagination and Filtering**: Implemented for efficient data retrieval.
+- **AutoMapper**: For efficient mapping between DTOs and entities.
+- **Database Seeding**: Used Bogus library for database seeding to facilitate testing.
+- **Containerization**: Application containerized using Docker for seamless deployment.
+- **CI/CD Pipeline**: Created using GitHub Actions to automate building, image building, image publishing, and deployment to the production server.
+- **Cloud Deployment**: API running on the cloud using Render.
+
+## Technologies Used
+- **Backend**: ASP.NET Core 8, Entity Framework Core, SQL Server
+- **Containerization**: Docker
+- **CI/CD**: GitHub Actions
+- **Testing and Documentation**: Postman, Bogus
+- **Notifications**: SignalR
+- **Mailing**: MailKit/MimeKit, Google SMTP server
+- **Image Storage**: Cloudinary API
+- **News Integration**: News API
+
+For any inquiries or feedback, please contact me at [alaaebrahim387@gmail.com].
