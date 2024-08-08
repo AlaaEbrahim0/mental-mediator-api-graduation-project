@@ -35,14 +35,15 @@ public static class DependencyInjection
 			{
 				policy
 					.WithOrigins(
-					  "https://mental-health-ochre.vercel.app",
-					  "https://mental-mediator-doctor-ui-graduation-project.vercel.app",
-					  "https://mental-health-b2uehhu7l-rana-tareks-projects.vercel.app",
-					  "https://nexus-admin-panel.vercel.app",
+						"https://mental-health-ochre.vercel.app",
+						"https://mental-mediator-doctor-ui-graduation-project.vercel.app",
+						"https://mental-health-b2uehhu7l-rana-tareks-projects.vercel.app",
+						"https://nexus-admin-panel.vercel.app",
+						 "https://mental-health-drab.vercel.app",
 						"https://localhost:7221",
 						"http://localhost:5068",
 						"http://localhost:5500",
-							"http://localhost:3000")
+						"http://localhost:3000")
 						.AllowAnyHeader()
 						.AllowAnyMethod()
 						.AllowCredentials()
