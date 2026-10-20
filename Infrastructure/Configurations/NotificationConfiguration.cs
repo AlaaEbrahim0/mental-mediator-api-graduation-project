@@ -6,33 +6,19 @@ namespace Infrastructure.Configurations;
 
 public class NotificationConfiguration : IEntityTypeConfiguration<Notification>
 {
-
 	public void Configure(EntityTypeBuilder<Notification> builder)
 	{
+		builder
+			.Property(n => n.Message)
+			.HasMaxLength(2000);
 
 		builder
-			.Property(p => p.NotifierPhotoUrl)
-			.HasMaxLength(1000);
+			.HasIndex(n => n.AppUserId);
 
 		builder
-			.Property(p => p.Message)
-			.IsRequired()
-			.HasMaxLength(200);
+			.HasIndex(n => n.IsRead);
 
 		builder
-			.Property(p => p.NotifierUserName)
-			.HasMaxLength(64);
-
-		builder
-			.Property(p => p.Resources)
-			.IsRequired()
-			.HasMaxLength(500);
-
-		builder
-			.HasOne(p => p.AppUser)
-			.WithMany(p => p.Notifications)
-			.OnDelete(DeleteBehavior.Cascade);
+			.HasIndex(n => new { n.AppUserId, n.IsRead });
 	}
-
 }
-

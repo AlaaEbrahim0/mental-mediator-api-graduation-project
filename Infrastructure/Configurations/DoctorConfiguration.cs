@@ -6,7 +6,6 @@ namespace Infrastructure.Configurations;
 
 public class DoctorConfiguration : IEntityTypeConfiguration<Doctor>
 {
-
 	public void Configure(EntityTypeBuilder<Doctor> builder)
 	{
 		builder
@@ -27,12 +26,16 @@ public class DoctorConfiguration : IEntityTypeConfiguration<Doctor>
 			.HasMaxLength(200)
 			.IsRequired(false);
 
-
 		builder
 			.HasMany(d => d.Appointments)
 			.WithOne(d => d.Doctor)
 			.OnDelete(DeleteBehavior.NoAction);
+
+		// Performance indexes
+		builder
+			.HasIndex(d => d.Specialization);
+
+		builder
+			.HasIndex(d => d.City);
 	}
-
 }
-

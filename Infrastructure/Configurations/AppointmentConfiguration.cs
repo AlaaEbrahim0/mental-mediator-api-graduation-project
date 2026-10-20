@@ -28,5 +28,20 @@ public class AppointmentConfiguration : IEntityTypeConfiguration<Appointment>
 			.Property(x => x.RejectionReason)
 			.HasMaxLength(1000);
 
+		// Performance indexes
+		builder
+			.HasIndex(x => x.StartTime);
+
+		builder
+			.HasIndex(x => x.DoctorId);
+
+		builder
+			.HasIndex(x => x.UserId);
+
+		builder
+			.HasIndex(x => x.Status);
+
+		builder
+			.HasIndex(x => new { x.DoctorId, x.StartTime, x.Status });
 	}
 }

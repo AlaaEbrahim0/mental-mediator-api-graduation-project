@@ -4,10 +4,8 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace Infrastructure.Configurations;
 
-
 public class PostConfiguration : IEntityTypeConfiguration<Post>
 {
-
 	public void Configure(EntityTypeBuilder<Post> builder)
 	{
 		builder
@@ -27,9 +25,14 @@ public class PostConfiguration : IEntityTypeConfiguration<Post>
 			.Property(p => p.Content)
 			.HasMaxLength(10000);
 
+		// Performance indexes
 		builder
 			.HasIndex(p => p.PostedOn);
 
-	}
+		builder
+			.HasIndex(p => p.AppUserId);
 
+		builder
+			.HasIndex(p => p.IsAnonymous);
+	}
 }

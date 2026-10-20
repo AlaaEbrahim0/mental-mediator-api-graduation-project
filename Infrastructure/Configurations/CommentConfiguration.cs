@@ -6,19 +6,16 @@ namespace Infrastructure.Configurations;
 
 public class CommentConfiguration : IEntityTypeConfiguration<Comment>
 {
-
 	public void Configure(EntityTypeBuilder<Comment> builder)
 	{
+		builder
+			.Property(c => c.Content)
+			.HasMaxLength(4000);
 
 		builder
-			.Property(x => x.Content)
-			.IsRequired()
-			.HasMaxLength(1000);
+			.HasIndex(c => c.PostId);
 
 		builder
-			.HasMany(c => c.Replies)
-			.WithOne(c => c.Comment)
-			.OnDelete(DeleteBehavior.Cascade);
-
+			.HasIndex(c => c.AppUserId);
 	}
 }

@@ -94,11 +94,14 @@ public static class DependencyInjection
 	public static IServiceCollection ConfigureControllers(this IServiceCollection services)
 	{
 
-		services.AddControllers()
+		services.AddControllers(options =>
+		{
+			options.Filters.Add<ValidateModelStateFilter>();
+		})
 			.AddJsonOptions(config =>
 			{
 				config.JsonSerializerOptions
-				.Converters.Add(new JsonStringEnumConverter());
+					.Converters.Add(new JsonStringEnumConverter());
 
 			});
 
@@ -210,7 +213,7 @@ public static class DependencyInjection
 		services.AddScoped<IAuthService, AuthService>();
 		services.AddTransient<JwtTokenGenerator>();
 
-		services
+		var authenticationBuilder = services
 			.AddAuthentication(options =>
 			{
 				options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
@@ -230,13 +233,17 @@ public static class DependencyInjection
 					ValidateIssuerSigningKey = true,
 					ValidateLifetime = true,
 				};
-			})
-			.AddGoogle(options =>
-			{
-				options.ClientId = configuration["GoogleAuthentication:Id"]!;
-				options.ClientSecret = configuration["GoogleAuthentication:Secret"]!;
 			});
-
+			
+			var googleClientId = configuration["GoogleAuthentication:Id"];
+			if (!string.IsNullOrEmpty(googleClientId) && !string.IsNullOrEmpty(configuration["GoogleAuthentication:Secret"]))
+			{
+					authenticationBuilder.AddGoogle(options =>
+				{
+					options.ClientId = googleClientId;
+					options.ClientSecret = configuration["GoogleAuthentication:Secret"]!;
+				});
+			}
 
 
 		return services;
@@ -275,10 +282,13 @@ public static class DependencyInjection
 		services.AddDbContext<AppDbContext>(config =>
 		{
 			config.UseSqlServer(connectionString, b => b.MigrationsAssembly(nameof(Infrastructure)));
-			config.EnableDetailedErrors();
-			config.EnableSensitiveDataLogging();
-			config.LogTo(Console.WriteLine);
-
+			// Only enable detailed errors and sensitive data logging in development
+			if (env.IsDevelopment())
+			{
+				config.EnableDetailedErrors();
+				config.EnableSensitiveDataLogging();
+				config.LogTo(Console.WriteLine);
+			}
 		});
 
 		return services;
