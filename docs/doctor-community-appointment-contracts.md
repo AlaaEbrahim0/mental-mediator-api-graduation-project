@@ -2,6 +2,8 @@
 
 All routes use the `/api` prefix. Authenticated routes require the bearer token returned by `POST /auth/signin`. The signin response includes `userId`, `roles`, `token`, and `expiresOn`; doctor portal access requires the `Doctor` role. Validation failures use `400 ValidationProblemDetails`; authorization failures use `401` or `403`; domain failures retain the API's problem-details envelope.
 
+On startup, the API creates the `User`, `Doctor`, and `Admin` Identity roles if missing. To bootstrap an administrator, set both `AdminSeed__Email` and `AdminSeed__Password` in the local `.env` before starting the API. Optional profile values use `AdminSeed__FirstName`, `AdminSeed__LastName`, `AdminSeed__BirthDate`, and `AdminSeed__Gender`. The bootstrap account is email-confirmed automatically and seeding is idempotent. Public registration only accepts `User` or `Doctor` roles; do not configure a default admin password in source control.
+
 ## Profiles
 
 - `GET /doctors/me` returns `id`, names, email, phone number, birth date (`YYYY-MM-DD`), gender, `photoUrl`, biography, city, location, session fees, specialization, qualifications, and `isAvailable`.

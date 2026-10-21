@@ -1,7 +1,9 @@
 using API.Configurations;
+using dotenv.net;
 using Infrastructure.Data;
 using Infrastructure.Hubs;
 
+DotEnv.Load(options: new DotEnvOptions(probeForEnv: true));
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services
@@ -55,7 +57,7 @@ app.MapGet("/error", () => Results.Problem(
 /*  */    title: "An error occurred",
     statusCode: 500));
 
-app.InitializeDatabase();
+await app.InitializeDatabaseAsync();
 
 app.Run();
 

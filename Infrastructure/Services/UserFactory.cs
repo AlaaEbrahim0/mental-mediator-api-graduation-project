@@ -9,17 +9,17 @@ public class UserFactory
 	public static BaseUser CreateUser(RegisterationRequest request, IMapper mapper)
 	{
 		var user = new BaseUser();
-		switch (request.Role)
+		switch (request.Role.ToUpperInvariant())
 		{
-			case "User":
+			case "USER":
 				user = mapper.Map<User>(request);
 				break;
 
-			case "Doctor":
+			case "DOCTOR":
 				user = mapper.Map<Doctor>(request);
 				break;
 
-			case "Admin":
+			case "ADMIN":
 				user = mapper.Map<Admin>(request);
 				break;
 

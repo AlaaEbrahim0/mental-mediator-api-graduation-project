@@ -63,9 +63,8 @@ public class RegisterationRequestValidator : AbstractValidator<RegisterationRequ
 		RuleFor(x => x.Role)
 			.NotNull()
 			.Must(x => x.Equals("user", StringComparison.OrdinalIgnoreCase) ||
-			x.Equals("admin", StringComparison.OrdinalIgnoreCase) ||
 			x.Equals("Doctor", StringComparison.OrdinalIgnoreCase))
-			.WithMessage("Role must be user or admin or doctor");
+			.WithMessage("Public registration supports only the User and Doctor roles");
 
 
 	}

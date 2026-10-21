@@ -1,54 +1,137 @@
-﻿using Bogus;
 using Domain.Entities;
-using Domain.Enums;
 using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
 namespace Infrastructure.Data;
+
 public static class DbInitializer
 {
-    public static void InitializeDatabase(this IApplicationBuilder app)
-    {
-        using var serviceScope = app.ApplicationServices.CreateScope();
-        var context = serviceScope.ServiceProvider.GetService<AppDbContext>()!;
-        var loggerFactory = serviceScope.ServiceProvider.GetRequiredService<ILoggerFactory>();
-        var logger = loggerFactory.CreateLogger("DbInitializer");
-        SeedData(context, logger);
-    }
+	private static readonly string[] Roles = ["User", "Doctor", "Admin"];
 
-    private static void SeedData(AppDbContext context, ILogger logger)
-    {
-        if (context.Roles.Any())
-        {
-            logger.LogInformation("Database already seeded. Skipping.");
-            return;
-        }
+	public static async Task InitializeDatabaseAsync(this IApplicationBuilder app)
+	{
+		using var serviceScope = app.ApplicationServices.CreateScope();
+		var services = serviceScope.ServiceProvider;
+		var context = services.GetRequiredService<AppDbContext>();
+		var roleManager = services.GetRequiredService<RoleManager<IdentityRole>>();
+		var userManager = services.GetRequiredService<UserManager<BaseUser>>();
+		var configuration = services.GetRequiredService<IConfiguration>();
+		var logger = services.GetRequiredService<ILoggerFactory>().CreateLogger("DbInitializer");
 
-        logger.LogInformation("Seeding database with test data...");
+		await using var transaction = await context.Database.BeginTransactionAsync();
 
-        var userFaker = new Faker<BaseUser>()
-            .RuleFor(u => u.Id, set => Guid.NewGuid().ToString())
-            .RuleFor(u => u.FirstName, set => set.Person.FirstName)
-            .RuleFor(u => u.LastName, set => set.Person.LastName)
-            .RuleFor(u => u.BirthDate, set => set.Date.BetweenDateOnly(new DateOnly(1950, 1, 1), new DateOnly(2003, 1, 1)))
-            .RuleFor(u => u.Email, set => set.Person.Email)
-            .RuleFor(u => u.UserName, set => set.Person.UserName)
-            .RuleFor(u => u.NormalizedUserName, set => set.Person.UserName.ToUpper())
-            .RuleFor(u => u.NormalizedEmail, set => set.Person.Email.ToUpper())
-            .RuleFor(u => u.Gender, set => set.PickRandom("male", "female"))
-            .RuleFor(u => u.PasswordHash, set => set.Internet.Password(10))
-            .RuleFor(u => u.EmailConfirmed, set => true);
+		foreach (var roleName in Roles)
+		{
+			if (await roleManager.RoleExistsAsync(roleName))
+			{
+				continue;
+			}
 
-        var users = userFaker.Generate(25);
-        var doctorFaker = new Faker<Doctor>()
-            .RuleFor(x => x.Biography, set => set.Lorem.Sentences(set.PickRandom(1, 2, 3)))
-            .RuleFor(x => x.SessionFees, set => set.Random.Number(100, 2000))
-            .RuleFor(x => x.Location, set => set.Address.FullAddress())
-            .RuleFor(x => x.Specialization, set => set.PickRandomParam(Enum.GetValues<DoctorSpecialization>()))
-            .RuleFor(x => x.Id, (setter, doctor) => users[setter.IndexFaker].Id);
+			var result = await roleManager.CreateAsync(new IdentityRole(roleName));
+			EnsureSucceeded(result, $"create the {roleName} role");
+			logger.LogInformation("Created missing identity role {RoleName}.", roleName);
+		}
 
-        var doctors = doctorFaker.Generate(25);
-        logger.LogInformation("Seeded {UserCount} users and {DoctorCount} doctors.", users.Count, doctors.Count);
-    }
+		await SeedBootstrapAdminAsync(configuration, context, userManager, logger);
+		await transaction.CommitAsync();
+	}
+
+	private static async Task SeedBootstrapAdminAsync(
+		IConfiguration configuration,
+		AppDbContext context,
+		UserManager<BaseUser> userManager,
+		ILogger logger)
+	{
+		var email = configuration["AdminSeed:Email"]?.Trim();
+		var password = configuration["AdminSeed:Password"];
+		var hasEmail = !string.IsNullOrWhiteSpace(email);
+		var hasPassword = !string.IsNullOrWhiteSpace(password);
+
+		if (!hasEmail && !hasPassword)
+		{
+			return;
+		}
+
+		if (!hasEmail || !hasPassword)
+		{
+			throw new InvalidOperationException(
+				"Set both AdminSeed__Email and AdminSeed__Password to seed the bootstrap administrator.");
+		}
+
+		var existingUser = await userManager.FindByEmailAsync(email!);
+		if (existingUser is not null)
+		{
+			var isAdminEntity = await context.Admins.AnyAsync(admin => admin.Id == existingUser.Id);
+			if (!isAdminEntity)
+			{
+				throw new InvalidOperationException(
+					$"AdminSeed email '{email}' already belongs to a non-admin account. Choose an unused email.");
+			}
+
+			await EnsureAdminRoleAsync(userManager, existingUser, email!);
+			if (!existingUser.EmailConfirmed)
+			{
+				existingUser.EmailConfirmed = true;
+				var updateResult = await userManager.UpdateAsync(existingUser);
+				EnsureSucceeded(updateResult, "confirm the bootstrap administrator email");
+			}
+
+			return;
+		}
+
+		var birthDateText = configuration["AdminSeed:BirthDate"] ?? "1990-01-01";
+		if (!DateOnly.TryParse(birthDateText, out var birthDate) || birthDate >= DateOnly.FromDateTime(DateTime.UtcNow))
+		{
+			throw new InvalidOperationException("AdminSeed__BirthDate must be a valid past date in YYYY-MM-DD format.");
+		}
+
+		var gender = configuration["AdminSeed:Gender"] ?? "male";
+		if (!gender.Equals("male", StringComparison.OrdinalIgnoreCase) &&
+			!gender.Equals("female", StringComparison.OrdinalIgnoreCase))
+		{
+			throw new InvalidOperationException("AdminSeed__Gender must be either male or female.");
+		}
+
+		var admin = new Admin
+		{
+			Email = email,
+			EmailConfirmed = true,
+			FirstName = configuration["AdminSeed:FirstName"] ?? "Local",
+			LastName = configuration["AdminSeed:LastName"] ?? "Admin",
+			BirthDate = birthDate,
+			Gender = gender.ToLowerInvariant(),
+		};
+
+		var createResult = await userManager.CreateAsync(admin, password!);
+		EnsureSucceeded(createResult, "create the bootstrap administrator (check email and password policy)");
+
+		await EnsureAdminRoleAsync(userManager, admin, email!);
+		logger.LogInformation("Seeded the configured bootstrap administrator {Email}.", email);
+	}
+
+	private static async Task EnsureAdminRoleAsync(UserManager<BaseUser> userManager, BaseUser user, string email)
+	{
+		if (await userManager.IsInRoleAsync(user, "Admin"))
+		{
+			return;
+		}
+
+		var result = await userManager.AddToRoleAsync(user, "Admin");
+		EnsureSucceeded(result, $"assign the Admin role to '{email}'");
+	}
+
+	private static void EnsureSucceeded(IdentityResult result, string operation)
+	{
+		if (result.Succeeded)
+		{
+			return;
+		}
+
+		var errors = string.Join("; ", result.Errors.Select(error => $"{error.Code}: {error.Description}"));
+		throw new InvalidOperationException($"Could not {operation}: {errors}");
+	}
 }
