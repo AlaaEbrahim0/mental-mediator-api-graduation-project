@@ -57,7 +57,7 @@ app.MapGet("/error", () => Results.Problem(
 /*  */    title: "An error occurred",
     statusCode: 500));
 
-await app.InitializeDatabaseAsync();
+// await app.InitializeDatabaseAsync();
 
 app.Run();
 
