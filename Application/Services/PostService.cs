@@ -31,6 +31,7 @@ namespace Application.Services
 		{
 			var posts = await _repos.Posts.GetAllPosts(parameters, false);
 			var postResponse = _mapper.Map<IEnumerable<PostResponse>>(posts);
+			await PopulateLikeState(posts, postResponse);
 			return postResponse.ToList();
 		}
 
@@ -42,6 +43,7 @@ namespace Application.Services
 				return PostErrors.NotFound(id);
 			}
 			var postResponse = _mapper.Map<PostResponse>(post);
+			await PopulateLikeState(post, postResponse);
 			return postResponse;
 		}
 
@@ -81,6 +83,7 @@ namespace Application.Services
 			await _repos.SaveAsync();
 
 			var postResponse = _mapper.Map<PostResponse>(post);
+			await PopulateLikeState(post, postResponse);
 			return postResponse;
 		}
 
@@ -103,6 +106,7 @@ namespace Application.Services
 			await _repos.SaveAsync();
 
 			var postResponse = _mapper.Map<PostResponse>(post);
+			await PopulateLikeState(post, postResponse);
 			return postResponse;
 		}
 
@@ -139,12 +143,17 @@ namespace Application.Services
 				post.PostPhotoUrl = photoUrl.Value;
 			}
 
+			var existingCategory = post.Category;
+			var existingTags = post.Tags;
 			_mapper.Map(updatePostRequest, post);
+			post.Category = updatePostRequest.Category ?? existingCategory;
+			post.Tags = updatePostRequest.Tags ?? existingTags;
 			_repos.Posts.UpdatePost(post);
 			await _repos.SaveAsync();
 
 
 			var postResponse = _mapper.Map<PostResponse>(post);
+			await PopulateLikeState(post, postResponse);
 			return postResponse;
 		}
 
@@ -158,7 +167,33 @@ namespace Application.Services
 
 			var posts = await _repos.Posts.GetPostsByUserId(userId, parameters, false);
 			var postResponse = _mapper.Map<IEnumerable<PostResponse>>(posts);
+			await PopulateLikeState(posts, postResponse);
 			return postResponse.ToList();
+		}
+
+		public async Task<Result<PostResponse>> SetLike(int id, bool liked)
+		{
+			var post = await _repos.Posts.GetPostById(id, false);
+			if (post is null) return PostErrors.NotFound(id);
+			await _repos.Posts.SetLike(id, _userClaimsService.GetUserId(), liked);
+			await _repos.SaveAsync();
+			var response = _mapper.Map<PostResponse>(post);
+			await PopulateLikeState(post, response);
+			return response;
+		}
+
+		private async Task PopulateLikeState(Post post, PostResponse response)
+		{
+			var (count, liked) = await _repos.Posts.GetLikeState(post.Id, _userClaimsService.GetUserId());
+			response.LikesCount = count;
+			response.IsLikedByCurrentUser = liked;
+		}
+
+		private async Task PopulateLikeState(IEnumerable<Post> posts, IEnumerable<PostResponse> responses)
+		{
+			var responseById = responses.ToDictionary(x => x.Id);
+			foreach (var post in posts)
+				if (responseById.TryGetValue(post.Id, out var response)) await PopulateLikeState(post, response);
 		}
 
 	}

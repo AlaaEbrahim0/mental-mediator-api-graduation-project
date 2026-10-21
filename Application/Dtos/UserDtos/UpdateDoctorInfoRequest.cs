@@ -5,9 +5,9 @@ namespace Application.Dtos.UserDtos;
 
 public class UpdateDoctorInfoRequest : UpdateUserInfoRequest
 {
-	public string? Biography { get; set; }
-	public string? City { get; set; }
 	public string? Location { get; set; }
+	public string? Qualifications { get; set; }
+	public bool IsAvailable { get; set; }
 	public decimal SessionFees { get; set; }
 	public DoctorSpecialization Specialization { get; set; }
 }
@@ -16,6 +16,7 @@ public class UpdateDoctorInfoRequestValidator : AbstractValidator<UpdateDoctorIn
 {
 	public UpdateDoctorInfoRequestValidator()
 	{
+		Include(new BaseUpdateUserInfoRequestValidator());
 		RuleFor(x => x.Biography)
 			.MaximumLength(1000)
 			.WithMessage("Biography cannot be longer than 1000 characters.");
@@ -39,5 +40,6 @@ public class UpdateDoctorInfoRequestValidator : AbstractValidator<UpdateDoctorIn
 		RuleFor(x => x.Specialization)
 			.IsInEnum()
 			.WithMessage("Specialization is required and must be a valid value.");
+		RuleFor(x => x.Qualifications).MaximumLength(2000);
 	}
 }

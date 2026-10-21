@@ -113,6 +113,15 @@ public class AppointmentController : ControllerBase
 		return CreatedAtAction(nameof(GetById), new { id = result.Value.Id }, result.Value);
 	}
 
+	/// <summary>Mark an assigned confirmed appointment as completed.</summary>
+	[HttpPut("{id:int}/complete")]
+	[Authorize(Roles = "Doctor")]
+	public async Task<IActionResult> CompleteAppointment(int id)
+	{
+		var result = await _appointmentService.CompleteAppointment(id);
+		return result.IsFailure ? result.ToProblemDetails() : Ok(result.Value);
+	}
+
 
 
 }

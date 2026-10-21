@@ -8,6 +8,7 @@ public class AppointmentConfiguration : IEntityTypeConfiguration<Appointment>
 {
 	public void Configure(EntityTypeBuilder<Appointment> builder)
 	{
+		builder.Property(x => x.Fees).HasPrecision(18, 2);
 		builder
 			.HasOne(x => x.Doctor)
 			.WithMany(x => x.Appointments);

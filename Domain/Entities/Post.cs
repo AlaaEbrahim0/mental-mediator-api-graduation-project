@@ -15,6 +15,8 @@ public class Post
 	public string Title { get; set; } = string.Empty;
 
 	public string Content { get; set; } = string.Empty;
+	public string? Category { get; set; }
+	public string? Tags { get; set; }
 
 	public bool IsAnonymous { get; set; }
 
@@ -26,7 +28,12 @@ public class Post
 
 	public string? PostPhotoUrl { get; set; }
 	public List<Comment> Comments { get; set; } = new();
+	public List<PostLike> Likes { get; set; } = new();
 
 	[NotMapped]
 	public int CommentsCount { get; set; }
+	[NotMapped]
+	public int LikesCount { get; set; }
+	[NotMapped]
+	public bool IsLikedByCurrentUser { get; set; }
 }

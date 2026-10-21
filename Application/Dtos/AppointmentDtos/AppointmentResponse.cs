@@ -25,6 +25,7 @@ public class AppointmentResponse
 
 	public AppointmentStatus Status { get; set; }
 	public string Location { get; set; } = string.Empty;
+	public string? Reason { get; set; }
 	public string? CancellationReason { get; set; }
 	public string? RejectionReason { get; set; }
 }

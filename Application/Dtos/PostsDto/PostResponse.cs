@@ -7,6 +7,8 @@ public class PostResponse
 	public string? Title { get; set; }
 
 	public string Content { get; set; } = string.Empty;
+	public string? Category { get; set; }
+	public string? Tags { get; set; }
 
 	public DateTime PostedOn { get; set; }
 
@@ -21,6 +23,8 @@ public class PostResponse
 	public bool IsAnonymous { get; set; }
 
 	public int CommentsCount { get; set; }
+	public int LikesCount { get; set; }
+	public bool IsLikedByCurrentUser { get; set; }
 
 }
 

@@ -74,6 +74,7 @@ public class AppointmentRepository : RepositoryBase<Appointment>, IAppointmentRe
 						Duration = x.Duration,
 						Status = x.Status,
 						Location = x.Location,
+						Reason = x.Reason,
 						CancellationReason = x.CancellationReason,
 						RejectionReason = x.RejectionReason,
 					})
@@ -129,6 +130,7 @@ public class AppointmentRepository : RepositoryBase<Appointment>, IAppointmentRe
 				Duration = x.Duration,
 				Status = x.Status,
 				Location = x.Location,
+				Reason = x.Reason,
 				CancellationReason = x.CancellationReason,
 				RejectionReason = x.RejectionReason,
 			})
@@ -178,6 +180,7 @@ public class AppointmentRepository : RepositoryBase<Appointment>, IAppointmentRe
 				Duration = x.Duration,
 				Status = x.Status,
 				Location = x.Location,
+				Reason = x.Reason,
 				CancellationReason = x.CancellationReason,
 				RejectionReason = x.RejectionReason,
 			})
@@ -233,6 +236,7 @@ public class AppointmentRepository : RepositoryBase<Appointment>, IAppointmentRe
 				Duration = x.Duration,
 				Status = x.Status,
 				Location = x.Location,
+				Reason = x.Reason,
 				CancellationReason = x.CancellationReason,
 				RejectionReason = x.RejectionReason,
 			})

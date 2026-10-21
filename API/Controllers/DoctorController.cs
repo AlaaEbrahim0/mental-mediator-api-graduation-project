@@ -1,6 +1,7 @@
 ﻿
 using Application.Contracts;
 using Application.Dtos.UserDtos;
+using Domain.Enums;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Shared.RequestParameters;
@@ -23,6 +24,19 @@ public class DoctorController : ControllerBase
 	[Authorize]
 	public async Task<IActionResult> GetDoctors([FromQuery] DoctorRequestParameters request)
 	{
+		var errors = new Dictionary<string, string[]>();
+		if (request.MinFees < 0 || request.MaxFees < 0)
+			errors["fees"] = new[] { "Fee bounds must be zero or greater." };
+		if (request.MinFees.HasValue && request.MaxFees.HasValue && request.MinFees.Value > request.MaxFees.Value)
+			errors["maxFees"] = new[] { "Maximum fees must be greater than or equal to minimum fees." };
+		if (!string.IsNullOrWhiteSpace(request.Specialization) &&
+			(!Enum.TryParse<DoctorSpecialization>(request.Specialization, true, out var specialization) || !Enum.IsDefined(specialization)))
+			errors["specialization"] = new[] { "Specialization must be a valid value." };
+		if (!string.IsNullOrWhiteSpace(request.Gender) && !new[] { "male", "female" }.Contains(request.Gender, StringComparer.OrdinalIgnoreCase))
+			errors["gender"] = new[] { "Gender must be male or female." };
+		if (errors.Count > 0)
+			return BadRequest(new ValidationProblemDetails(errors) { Status = StatusCodes.Status400BadRequest, Title = "Validation Failed" });
+
 		var result = await _doctorService.GetAll(request);
 		if (result.IsFailure)
 		{

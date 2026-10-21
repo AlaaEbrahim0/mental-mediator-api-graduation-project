@@ -16,6 +16,7 @@ public class DoctorRepository : RepositoryBase<Doctor>, IDoctorRepository
 	public async Task<IEnumerable<Doctor>> GetAll(DoctorRequestParameters requestParameters, bool trackChanges)
 	{
 		var doctorsQuery = FindAll(trackChanges);
+		doctorsQuery = doctorsQuery.Where(d => !d.IsDeleted);
 
 		if (!string.IsNullOrWhiteSpace(requestParameters.Name))
 		{
@@ -41,15 +42,16 @@ public class DoctorRepository : RepositoryBase<Doctor>, IDoctorRepository
 			doctorsQuery = doctorsQuery.Where(d => d.City!.Contains(requestParameters.City));
 		}
 
-		if (requestParameters.MinFees > 0)
+		if (requestParameters.MinFees.HasValue)
 		{
-			doctorsQuery = doctorsQuery.Where(d => d.SessionFees >= requestParameters.MinFees);
+			doctorsQuery = doctorsQuery.Where(d => d.SessionFees >= requestParameters.MinFees.Value);
 		}
 
-		if (requestParameters.MaxFees > 0)
+		if (requestParameters.MaxFees.HasValue)
 		{
-			doctorsQuery = doctorsQuery.Where(d => d.SessionFees <= requestParameters.MaxFees);
+			doctorsQuery = doctorsQuery.Where(d => d.SessionFees <= requestParameters.MaxFees.Value);
 		}
+		if (requestParameters.IsAvailable.HasValue) doctorsQuery = doctorsQuery.Where(d => d.IsAvailable == requestParameters.IsAvailable.Value);
 
 		var doctors = await doctorsQuery
 			.Paginate(requestParameters.PageNumber, requestParameters.PageSize)

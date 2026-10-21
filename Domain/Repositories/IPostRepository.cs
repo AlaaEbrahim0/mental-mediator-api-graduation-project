@@ -10,6 +10,8 @@ public interface IPostRepository
 	Task<IEnumerable<Post>> GetPostsByUserId(string userId, PostRequestParameters parameters, bool trackChanges);
 	Task<Post?> GetPostById(int id, bool trackChanges);
 	Task<int> GetCount();
+	Task<(int Count, bool IsLiked)> GetLikeState(int postId, string? userId);
+	Task SetLike(int postId, string userId, bool liked);
 	void CreatePost(Post post);
 	void UpdatePost(Post post);
 	void DeletePost(Post post);

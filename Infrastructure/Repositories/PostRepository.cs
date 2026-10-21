@@ -60,6 +60,8 @@ public class PostRepository : RepositoryBase<Post>, IPostRepository
 				Id = p.Id,
 				AppUserId = p.AppUserId,
 				Content = p.Content,
+				Category = p.Category,
+				Tags = p.Tags,
 				PostedOn = p.PostedOn,
 				Title = p.Title,
 				IsAnonymous = p.IsAnonymous,
@@ -85,6 +87,8 @@ public class PostRepository : RepositoryBase<Post>, IPostRepository
 				Id = p.Id,
 				AppUserId = p.AppUserId,
 				Content = p.Content,
+				Category = p.Category,
+				Tags = p.Tags,
 				PostedOn = p.PostedOn,
 				Title = p.Title,
 				IsAnonymous = p.IsAnonymous,
@@ -108,6 +112,8 @@ public class PostRepository : RepositoryBase<Post>, IPostRepository
 				Id = p.Id,
 				AppUserId = p.AppUserId,
 				Content = p.Content,
+				Category = p.Category,
+				Tags = p.Tags,
 				PostedOn = p.PostedOn,
 				Title = p.Title,
 				IsAnonymous = p.IsAnonymous,
@@ -132,6 +138,8 @@ public class PostRepository : RepositoryBase<Post>, IPostRepository
 				Id = p.Id,
 				AppUserId = p.AppUserId,
 				Content = p.Content,
+				Category = p.Category,
+				Tags = p.Tags,
 				PostedOn = p.PostedOn,
 				Title = p.Title,
 				Username = p.IsAnonymous ? null : p.AppUser!.FullName,
@@ -152,5 +160,18 @@ public class PostRepository : RepositoryBase<Post>, IPostRepository
 	public async Task<int> GetCount()
 	{
 		return await FindAll(false).CountAsync();
+	}
+
+	public async Task<(int Count, bool IsLiked)> GetLikeState(int postId, string? userId)
+	{
+		var query = _dbContext.PostLikes.Where(x => x.PostId == postId);
+		return (await query.CountAsync(), userId != null && await query.AnyAsync(x => x.UserId == userId));
+	}
+
+	public async Task SetLike(int postId, string userId, bool liked)
+	{
+		var existing = await _dbContext.PostLikes.FirstOrDefaultAsync(x => x.PostId == postId && x.UserId == userId);
+		if (liked && existing == null) _dbContext.PostLikes.Add(new PostLike { PostId = postId, UserId = userId, LikedOn = DateTime.UtcNow });
+		else if (!liked && existing != null) _dbContext.PostLikes.Remove(existing);
 	}
 }

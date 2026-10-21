@@ -11,6 +11,8 @@ public class CreatePostRequest
 
 	[DefaultValue("Lorem ipsum dolor sit amet, consectetur adipiscing elit. Cras laoreet luctus ex. Praesent vel ligula ut neque ullamcorper placerat ac.")]
 	public string? Content { get; set; }
+	public string? Category { get; set; }
+	public string? Tags { get; set; }
 
 	public bool IsAnonymous { get; set; }
 
@@ -29,6 +31,8 @@ public class CreatePostRequestValidator : AbstractValidator<CreatePostRequest>
 		RuleFor(x => x.Title)
 			.NotEmpty()
 			.Length(1, 2000);
+		RuleFor(x => x.Category).MaximumLength(100);
+		RuleFor(x => x.Tags).MaximumLength(1000);
 
 		RuleFor(x => x.PhotoPost)
 			.SetValidator(new PhotoValidator()!);

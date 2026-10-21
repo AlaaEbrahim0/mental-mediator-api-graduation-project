@@ -13,4 +13,5 @@ public interface IAppointmentService
 	Task<Result<AppointmentResponse?>> ConfirmAppointment(int id);
 	Task<Result<AppointmentResponse?>> RejectAppointment(int id, RejectAppointmentRequest request);
 	Task<Result<AppointmentResponse?>> CancelAppointment(int id, string? cancellationReason);
+	Task<Result<AppointmentResponse?>> CompleteAppointment(int id);
 }

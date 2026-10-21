@@ -125,6 +125,18 @@ public class AppointmentService : IAppointmentService
 		return appointmentResponse;
 	}
 
+	public async Task<Result<AppointmentResponse?>> CompleteAppointment(int id)
+	{
+		var appointment = await _repos.Appointments.GetById(id, true);
+		if (appointment is null) return Error.NotFound("Appointments.NotFound", $"appointment: {id} doesn't exist");
+		if (appointment.DoctorId != _userClaimsService.GetUserId()) return Error.Forbidden("Appointments.Forbidden", "Only the assigned doctor can complete this appointment.");
+		var completionResult = appointment.Complete();
+		if (completionResult.IsFailure) return completionResult.Error;
+		_repos.Appointments.UpdateAppointment(appointment);
+		await _repos.SaveAsync();
+		return _mapper.Map<AppointmentResponse>(appointment);
+	}
+
 	public async Task<Result<AppointmentResponse>> CreateAppointment(string doctorId, CreateAppointmentRequest request)
 	{
 		var doctor = await _repos.Doctors.GetById(doctorId, true);

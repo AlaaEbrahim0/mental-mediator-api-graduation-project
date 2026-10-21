@@ -12,6 +12,9 @@ public class BaseUpdateUserInfoRequest
 	public DateOnly BirthDate { get; set; }
 
 	public string Gender { get; set; } = string.Empty;
+	public string? Biography { get; set; }
+	public string? PhoneNumber { get; set; }
+	public string? City { get; set; }
 
 	public IFormFile? Photo { get; set; }
 }
@@ -44,6 +47,9 @@ public class BaseUpdateUserInfoRequestValidator : AbstractValidator<BaseUpdateUs
 			.NotNull()
 			.Must(x => x!.Equals("male", StringComparison.InvariantCultureIgnoreCase) || x.Equals("female", StringComparison.InvariantCultureIgnoreCase))
 			.WithMessage("Gender must be male or female");
+		RuleFor(x => x.Biography).MaximumLength(1000);
+		RuleFor(x => x.PhoneNumber).MaximumLength(32);
+		RuleFor(x => x.City).MaximumLength(100);
 
 		RuleFor(x => x.Photo)
 			.SetValidator(new PhotoValidator()!);

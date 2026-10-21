@@ -100,5 +100,23 @@ public class PostController : ControllerBase
 		return Ok(result.Value);
 	}
 
+	/// <summary>Idempotently like a post. Returns the updated like count and current user's liked state.</summary>
+	[HttpPut("{id:int}/like")]
+	[Authorize]
+	public async Task<IActionResult> LikePost(int id)
+	{
+		var result = await _postService.SetLike(id, true);
+		return result.IsFailure ? result.ToProblemDetails() : Ok(result.Value);
+	}
+
+	/// <summary>Idempotently remove the current user's like from a post.</summary>
+	[HttpDelete("{id:int}/like")]
+	[Authorize]
+	public async Task<IActionResult> UnlikePost(int id)
+	{
+		var result = await _postService.SetLike(id, false);
+		return result.IsFailure ? result.ToProblemDetails() : Ok(result.Value);
+	}
+
 
 }

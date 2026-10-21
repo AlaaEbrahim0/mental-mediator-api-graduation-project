@@ -8,6 +8,8 @@ public class BaseUser : IdentityUser
 	public string LastName { get; set; } = string.Empty;
 	public DateOnly BirthDate { get; set; }
 	public string Gender { get; set; } = string.Empty;
+	public string? Biography { get; set; }
+	public string? City { get; set; }
 
 	[NotMapped]
 	public string FullName => $"{FirstName} {LastName}";

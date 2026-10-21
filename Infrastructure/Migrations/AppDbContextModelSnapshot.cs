@@ -42,6 +42,7 @@ namespace Infrastructure.Migrations
                         .HasColumnType("time");
 
                     b.Property<decimal>("Fees")
+                        .HasPrecision(18, 2)
                         .HasColumnType("decimal(18,2)");
 
                     b.Property<string>("Location")
@@ -70,7 +71,13 @@ namespace Infrastructure.Migrations
 
                     b.HasIndex("DoctorId");
 
+                    b.HasIndex("StartTime");
+
+                    b.HasIndex("Status");
+
                     b.HasIndex("UserId");
+
+                    b.HasIndex("DoctorId", "StartTime", "Status");
 
                     b.ToTable("Appointments");
                 });
@@ -83,8 +90,15 @@ namespace Infrastructure.Migrations
                     b.Property<int>("AccessFailedCount")
                         .HasColumnType("int");
 
+                    b.Property<string>("Biography")
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<DateOnly>("BirthDate")
                         .HasColumnType("date");
+
+                    b.Property<string>("City")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
 
                     b.Property<string>("ConcurrencyStamp")
                         .IsConcurrencyToken()
@@ -182,8 +196,8 @@ namespace Infrastructure.Migrations
 
                     b.Property<string>("Content")
                         .IsRequired()
-                        .HasMaxLength(1000)
-                        .HasColumnType("nvarchar(1000)");
+                        .HasMaxLength(4000)
+                        .HasColumnType("nvarchar(4000)");
 
                     b.Property<int>("PostId")
                         .HasColumnType("int");
@@ -271,21 +285,18 @@ namespace Infrastructure.Migrations
 
                     b.Property<string>("Message")
                         .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("nvarchar(200)");
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
 
                     b.Property<string>("NotifierPhotoUrl")
-                        .HasMaxLength(1000)
-                        .HasColumnType("nvarchar(1000)");
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("NotifierUserName")
-                        .HasMaxLength(64)
-                        .HasColumnType("nvarchar(64)");
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("Resources")
                         .IsRequired()
-                        .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)");
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("Type")
                         .HasColumnType("nvarchar(max)");
@@ -293,6 +304,10 @@ namespace Infrastructure.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("AppUserId");
+
+                    b.HasIndex("IsRead");
+
+                    b.HasIndex("AppUserId", "IsRead");
 
                     b.ToTable("Notifications");
                 });
@@ -309,6 +324,10 @@ namespace Infrastructure.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(450)");
 
+                    b.Property<string>("Category")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
                     b.Property<string>("Content")
                         .IsRequired()
                         .HasMaxLength(10000)
@@ -324,6 +343,10 @@ namespace Infrastructure.Migrations
                     b.Property<DateTime>("PostedOn")
                         .HasColumnType("datetime2");
 
+                    b.Property<string>("Tags")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
                     b.Property<string>("Title")
                         .IsRequired()
                         .HasMaxLength(2000)
@@ -333,9 +356,40 @@ namespace Infrastructure.Migrations
 
                     b.HasIndex("AppUserId");
 
+                    b.HasIndex("IsAnonymous");
+
                     b.HasIndex("PostedOn");
 
                     b.ToTable("Posts");
+                });
+
+            modelBuilder.Entity("Domain.Entities.PostLike", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("LikedOn")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("PostId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("UserId")
+                        .IsRequired()
+                        .HasMaxLength(450)
+                        .HasColumnType("nvarchar(450)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PostId");
+
+                    b.HasIndex("UserId", "PostId")
+                        .IsUnique();
+
+                    b.ToTable("PostLikes");
                 });
 
             modelBuilder.Entity("Domain.Entities.Reply", b =>
@@ -355,8 +409,8 @@ namespace Infrastructure.Migrations
 
                     b.Property<string>("Content")
                         .IsRequired()
-                        .HasMaxLength(1000)
-                        .HasColumnType("nvarchar(1000)");
+                        .HasMaxLength(4000)
+                        .HasColumnType("nvarchar(4000)");
 
                     b.Property<DateTime>("RepliedAt")
                         .HasColumnType("datetime2");
@@ -514,23 +568,29 @@ namespace Infrastructure.Migrations
                 {
                     b.HasBaseType("Domain.Entities.BaseUser");
 
-                    b.Property<string>("Biography")
-                        .HasMaxLength(1000)
-                        .HasColumnType("nvarchar(1000)");
-
-                    b.Property<string>("City")
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
+                    b.Property<bool>("IsAvailable")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(true);
 
                     b.Property<string>("Location")
                         .HasMaxLength(200)
                         .HasColumnType("nvarchar(200)");
 
+                    b.Property<string>("Qualifications")
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
+
                     b.Property<decimal>("SessionFees")
+                        .HasPrecision(18, 2)
                         .HasColumnType("decimal(18,2)");
 
                     b.Property<int>("Specialization")
                         .HasColumnType("int");
+
+                    b.HasIndex("City");
+
+                    b.HasIndex("Specialization");
 
                     b.ToTable("Doctors", (string)null);
                 });
@@ -621,6 +681,23 @@ namespace Infrastructure.Migrations
                         .IsRequired();
 
                     b.Navigation("AppUser");
+                });
+
+            modelBuilder.Entity("Domain.Entities.PostLike", b =>
+                {
+                    b.HasOne("Domain.Entities.Post", "Post")
+                        .WithMany("Likes")
+                        .HasForeignKey("PostId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Domain.Entities.BaseUser", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Post");
                 });
 
             modelBuilder.Entity("Domain.Entities.Reply", b =>
@@ -726,6 +803,8 @@ namespace Infrastructure.Migrations
             modelBuilder.Entity("Domain.Entities.Post", b =>
                 {
                     b.Navigation("Comments");
+
+                    b.Navigation("Likes");
                 });
 
             modelBuilder.Entity("Domain.Entities.Doctor", b =>
