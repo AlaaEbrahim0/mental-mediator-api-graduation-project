@@ -224,6 +224,13 @@ public static class DependencyInjection
 			})
 			.AddJwtBearer(config =>
 			{
+				// Keep the raw claim names from the token. The default inbound
+				// mapping rewrites the "roles" claim to the long
+				// http://schemas.microsoft.com/ws/2008/06/identity/claims/role URI,
+				// so matching against "roles" found nothing and every
+				// [Authorize(Roles = "Doctor")] endpoint answered 403.
+				config.MapInboundClaims = false;
+
 				config.TokenValidationParameters = new()
 				{
 					ValidIssuer = configuration["JwtSettings:Issuer"],
@@ -231,6 +238,7 @@ public static class DependencyInjection
 					IssuerSigningKey =
 						new SymmetricSecurityKey(Encoding.UTF8.GetBytes(configuration["JwtSettings:Key"]!)),
 					RoleClaimType = "roles",
+					NameClaimType = "name",
 					ValidateIssuer = true,
 					ValidateAudience = true,
 					ValidateIssuerSigningKey = true,
