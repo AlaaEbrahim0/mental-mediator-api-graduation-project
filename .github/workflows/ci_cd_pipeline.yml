@@ -78,16 +78,51 @@ jobs:
           dotnet-version: '8.0'
 
       # Web Deploy v3 is not preinstalled on the GitHub Windows runners, and
-      # the deploy action invokes msdeploy.exe by its v3 path.
+      # the deploy action invokes msdeploy.exe by its v3 path. Chocolatey's
+      # `webdeploy` package pins an MSI checksum that Microsoft has since
+      # re-signed, so the package install fails; install the MSI directly and
+      # fall back to the package if the direct download is unavailable.
       - name: Install Web Deploy v3
         shell: pwsh
         run: |
-          choco install webdeploy --version=3.6.0 -y --no-progress
           $msdeploy = "C:\Program Files (x86)\IIS\Microsoft Web Deploy V3\msdeploy.exe"
+
           if (-not (Test-Path $msdeploy)) {
-            Write-Error "msdeploy.exe not found at $msdeploy"
-            exit 1
+            $msiUrl = "https://download.microsoft.com/download/webdeploy_amd64_en-US.msi"
+            $msi = Join-Path $env:RUNNER_TEMP "webdeploy.msi"
+
+            Write-Host "Downloading Web Deploy from $msiUrl"
+            try {
+              Invoke-WebRequest -Uri $msiUrl -OutFile $msi -UseBasicParsing
+            } catch {
+              Write-Warning "Direct download failed, falling back to the Chocolatey package."
+              choco install webdeploy -y --no-progress --ignore-checksums
+            }
+
+            if (Test-Path $msi) {
+              Write-Host "Installing $msi"
+              $process = Start-Process msiexec.exe -ArgumentList "/i", "`"$msi`"", "/qn", "/norestart", "ADDLOCAL=ALL" -Wait -PassThru
+              if ($process.ExitCode -ne 0 -and $process.ExitCode -ne 3010) {
+                Write-Error "msiexec failed with exit code $($process.ExitCode)"
+                exit 1
+              }
+            }
           }
+
+          if (-not (Test-Path $msdeploy)) {
+            # Some MSI builds place the tool under Program Files instead.
+            $found = Get-ChildItem -Path "C:\Program Files", "C:\Program Files (x86)" `
+              -Filter "msdeploy.exe" -Recurse -ErrorAction SilentlyContinue |
+              Select-Object -First 1
+            if ($null -eq $found) {
+              Write-Error "msdeploy.exe was not found after installation."
+              exit 1
+            }
+            Write-Host "msdeploy found at $($found.FullName)"
+          } else {
+            Write-Host "msdeploy found at $msdeploy"
+          }
+
           & $msdeploy -help | Select-Object -First 1
 
       - name: Publish for IIS
