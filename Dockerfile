@@ -3,8 +3,12 @@
 FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS base
 USER app
 WORKDIR /app
+# Render sets PORT (default 10000) and routes traffic to that port, so the
+# app has to listen on it. 8080/8081 stay exposed for other hosts.
 EXPOSE 8080
 EXPOSE 8081
+EXPOSE 10000
+ENV ASPNETCORE_URLS=http://0.0.0.0:${PORT:-8080}
 
 FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 ARG BUILD_CONFIGURATION=Release
