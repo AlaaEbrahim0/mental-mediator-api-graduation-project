@@ -215,7 +215,7 @@ jobs:
           server-computer-name: ${{ vars.WEBDEPLOY_SERVER }}
           server-username: ${{ secrets.WEBDEPLOY_USERNAME }}
           server-password: ${{ secrets.WEBDEPLOY_PASSWORD }}
-          source-path: '.\publish\'
+          source-path: '${{ github.workspace }}\publish'
 
       - name: Verify deployment
         shell: pwsh
