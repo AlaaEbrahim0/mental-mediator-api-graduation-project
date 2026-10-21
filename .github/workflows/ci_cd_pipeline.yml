@@ -37,9 +37,38 @@ jobs:
       - name: Test
         run: dotnet test --configuration Release --no-build --verbosity normal
 
+  # Docker Hub publishing. The live host is IIS on MonsterASP.NET, so this job
+  # is not on the deploy critical path; a registry failure must not leave the
+  # site down. The image is kept in sync for container-based deploys.
+  publish:
+    name: Publish Docker image to Docker Hub
+    needs: build
+    runs-on: ubuntu-latest
+    continue-on-error: true
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: systematicmess/nexus_api:latest
+
   deploy:
     name: Publish and deploy to MonsterASP.NET (FTP)
-    needs: build
+    needs: [build, publish]
     runs-on: windows-latest
     steps:
       - name: Checkout code
@@ -73,11 +102,29 @@ jobs:
           MAIL_PASSWORD: ${{ secrets.PRODUCTION_MAIL_PASSWORD }}
           NEWS_API_KEY: ${{ secrets.PRODUCTION_NEWS_API_KEY }}
         run: |
+          # Every value is read through $env:NAME. Inlining ${{ secrets.* }}
+          # into the script body injects the raw secret into PowerShell source,
+          # where a quote, $ or backtick breaks the parser before it runs.
           if ([string]::IsNullOrWhiteSpace($env:CONSTR_SOMEE)) {
             throw "GitHub Actions secret PRODUCTION_CONSTR_SOMEE is not configured."
           }
           if ([string]::IsNullOrWhiteSpace($env:JWT_KEY)) {
             throw "GitHub Actions secret PRODUCTION_JWT_KEY is not configured."
+          }
+          if ([string]::IsNullOrWhiteSpace($env:GOOGLE_ID)) {
+            throw "GitHub Actions secret PRODUCTION_GOOGLE_ID is not configured."
+          }
+          if ([string]::IsNullOrWhiteSpace($env:GOOGLE_SECRET)) {
+            throw "GitHub Actions secret PRODUCTION_GOOGLE_SECRET is not configured."
+          }
+          if ([string]::IsNullOrWhiteSpace($env:MAIL_USERNAME)) {
+            throw "GitHub Actions secret PRODUCTION_MAIL_USERNAME is not configured."
+          }
+          if ([string]::IsNullOrWhiteSpace($env:MAIL_PASSWORD)) {
+            throw "GitHub Actions secret PRODUCTION_MAIL_PASSWORD is not configured."
+          }
+          if ([string]::IsNullOrWhiteSpace($env:NEWS_API_KEY)) {
+            throw "GitHub Actions secret PRODUCTION_NEWS_API_KEY is not configured."
           }
 
           $settings = @{
@@ -120,8 +167,11 @@ jobs:
             }
           }
 
-          $settings | ConvertTo-Json -Depth 10 |
-            Set-Content -Path ./publish/appsettings.Production.json -Encoding utf8
+          $json = $settings | ConvertTo-Json -Depth 10
+          [System.IO.File]::WriteAllText(
+            (Join-Path (Get-Location) "publish/appsettings.Production.json"),
+            $json,
+            (New-Object System.Text.UTF8Encoding($false)))
 
           Remove-Item ./publish/appsettings.Development.json -ErrorAction SilentlyContinue
           Write-Host "Production appsettings generated."

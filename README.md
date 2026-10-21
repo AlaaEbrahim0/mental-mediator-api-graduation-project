@@ -239,21 +239,27 @@ The `API/Dockerfile` uses multi-stage builds to minimize image size:
 
 The pipeline runs on every push to `master`:
 
-1. **Build** — `dotnet build --configuration Release`
-2. **Test** — `dotnet test --configuration Release` (not currently wired to a test project)
-3. **Publish** — Push Docker image to Docker Hub
-4. **Deploy** — Trigger Render deployment via webhook
+1. **Build** — `dotnet restore`, `dotnet build --configuration Release --no-restore`
+2. **Test** — `dotnet test --configuration Release --no-build --verbosity normal` (no test project yet; the step is a no-op that must keep passing)
+3. **Publish** — Build and push `systematicmess/nexus_api:latest` to Docker Hub
+4. **Deploy** — Publish the app for IIS and upload it to MonsterASP.NET over FTP
+
+Docker Hub publishing is **not** on the deploy critical path: the live host is IIS on
+MonsterASP.NET, so a registry failure cannot take the site down.
 
 ### Pipeline Steps
 
-| Step | Command |
-|------|---------|
+| Step | Command / Input |
+|------|-----------------|
 | Restore | `dotnet restore` |
 | Build | `dotnet build --configuration Release --no-restore` |
 | Test | `dotnet test --configuration Release --no-build --verbosity normal` |
-| Docker Login | `docker login -u $DOCKER_USERNAME -p $DOCKER_PASSWORD` |
-| Docker Build & Push | `docker buildx build --push --tag systematicmess/nexus_api:latest .` |
-| Render Deploy | `curl -X POST $RENDER_DEPLOY_HOOK` |
+| Docker Login | `docker/login-action@v3` using `DOCKER_USERNAME` / `DOCKER_PASSWORD` |
+| Docker Build & Push | `docker/build-push-action@v5` → `systematicmess/nexus_api:latest` |
+| Publish for IIS | `dotnet publish API/API.csproj -c Release --output ./publish --runtime win-x64 --self-contained false` |
+| Production settings | Generated in the runner from secrets into `publish/appsettings.Production.json` (never committed) |
+| FTP Deploy | `SamKirkland/FTP-Deploy-Action@v4.3.5` → `/wwwroot/` |
+| Verify | Polls `https://nexus-api.runasp.net/swagger/v1/swagger.json` for HTTP 200 |
 
 ### Required GitHub Secrets
 
@@ -261,7 +267,36 @@ The pipeline runs on every push to `master`:
 |--------|---------|
 | `DOCKER_USERNAME` | Docker Hub username |
 | `DOCKER_PASSWORD` | Docker Hub access token |
-| `RENDER_DEPLOY_HOOK` | Render deployment webhook URL |
+| `MONSTERASP_FTP_SERVER` | MonsterASP.NET FTP host |
+| `MONSTERASP_FTP_USERNAME` | MonsterASP.NET FTP username |
+| `MONSTERASP_FTP_PASSWORD` | MonsterASP.NET FTP password |
+| `PRODUCTION_CONSTR_SOMEE` | SQL Server connection string for the hosted database |
+| `PRODUCTION_JWT_KEY` | JWT signing key |
+| `PRODUCTION_GOOGLE_ID` / `PRODUCTION_GOOGLE_SECRET` | Google OAuth client credentials |
+| `PRODUCTION_MAIL_USERNAME` / `PRODUCTION_MAIL_PASSWORD` | Gmail SMTP credentials |
+| `PRODUCTION_NEWS_API_KEY` | News API key |
+
+Every secret is passed through `env:` and read with `$env:NAME`. Secrets are never
+inlined into a PowerShell script body, and `appsettings.Production.json` is generated in
+the runner — it is gitignored and never committed.
+
+### Deploy Readiness Checklist
+
+A `503 Service Unavailable` from `nexus-api.runasp.net` is an **IIS app-pool** answer
+(`server: Microsoft-HTTPAPI/2.0`), not an ASP.NET one. Check these in order:
+
+1. **Did the pipeline actually deploy?** — the failed deploy leaves the old
+   `wwwroot` in place. Confirm the *Deploy to MonsterASP.NET* job is green, not just
+   the build.
+2. **Do the FTP secrets exist and are they current?** — a missing
+   `MONSTERASP_FTP_SERVER` fails the deploy with
+   `Input required and not supplied: server`. The secrets are only read at run start,
+   so editing one does **not** retry the in-flight run.
+3. **Did the app upload?** — verify `/wwwroot/` on the host contains `API.dll`,
+   `web.config` and `appsettings.Production.json`.
+4. **Did the app pool start?** — a runtime that cannot be loaded (for example a
+   missing .NET 8 ASP.NET Core hosting bundle) leaves the pool stopped and IIS
+   answers 503 before the app runs.
 
 ---
 
