@@ -173,10 +173,16 @@ namespace Application.Services
 
 		public async Task<Result<PostResponse>> SetLike(int id, bool liked)
 		{
+			var userId = _userClaimsService.GetUserId();
+
 			var post = await _repos.Posts.GetPostById(id, false);
 			if (post is null) return PostErrors.NotFound(id);
-			await _repos.Posts.SetLike(id, _userClaimsService.GetUserId(), liked);
+
+			await _repos.Posts.SetLike(id, userId, liked);
 			await _repos.SaveAsync();
+
+			// Read the like state *after* the write has been committed, otherwise the
+			// response reports the previous count and the client renders stale state.
 			var response = _mapper.Map<PostResponse>(post);
 			await PopulateLikeState(post, response);
 			return response;

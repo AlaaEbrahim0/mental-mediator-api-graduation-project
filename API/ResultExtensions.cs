@@ -15,10 +15,14 @@ public static class ResultExtensions
 		var statusCode = GetStatusCode(errorType);
 		var title = GetTitle(errorType);
 
+		// Expose the failure under the standard ProblemDetails "detail" member as
+		// well as the machine readable "errors" array, so every client can read
+		// the reason without having to know the Error type shape.
 		var problemDetails = new ProblemDetails
 		{
 			Status = statusCode,
 			Title = title,
+			Detail = result.Error.Description,
 			Extensions = { { "errors", new[] { result.Error } } }
 		};
 
@@ -36,6 +40,10 @@ public static class ResultExtensions
 			ErrorType.NotFound => StatusCodes.Status404NotFound,
 			ErrorType.Conflict => StatusCodes.Status409Conflict,
 			ErrorType.Forbidden => StatusCodes.Status403Forbidden,
+			// A failure that is not a validation, conflict or authorization problem is
+			// still a client error (e.g. an unconfirmed email). Reporting 500 makes
+			// the client treat a recoverable mistake as a server fault.
+			ErrorType.Failure => StatusCodes.Status400BadRequest,
 			ErrorType
 			_ => StatusCodes.Status500InternalServerError
 		};
@@ -49,6 +57,7 @@ public static class ResultExtensions
 			ErrorType.NotFound => "Not Found",
 			ErrorType.Conflict => "Conflict",
 			ErrorType.Forbidden => "Forbidden",
+			ErrorType.Failure => "Bad Request",
 			_ => "Server Failure"
 		};
 	}

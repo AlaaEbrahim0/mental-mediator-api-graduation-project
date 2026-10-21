@@ -23,6 +23,12 @@ public static class DbInitializer
 		var configuration = services.GetRequiredService<IConfiguration>();
 		var logger = services.GetRequiredService<ILoggerFactory>().CreateLogger("DbInitializer");
 
+		// Apply pending migrations before seeding. Without this the new tables
+		// (for example PostLikes) never reach the hosted database, because the
+		// deploy pipeline builds and publishes the image but never runs
+		// `dotnet ef database update`.
+		await ApplyPendingMigrationsAsync(context, logger);
+
 		await using var transaction = await context.Database.BeginTransactionAsync();
 
 		foreach (var roleName in Roles)
@@ -40,6 +46,35 @@ public static class DbInitializer
 		await SeedBootstrapAdminAsync(configuration, context, userManager, logger);
 		await SeedBootstrapDoctorAsync(configuration, context, userManager, logger);
 		await transaction.CommitAsync();
+	}
+
+	private static async Task ApplyPendingMigrationsAsync(AppDbContext context, ILogger logger)
+	{
+		try
+		{
+			var pending = (await context.Database.GetPendingMigrationsAsync()).ToList();
+			if (pending.Count == 0)
+			{
+				logger.LogInformation("Database schema is up to date.");
+				return;
+			}
+
+			logger.LogInformation(
+				"Applying {Count} pending migration(s): {Migrations}",
+				pending.Count,
+				string.Join(", ", pending));
+
+			await context.Database.MigrateAsync();
+			logger.LogInformation("Database migrations applied successfully.");
+		}
+		catch (Exception exception)
+		{
+			// A failed migration must not take the whole API down: the database may
+			// be temporarily unreachable. Log it and let the app start so the
+			// health endpoint stays available and a retry can happen on the next
+			// deployment.
+			logger.LogError(exception, "Failed to apply database migrations.");
+		}
 	}
 
 	private static async Task SeedBootstrapDoctorAsync(
