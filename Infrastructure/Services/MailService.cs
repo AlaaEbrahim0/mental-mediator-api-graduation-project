@@ -1,11 +1,13 @@
 ﻿using Application.Contracts;
 using Application.Dtos.NotificationDtos;
 using Application.Options;
+using Domain.Errors;
 using MailKit.Net.Smtp;
 using MailKit.Security;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using MimeKit;
+using Shared;
 
 namespace Infrastructure.Services;
 
@@ -20,8 +22,18 @@ public class MailService : IMailService
         _logger = logger;
     }
 
-    public async Task SendEmailAsync(MailRequest mailRequest)
+    public async Task<Result> SendEmailAsync(MailRequest mailRequest)
     {
+        if (string.IsNullOrWhiteSpace(_mailSettings.Username))
+        {
+            _logger.LogWarning(
+                "Mail is not configured, skipped sending \"{Subject}\" to {Recipient}",
+                mailRequest.Subject,
+                mailRequest.ToEmail);
+
+            return MailErrors.NotConfigured();
+        }
+
         try
         {
             var email = new MimeMessage();
@@ -40,11 +52,14 @@ public class MailService : IMailService
             smtp.Disconnect(true);
 
             _logger.LogInformation("Email sent to {Recipient} with subject: {Subject}", mailRequest.ToEmail, mailRequest.Subject);
+
+            return Result.Success();
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to send email to {Recipient}", mailRequest.ToEmail);
-            throw new InvalidOperationException("Failed to send email", ex);
+
+            return MailErrors.DeliveryFailed(mailRequest.ToEmail ?? "the recipient");
         }
     }
 }

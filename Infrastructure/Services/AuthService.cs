@@ -88,12 +88,19 @@ public class AuthService : IAuthService
 		var token = await _userManager.GenerateEmailConfirmationTokenAsync(user);
 		var confirmationLink = generateEmailConfirmationLink(user.Id, token);
 
-		await _mailService.SendEmailAsync(new MailRequest()
+		var mailResult = await _mailService.SendEmailAsync(new MailRequest()
 		{
 			ToEmail = user.Email,
 			Subject = "EMAIL CONFIRMATION",
 			Body = _MailTemplates.EmailConfirmation(user.FullName, confirmationLink)
 		});
+
+		// The confirmation link only reaches the user through this email, so a
+		// delivery failure is fatal for the request and has to be reported.
+		if (mailResult.IsFailure)
+		{
+			return mailResult.Error;
+		}
 
 		return new EmailConfirmationResponse
 		{
@@ -255,12 +262,19 @@ public class AuthService : IAuthService
 		var token = await _userManager.GeneratePasswordResetTokenAsync(user);
 		var resetPasswordLink = GenerateResetPasswordLink(email, token);
 
-		await _mailService.SendEmailAsync(new MailRequest
+		var mailResult = await _mailService.SendEmailAsync(new MailRequest
 		{
 			Subject = "RESET PASSWORD",
 			ToEmail = email,
 			Body = _MailTemplates.ResetPassword(resetPasswordLink)
 		});
+
+		// The reset link only reaches the user through this email, so a delivery
+		// failure is fatal for the request and has to be reported.
+		if (mailResult.IsFailure)
+		{
+			return mailResult.Error;
+		}
 
 		return "An email with reset password link has been sent to your email address";
 	}

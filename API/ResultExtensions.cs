@@ -40,6 +40,9 @@ public static class ResultExtensions
 			ErrorType.NotFound => StatusCodes.Status404NotFound,
 			ErrorType.Conflict => StatusCodes.Status409Conflict,
 			ErrorType.Forbidden => StatusCodes.Status403Forbidden,
+			// The server understood the request but cannot fulfil it right now
+			// (for example a dependency such as the mail service is unavailable).
+			ErrorType.ServiceUnavailable => StatusCodes.Status503ServiceUnavailable,
 			// A failure that is not a validation, conflict or authorization problem is
 			// still a client error (e.g. an unconfirmed email). Reporting 500 makes
 			// the client treat a recoverable mistake as a server fault.
@@ -57,6 +60,7 @@ public static class ResultExtensions
 			ErrorType.NotFound => "Not Found",
 			ErrorType.Conflict => "Conflict",
 			ErrorType.Forbidden => "Forbidden",
+			ErrorType.ServiceUnavailable => "Service Unavailable",
 			ErrorType.Failure => "Bad Request",
 			_ => "Server Failure"
 		};
