@@ -33,21 +33,23 @@ public static class DependencyInjection
 		{
 			config.AddPolicy("Default", policy =>
 			{
-				policy
-					.WithOrigins(
-						"https://mental-health-ochre.vercel.app",
-						"https://mental-mediator-doctor-ui-graduation-project.vercel.app",
-						"https://mental-health-b2uehhu7l-rana-tareks-projects.vercel.app",
-						"https://nexus-admin-panel.vercel.app",
-						 "https://mental-health-drab.vercel.app",
-						"https://localhost:7221",
-						"http://localhost:5068",
-						"http://localhost:5500",
-						"http://localhost:3000")
-						.AllowAnyHeader()
-						.AllowAnyMethod()
-						.AllowCredentials()
-						.WithExposedHeaders();
+				policy.WithOrigins(
+                // Your Vercel Deployments (Production & Previews)
+                "https://mental-health-ochre.vercel.app",
+                "https://mental-mediator-doctor-ui-graduation-project.vercel.app",
+                "https://mental-mediator-doctor-ui-graduation-project-lms6panp1.vercel.app", // <--- Added your active URL
+                "https://mental-health-b2uehhu7l-rana-tareks-projects.vercel.app",
+                "https://nexus-admin-panel.vercel.app",
+                "https://mental-health-drab.vercel.app",
+                // Local Development
+                "https://localhost:7221",
+                "http://localhost:5068",
+                "http://localhost:5500",
+                "http://localhost:3000"
+            )
+            .AllowAnyHeader()
+            .AllowAnyMethod()
+            .AllowCredentials();
 
 			});
 
