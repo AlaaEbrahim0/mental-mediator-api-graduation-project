@@ -228,10 +228,25 @@ public static class DependencyInjection
 					ValidAudience = configuration["JwtSettings:Audience"],
 					IssuerSigningKey =
 						new SymmetricSecurityKey(Encoding.UTF8.GetBytes(configuration["JwtSettings:Key"]!)),
+					RoleClaimType = "roles",
 					ValidateIssuer = true,
 					ValidateAudience = true,
 					ValidateIssuerSigningKey = true,
 					ValidateLifetime = true,
+				};
+				config.Events = new JwtBearerEvents
+				{
+					OnMessageReceived = context =>
+					{
+						var accessToken = context.Request.Query["access_token"];
+						if (!string.IsNullOrEmpty(accessToken) &&
+							context.HttpContext.Request.Path.StartsWithSegments("/notification-hub"))
+						{
+							context.Token = accessToken;
+						}
+
+						return Task.CompletedTask;
+					}
 				};
 			});
 			
