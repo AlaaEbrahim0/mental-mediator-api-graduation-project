@@ -6,6 +6,7 @@ All routes use the `/api` prefix. Authenticated routes require the bearer token 
 
 - `GET /doctors/me` returns `id`, names, email, phone number, birth date (`YYYY-MM-DD`), gender, `photoUrl`, biography, city, location, session fees, specialization, qualifications, and `isAvailable`.
 - `PUT /doctors/me` accepts multipart form fields with those editable values and optional `Photo` image upload. Qualifications are limited to 2,000 characters; session fees must be nonnegative.
+- Image uploads require `CLOUDINARY_URL=cloudinary://<api_key>:<api_secret>@<cloud_name>`. Without it, API routes that do not upload images remain available; upload requests return a service-unavailable error.
 - The user profile contracts (`GET /users/me`, `PUT /users/me`) now carry phone number, city, and biography alongside existing birth date, gender, and photo URL fields. Phone number is the Identity `PhoneNumber` field.
 - `GET /doctors` supports `specialization`, `city`, `gender`, `minFees`, `maxFees`, and `isAvailable`, in addition to name and paging. Omitted fee bounds are not applied; an explicit zero is a valid bound.
 
