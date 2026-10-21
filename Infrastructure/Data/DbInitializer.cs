@@ -1,4 +1,5 @@
 using Domain.Entities;
+using Domain.Enums;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -37,7 +38,92 @@ public static class DbInitializer
 		}
 
 		await SeedBootstrapAdminAsync(configuration, context, userManager, logger);
+		await SeedBootstrapDoctorAsync(configuration, context, userManager, logger);
 		await transaction.CommitAsync();
+	}
+
+	private static async Task SeedBootstrapDoctorAsync(
+		IConfiguration configuration,
+		AppDbContext context,
+		UserManager<BaseUser> userManager,
+		ILogger logger)
+	{
+		var email = configuration["DoctorSeed:Email"]?.Trim();
+		var password = configuration["DoctorSeed:Password"];
+		var hasEmail = !string.IsNullOrWhiteSpace(email);
+		var hasPassword = !string.IsNullOrWhiteSpace(password);
+
+		if (!hasEmail && !hasPassword) return;
+		if (!hasEmail || !hasPassword)
+		{
+			throw new InvalidOperationException(
+				"Set both DoctorSeed__Email and DoctorSeed__Password to seed the bootstrap doctor.");
+		}
+
+		var existingUser = await userManager.FindByEmailAsync(email!);
+		if (existingUser is not null)
+		{
+			var isDoctorEntity = await context.Doctors.AnyAsync(doctor => doctor.Id == existingUser.Id);
+			if (!isDoctorEntity)
+			{
+				throw new InvalidOperationException(
+					$"DoctorSeed email '{email}' already belongs to a non-doctor account. Choose an unused email.");
+			}
+
+			await EnsureDoctorRoleAsync(userManager, existingUser, email!);
+			if (!existingUser.EmailConfirmed)
+			{
+				existingUser.EmailConfirmed = true;
+				var updateResult = await userManager.UpdateAsync(existingUser);
+				EnsureSucceeded(updateResult, "confirm the bootstrap doctor's email");
+			}
+			return;
+		}
+
+		var birthDateText = configuration["DoctorSeed:BirthDate"] ?? "1990-01-01";
+		if (!DateOnly.TryParse(birthDateText, out var birthDate) || birthDate >= DateOnly.FromDateTime(DateTime.UtcNow))
+		{
+			throw new InvalidOperationException("DoctorSeed__BirthDate must be a valid past date in YYYY-MM-DD format.");
+		}
+
+		var gender = configuration["DoctorSeed:Gender"] ?? "female";
+		if (!gender.Equals("male", StringComparison.OrdinalIgnoreCase) &&
+			!gender.Equals("female", StringComparison.OrdinalIgnoreCase))
+		{
+			throw new InvalidOperationException("DoctorSeed__Gender must be either male or female.");
+		}
+
+		var specializationText = configuration["DoctorSeed:Specialization"] ?? nameof(DoctorSpecialization.ClinicalPsychology);
+		if (!Enum.TryParse<DoctorSpecialization>(specializationText, true, out var specialization))
+		{
+			throw new InvalidOperationException($"DoctorSeed__Specialization must be a valid {nameof(DoctorSpecialization)} value.");
+		}
+
+		var doctor = new Doctor
+		{
+			Email = email,
+			EmailConfirmed = true,
+			FirstName = configuration["DoctorSeed:FirstName"] ?? "Local",
+			LastName = configuration["DoctorSeed:LastName"] ?? "Doctor",
+			BirthDate = birthDate,
+			Gender = gender.ToLowerInvariant(),
+			City = configuration["DoctorSeed:City"] ?? "Cairo",
+			Specialization = specialization,
+			IsAvailable = true,
+		};
+
+		var createResult = await userManager.CreateAsync(doctor, password!);
+		EnsureSucceeded(createResult, "create the bootstrap doctor (check email and password policy)");
+		await EnsureDoctorRoleAsync(userManager, doctor, email!);
+		logger.LogInformation("Seeded the configured bootstrap doctor {Email}.", email);
+	}
+
+	private static async Task EnsureDoctorRoleAsync(UserManager<BaseUser> userManager, BaseUser user, string email)
+	{
+		if (await userManager.IsInRoleAsync(user, "Doctor")) return;
+
+		var result = await userManager.AddToRoleAsync(user, "Doctor");
+		EnsureSucceeded(result, $"assign the Doctor role to '{email}'");
 	}
 
 	private static async Task SeedBootstrapAdminAsync(
