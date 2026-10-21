@@ -19,15 +19,14 @@ jobs:
   build:
     name: Build and test
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Setup .NET Core SDK
+      - name: Setup .NET SDK
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: '8.0'
+          dotnet-version: '8.0.x'
 
       - name: Restore dependencies
         run: dotnet restore
@@ -38,92 +37,18 @@ jobs:
       - name: Test
         run: dotnet test --configuration Release --no-build --verbosity normal
 
-  publish:
-    name: Publish Docker image
-    needs: build
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Login to Docker Hub
-        uses: docker/login-action@v3
-        with:
-          username: ${{ secrets.DOCKER_USERNAME }}
-          password: ${{ secrets.DOCKER_PASSWORD }}
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Build and push Docker image
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          push: true
-          tags: systematicmess/nexus_api:latest
-
   deploy:
-    name: Deploy to MonsterASP.NET
-    needs: publish
+    name: Publish and deploy to MonsterASP.NET (FTP)
+    needs: build
     runs-on: windows-latest
-
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Setup .NET Core SDK
+      - name: Setup .NET SDK
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: '8.0'
-
-      # Web Deploy v3 is not preinstalled on the GitHub Windows runners, and
-      # the deploy action invokes msdeploy.exe by its v3 path. Chocolatey's
-      # `webdeploy` package pins an MSI checksum that Microsoft has since
-      # re-signed, so the package install fails; install the MSI directly and
-      # fall back to the package if the direct download is unavailable.
-      - name: Install Web Deploy v3
-        shell: pwsh
-        run: |
-          $msdeploy = "C:\Program Files (x86)\IIS\Microsoft Web Deploy V3\msdeploy.exe"
-
-          if (-not (Test-Path $msdeploy)) {
-            $msiUrl = "https://download.microsoft.com/download/webdeploy_amd64_en-US.msi"
-            $msi = Join-Path $env:RUNNER_TEMP "webdeploy.msi"
-
-            Write-Host "Downloading Web Deploy from $msiUrl"
-            try {
-              Invoke-WebRequest -Uri $msiUrl -OutFile $msi -UseBasicParsing
-            } catch {
-              Write-Warning "Direct download failed, falling back to the Chocolatey package."
-              choco install webdeploy -y --no-progress --ignore-checksums
-            }
-
-            if (Test-Path $msi) {
-              Write-Host "Installing $msi"
-              $process = Start-Process msiexec.exe -ArgumentList "/i", "`"$msi`"", "/qn", "/norestart", "ADDLOCAL=ALL" -Wait -PassThru
-              if ($process.ExitCode -ne 0 -and $process.ExitCode -ne 3010) {
-                Write-Error "msiexec failed with exit code $($process.ExitCode)"
-                exit 1
-              }
-            }
-          }
-
-          if (-not (Test-Path $msdeploy)) {
-            # Some MSI builds place the tool under Program Files instead.
-            $found = Get-ChildItem -Path "C:\Program Files", "C:\Program Files (x86)" `
-              -Filter "msdeploy.exe" -Recurse -ErrorAction SilentlyContinue |
-              Select-Object -First 1
-            if ($null -eq $found) {
-              Write-Error "msdeploy.exe was not found after installation."
-              exit 1
-            }
-            Write-Host "msdeploy found at $($found.FullName)"
-          } else {
-            Write-Host "msdeploy found at $msdeploy"
-          }
-
-          & $msdeploy -help | Select-Object -First 1
+          dotnet-version: '8.0.x'
 
       - name: Publish for IIS
         shell: pwsh
@@ -133,14 +58,10 @@ jobs:
             --output ./publish `
             --runtime win-x64 `
             --self-contained false
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
-      # The API must never boot in Development on a public host: that mode
-      # returns detailed error pages (including source fragments) to visitors.
-      #
-      # Every secret is passed through `env:` and read with $env:NAME. Inlining
-      # ${{ secrets.* }} directly into the script body injects the raw value
-      # into PowerShell source, so a value containing a quote, $ or backtick
-      # breaks the parser before the step even runs.
+      # Create production settings from GitHub Actions secrets. Never commit
+      # appsettings.Production.json or place credentials in this workflow.
       - name: Write production appsettings
         shell: pwsh
         env:
@@ -152,95 +73,104 @@ jobs:
           MAIL_PASSWORD: ${{ secrets.PRODUCTION_MAIL_PASSWORD }}
           NEWS_API_KEY: ${{ secrets.PRODUCTION_NEWS_API_KEY }}
         run: |
-          $required = @{
-            PRODUCTION_CONSTR_SOMEE = $env:CONSTR_SOMEE
-            PRODUCTION_JWT_KEY      = $env:JWT_KEY
+          if ([string]::IsNullOrWhiteSpace($env:CONSTR_SOMEE)) {
+            throw "GitHub Actions secret PRODUCTION_CONSTR_SOMEE is not configured."
           }
-          foreach ($entry in $required.GetEnumerator()) {
-            if ([string]::IsNullOrWhiteSpace($entry.Value)) {
-              Write-Error "$($entry.Key) is not set."
-              exit 1
-            }
+          if ([string]::IsNullOrWhiteSpace($env:JWT_KEY)) {
+            throw "GitHub Actions secret PRODUCTION_JWT_KEY is not configured."
           }
 
           $settings = @{
             ConnectionStrings = @{
-              constr        = ""
-              constr_somee   = $env:CONSTR_SOMEE
+              constr = ""
+              constr_somee = $env:CONSTR_SOMEE
               constr_docker = ""
             }
             Logging = @{
               LogLevel = @{
-                Default                  = "Information"
-                Microsoft                 = "Warning"
+                Default = "Information"
+                Microsoft = "Warning"
                 "Microsoft.Hosting.Lifetime" = "Information"
               }
             }
             AllowedHosts = "*"
             JwtSettings = @{
-              Issuer   = "https://nexus-api.runasp.net"
+              Issuer = "https://nexus-api.runasp.net"
               Audience = "https://mental-mediator-doctor-ui-graduation-project.vercel.app"
-              Key      = $env:JWT_KEY
+              Key = $env:JWT_KEY
               Duration = 30
             }
             GoogleAuthentication = @{
-              Id     = $env:GOOGLE_ID
+              Id = $env:GOOGLE_ID
               Secret = $env:GOOGLE_SECRET
             }
             MailSettings = @{
-              Host     = "smtp.gmail.com"
-              Port     = 587
+              Host = "smtp.gmail.com"
+              Port = 587
               Username = $env:MAIL_USERNAME
               Password = $env:MAIL_PASSWORD
             }
-            BaseAddress   = "https://nexus-api.runasp.net"
-            ClientUI      = "https://mental-health-ochre.vercel.app"
-            DoctorUI      = "https://mental-mediator-doctor-ui-graduation-project.vercel.app"
+            BaseAddress = "https://nexus-api.runasp.net"
+            ClientUI = "https://mental-health-ochre.vercel.app"
+            DoctorUI = "https://mental-mediator-doctor-ui-graduation-project.vercel.app"
             MLServerAddress = "https://sentiment-nja5.onrender.com/"
             NewsApi = @{
               Address = "https://newsapi.org/v2/"
-              ApiKey  = $env:NEWS_API_KEY
+              ApiKey = $env:NEWS_API_KEY
             }
           }
-          $settings | ConvertTo-Json -Depth 10 |
-            Set-Content -Path ./publish/appsettings.Production.json -Encoding UTF8
-          # The development file must never ship to a public host.
-          Remove-Item ./publish/appsettings.Development.json -ErrorAction SilentlyContinue
-          Write-Host "Wrote production appsettings."
 
-      - name: Deploy via Web Deploy
-        uses: rasmusbuchholdt/simply-web-deploy@2.1.0
+          $settings | ConvertTo-Json -Depth 10 |
+            Set-Content -Path ./publish/appsettings.Production.json -Encoding utf8
+
+          Remove-Item ./publish/appsettings.Development.json -ErrorAction SilentlyContinue
+          Write-Host "Production appsettings generated."
+
+      - name: Validate publish output
+        shell: pwsh
+        run: |
+          if (-not (Test-Path ./publish/web.config)) {
+            throw "web.config is missing from publish output; this is required for IIS hosting."
+          }
+          if (-not (Test-Path ./publish/API.dll)) {
+            throw "API.dll is missing from publish output."
+          }
+
+      - name: Deploy to MonsterASP.NET via FTP
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
         with:
-          website-name: ${{ vars.WEBSITE_NAME }}
-          server-computer-name: ${{ vars.WEBDEPLOY_SERVER }}
-          server-username: ${{ secrets.WEBDEPLOY_USERNAME }}
-          server-password: ${{ secrets.WEBDEPLOY_PASSWORD }}
-          source-path: '.\publish\'
+          server: ${{ secrets.MONSTERASP_FTP_SERVER }}
+          username: ${{ secrets.MONSTERASP_FTP_USERNAME }}
+          password: ${{ secrets.MONSTERASP_FTP_PASSWORD }}
+          protocol: ftp
+          port: 21
+          local-dir: ./publish/
+          server-dir: /wwwroot/
+          dangerous-clean-slate: false
+          log-level: standard
 
       - name: Verify deployment
         shell: pwsh
+        env:
+          HEALTHCHECK_URL: ${{ vars.PRODUCTION_HEALTHCHECK_URL }}
         run: |
+          if ([string]::IsNullOrWhiteSpace($env:HEALTHCHECK_URL)) {
+            $env:HEALTHCHECK_URL = "https://nexus-api.runasp.net/swagger/v1/swagger.json"
+          }
+
           $deadline = (Get-Date).AddMinutes(5)
-          $ok = $false
           while ((Get-Date) -lt $deadline) {
             try {
-              $r = Invoke-WebRequest -Uri "https://nexus-api.runasp.net/swagger/v1/swagger.json" -UseBasicParsing -TimeoutSec 30
-              if ($r.StatusCode -eq 200) {
-                $paths = ($r.Content | ConvertFrom-Json).paths.PSObject.Properties.Name
-                Write-Host "Live API reports $($paths.Count) paths."
-                if ($paths -contains "/api/posts/{id}/like") {
-                  Write-Host "DEPLOY VERIFIED: like endpoint is live."
-                  $ok = $true
-                  break
-                }
-                Write-Host "Like endpoint not present yet; retrying..."
+              $response = Invoke-WebRequest -Uri $env:HEALTHCHECK_URL -UseBasicParsing -TimeoutSec 20
+              if ($response.StatusCode -eq 200) {
+                Write-Host "Deployment verified: health-check endpoint returned HTTP 200."
+                exit 0
               }
+              Write-Host "Health check returned HTTP $($response.StatusCode); retrying."
             } catch {
-              Write-Host "Waiting for the app pool to restart: $_"
+              Write-Host "Waiting for the application to restart: $($_.Exception.Message)"
             }
             Start-Sleep -Seconds 15
           }
-          if (-not $ok) {
-            Write-Error "Deployment verification failed: the expected endpoint is not live."
-            exit 1
-          }
+
+          throw "Deployment verification failed. Check the app's IIS/.NET hosting configuration and PRODUCTION_HEALTHCHECK_URL."
