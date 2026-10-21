@@ -694,7 +694,7 @@ namespace Infrastructure.Migrations
                     b.HasOne("Domain.Entities.BaseUser", null)
                         .WithMany()
                         .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.NoAction)
                         .IsRequired();
 
                     b.Navigation("Post");

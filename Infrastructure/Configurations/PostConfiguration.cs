@@ -47,7 +47,9 @@ public class PostLikeConfiguration : IEntityTypeConfiguration<PostLike>
 	public void Configure(EntityTypeBuilder<PostLike> builder)
 	{
 		builder.HasKey(x => x.Id);
-		builder.HasOne<BaseUser>().WithMany().HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Cascade);
+		// Post deletion cascades to likes; disabling the direct user cascade avoids
+		// SQL Server's multiple-cascade-path restriction through User -> Post -> Like.
+		builder.HasOne<BaseUser>().WithMany().HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.NoAction);
 		builder.HasIndex(x => new { x.UserId, x.PostId }).IsUnique();
 		builder.Property(x => x.UserId).HasMaxLength(450).IsRequired();
 	}
