@@ -77,6 +77,19 @@ jobs:
         with:
           dotnet-version: '8.0'
 
+      # Web Deploy v3 is not preinstalled on the GitHub Windows runners, and
+      # the deploy action invokes msdeploy.exe by its v3 path.
+      - name: Install Web Deploy v3
+        shell: pwsh
+        run: |
+          choco install webdeploy --version=3.6.0 -y --no-progress
+          $msdeploy = "C:\Program Files (x86)\IIS\Microsoft Web Deploy V3\msdeploy.exe"
+          if (-not (Test-Path $msdeploy)) {
+            Write-Error "msdeploy.exe not found at $msdeploy"
+            exit 1
+          }
+          & $msdeploy -help | Select-Object -First 1
+
       - name: Publish for IIS
         shell: pwsh
         run: |
@@ -88,22 +101,37 @@ jobs:
 
       # The API must never boot in Development on a public host: that mode
       # returns detailed error pages (including source fragments) to visitors.
+      #
+      # Every secret is passed through `env:` and read with $env:NAME. Inlining
+      # ${{ secrets.* }} directly into the script body injects the raw value
+      # into PowerShell source, so a value containing a quote, $ or backtick
+      # breaks the parser before the step even runs.
       - name: Write production appsettings
         shell: pwsh
         env:
           CONSTR_SOMEE: ${{ secrets.PRODUCTION_CONSTR_SOMEE }}
           JWT_KEY: ${{ secrets.PRODUCTION_JWT_KEY }}
+          GOOGLE_ID: ${{ secrets.PRODUCTION_GOOGLE_ID }}
+          GOOGLE_SECRET: ${{ secrets.PRODUCTION_GOOGLE_SECRET }}
+          MAIL_USERNAME: ${{ secrets.PRODUCTION_MAIL_USERNAME }}
+          MAIL_PASSWORD: ${{ secrets.PRODUCTION_MAIL_PASSWORD }}
+          NEWS_API_KEY: ${{ secrets.PRODUCTION_NEWS_API_KEY }}
         run: |
-          $constr = $env:CONSTR_SOMEE
-          $jwt = $env:JWT_KEY
-          if ([string]::IsNullOrWhiteSpace($constr) -or [string]::IsNullOrWhiteSpace($jwt)) {
-            Write-Error "PRODUCTION_CONSTR_SOMEE / PRODUCTION_JWT_KEY are not set."
-            exit 1
+          $required = @{
+            PRODUCTION_CONSTR_SOMEE = $env:CONSTR_SOMEE
+            PRODUCTION_JWT_KEY      = $env:JWT_KEY
           }
+          foreach ($entry in $required.GetEnumerator()) {
+            if ([string]::IsNullOrWhiteSpace($entry.Value)) {
+              Write-Error "$($entry.Key) is not set."
+              exit 1
+            }
+          }
+
           $settings = @{
             ConnectionStrings = @{
               constr        = ""
-              constr_somee   = $constr
+              constr_somee   = $env:CONSTR_SOMEE
               constr_docker = ""
             }
             Logging = @{
@@ -117,18 +145,18 @@ jobs:
             JwtSettings = @{
               Issuer   = "https://nexus-api.runasp.net"
               Audience = "https://mental-mediator-doctor-ui-graduation-project.vercel.app"
-              Key      = $jwt
+              Key      = $env:JWT_KEY
               Duration = 30
             }
             GoogleAuthentication = @{
-              Id     = ${{ secrets.PRODUCTION_GOOGLE_ID }}
-              Secret = ${{ secrets.PRODUCTION_GOOGLE_SECRET }}
+              Id     = $env:GOOGLE_ID
+              Secret = $env:GOOGLE_SECRET
             }
             MailSettings = @{
               Host     = "smtp.gmail.com"
               Port     = 587
-              Username = ${{ secrets.PRODUCTION_MAIL_USERNAME }}
-              Password = ${{ secrets.PRODUCTION_MAIL_PASSWORD }}
+              Username = $env:MAIL_USERNAME
+              Password = $env:MAIL_PASSWORD
             }
             BaseAddress   = "https://nexus-api.runasp.net"
             ClientUI      = "https://mental-health-ochre.vercel.app"
@@ -136,7 +164,7 @@ jobs:
             MLServerAddress = "https://sentiment-nja5.onrender.com/"
             NewsApi = @{
               Address = "https://newsapi.org/v2/"
-              ApiKey  = ${{ secrets.PRODUCTION_NEWS_API_KEY }}
+              ApiKey  = $env:NEWS_API_KEY
             }
           }
           $settings | ConvertTo-Json -Depth 10 |

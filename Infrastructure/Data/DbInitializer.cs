@@ -137,6 +137,10 @@ public static class DbInitializer
 		var doctor = new Doctor
 		{
 			Email = email,
+			// BaseUser overrides UserName as `Email.Split('@')[0]`, so the stored
+			// value has to be set explicitly: EF reads the backing field
+			// (base.UserName), not the computed property, and the column is NOT NULL.
+			UserName = email!.Split('@')[0],
 			EmailConfirmed = true,
 			FirstName = configuration["DoctorSeed:FirstName"] ?? "Local",
 			LastName = configuration["DoctorSeed:LastName"] ?? "Doctor",
