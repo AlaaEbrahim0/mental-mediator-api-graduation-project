@@ -162,15 +162,17 @@ jobs:
               }
             }
             AllowedHosts = "*"
-            # Somee's free plan serves the site over plain HTTP on a
-            # *.somee.com domain and does not auto-issue a certificate for free
-            # subdomains, so HTTPS redirection stays off. Program.cs only
-            # enables it when this is true.
-            RequireHttps = "false"
+            # A Let's Encrypt certificate is installed for both the apex and
+            # www hostnames, so HTTPS redirection is safe to enable. It is kept
+            # as a setting rather than unconditional because Somee's free plan
+            # renews certificates manually: if the certificate ever lapses, set
+            # this to "false" to bring the site back up on plain HTTP instead
+            # of leaving it redirecting into a loop.
+            RequireHttps = "true"
             JwtSettings = @{
               # The issuer must match the URL clients actually call, otherwise
               # token validation fails with a 401 on every request.
-              Issuer = "http://nexus-api-gp.somee.com"
+              Issuer = "https://nexus-api-gp.somee.com"
               Audience = "https://mental-mediator-doctor-ui-graduation-project.vercel.app"
               Key = $env:JWT_KEY
               Duration = 30
@@ -255,7 +257,7 @@ jobs:
           SITE_URL: ${{ vars.PRODUCTION_SITE_URL }}
         run: |
           if ([string]::IsNullOrWhiteSpace($env:SITE_URL)) {
-            $env:SITE_URL = "http://nexus-api-gp.somee.com"
+            $env:SITE_URL = "https://nexus-api-gp.somee.com"
           }
 
           # /health is unauthenticated and touches no database and no external
