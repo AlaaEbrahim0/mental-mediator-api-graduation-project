@@ -37,9 +37,9 @@ jobs:
       - name: Test
         run: dotnet test --configuration Release --no-build --verbosity normal
 
-  # Docker Hub publishing. The live host is IIS on MonsterASP.NET, so this job
-  # is not on the deploy critical path; a registry failure must not leave the
-  # site down. The image is kept in sync for container-based deploys.
+  # Docker Hub publishing. The live host is IIS on Somee, so this job is not on
+  # the deploy critical path; a registry failure must not leave the site down.
+  # The image is kept in sync for container-based deploys.
   publish:
     name: Publish Docker image to Docker Hub
     needs: build
@@ -67,7 +67,7 @@ jobs:
           tags: systematicmess/nexus_api:latest
 
   deploy:
-    name: Publish and deploy to MonsterASP.NET (FTP)
+    name: Publish and deploy to Somee (FTP)
     needs: [build, publish]
     runs-on: windows-latest
     steps:
@@ -79,24 +79,39 @@ jobs:
         with:
           dotnet-version: '8.0.x'
 
-      # Publish as the DLL runtime, not a custom EXE. The host suspends any
-      # website that launches a separate executable, so an apphost API.exe in
-      # wwwroot triggers their automated security system and the site answers
-      # 503 until the suspension is lifted. UseAppHost=false keeps the standard
-      # `dotnet API.dll` startup that IIS and the host both expect.
+      # Publish as a framework-dependent 32-bit (x86) deployment.
+      #
+      # Two independent reasons, both hard requirements on this host:
+      #
+      # 1. The Somee application pool is configured for 32-bit. A
+      #    framework-dependent app is AnyCPU and only loads in a 64-bit pool,
+      #    so an x86 build is what matches the pool as provisioned.
+      #
+      # 2. -p:UseAppHost=false suppresses the apphost launcher. With a RID
+      #    specified, `dotnet publish` would otherwise emit API.exe and a
+      #    web.config pointing at it. A custom EXE runtime is exactly what a
+      #    shared host's security watchdog treats as a website launching a
+      #    separate program, and it suspends the site - the host then answers
+      #    503 before the application ever runs. The standard
+      #    `dotnet API.dll` startup is the supported form in both in-process
+      #    and out-of-process hosting.
       - name: Publish for IIS
         shell: pwsh
         run: |
           dotnet publish API/API.csproj `
             --configuration Release `
             --output ./publish `
-            --runtime win-x64 `
+            --runtime win-x86 `
             --self-contained false `
             -p:UseAppHost=false
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       # Create production settings from GitHub Actions secrets. Never commit
       # appsettings.Production.json or place credentials in this workflow.
+      #
+      # The app reads ConnectionStrings:constr_somee outside Development
+      # (see ConfigureDbContext), so this is the only connection string that
+      # matters here.
       - name: Write production appsettings
         shell: pwsh
         env:
@@ -147,8 +162,15 @@ jobs:
               }
             }
             AllowedHosts = "*"
+            # Somee's free plan serves the site over plain HTTP on a
+            # *.somee.com domain and does not auto-issue a certificate for free
+            # subdomains, so HTTPS redirection stays off. Program.cs only
+            # enables it when this is true.
+            RequireHttps = "false"
             JwtSettings = @{
-              Issuer = "https://nexus-api.runasp.net"
+              # The issuer must match the URL clients actually call, otherwise
+              # token validation fails with a 401 on every request.
+              Issuer = "http://nexus-api-gp.somee.com"
               Audience = "https://mental-mediator-doctor-ui-graduation-project.vercel.app"
               Key = $env:JWT_KEY
               Duration = 30
@@ -163,7 +185,6 @@ jobs:
               Username = $env:MAIL_USERNAME
               Password = $env:MAIL_PASSWORD
             }
-            BaseAddress = "https://nexus-api.runasp.net"
             ClientUI = "https://mental-health-ochre.vercel.app"
             DoctorUI = "https://mental-mediator-doctor-ui-graduation-project.vercel.app"
             MLServerAddress = "https://sentiment-nja5.onrender.com/"
@@ -191,9 +212,6 @@ jobs:
           if (-not (Test-Path ./publish/API.dll)) {
             throw "API.dll is missing from publish output."
           }
-          if (-not (Test-Path ./publish/web.config)) {
-            throw "web.config is missing from publish output; this is required for IIS hosting."
-          }
           if (Test-Path ./publish/API.exe) {
             throw "API.exe was published; a custom EXE runtime is unsupported on this host. Publish with -p:UseAppHost=false."
           }
@@ -201,87 +219,100 @@ jobs:
           if ($webConfig -notmatch 'processPath="dotnet"') {
             throw "web.config does not start the DLL runtime (processPath=`"dotnet`"). Found: $webConfig"
           }
-          Write-Host "Publish output verified: DLL runtime, web.config present, no apphost executable."
+          if ($webConfig -notmatch 'hostingModel="inprocess"') {
+            throw "web.config is not using in-process hosting. Found: $webConfig"
+          }
 
-      - name: Deploy to MonsterASP.NET via FTP
+          # The plan is 150MB. Publish size is a real constraint here, so fail
+          # loudly rather than discovering it as a half-uploaded site.
+          $sizeMB = [math]::Round((Get-ChildItem ./publish -Recurse -File |
+            Measure-Object -Property Length -Sum).Sum / 1MB, 1)
+          Write-Host "Publish size: $sizeMB MB (plan limit 150 MB)."
+          if ($sizeMB -gt 120) {
+            throw "Publish output is $sizeMB MB, too close to the 150 MB plan limit."
+          }
+
+          Write-Host "Publish output verified: x86 DLL runtime, in-process, web.config present, no apphost executable."
+
+      - name: Deploy to Somee via FTP
         uses: SamKirkland/FTP-Deploy-Action@v4.3.5
         with:
-          server: ${{ secrets.MONSTERASP_FTP_SERVER }}
-          username: ${{ secrets.MONSTERASP_FTP_USERNAME }}
-          password: ${{ secrets.MONSTERASP_FTP_PASSWORD }}
+          server: ${{ secrets.SOMEE_FTP_SERVER }}
+          username: ${{ secrets.SOMEE_FTP_USERNAME }}
+          password: ${{ secrets.SOMEE_FTP_PASSWORD }}
           protocol: ftp
           port: 21
           local-dir: ./publish/
-          server-dir: /wwwroot/
+          # Somee's FTP root for the site is a subdirectory named after the
+          # host. Uploading to / would land the files outside the site root.
+          server-dir: /www.nexus-api-gp.somee.com/
           dangerous-clean-slate: false
           log-level: standard
 
       - name: Verify deployment
         shell: pwsh
         env:
-          HEALTHCHECK_URL: ${{ vars.PRODUCTION_HEALTHCHECK_URL }}
+          SITE_URL: ${{ vars.PRODUCTION_SITE_URL }}
         run: |
-          if ([string]::IsNullOrWhiteSpace($env:HEALTHCHECK_URL)) {
-            $env:HEALTHCHECK_URL = "https://nexus-api.runasp.net/swagger/v1/swagger.json"
+          if ([string]::IsNullOrWhiteSpace($env:SITE_URL)) {
+            $env:SITE_URL = "http://nexus-api-gp.somee.com"
           }
 
-          # Probe the site the way IIS would, so a 503 is explained instead of
-          # just reported. A raw http.sys 503 means the application pool never
-          # started and the app's own logs will be empty - see the README's
-          # "Deploy Readiness Checklist" for what that implies.
-          $site = "https://nexus-api.runasp.net"
-          $staticProbe = "$site/robots.txt"
+          # /health is unauthenticated and touches no database and no external
+          # service, so a 200 means the app is actually running. It is also
+          # the right first probe: on Somee a stopped or crashed app pool
+          # still returns an HTML error page, so a 200 on any other URL could
+          # be a false pass.
+          $healthUrl = "$env:SITE_URL/health"
+          $swaggerUrl = "$env:SITE_URL/swagger/v1/swagger.json"
 
-          try {
-            $static = Invoke-WebRequest -Uri $staticProbe -UseBasicParsing -TimeoutSec 20
-            Write-Host "Static probe $staticProbe -> HTTP $($static.StatusCode)"
-          } catch {
-            $staticStatus = $null
-            if ($_.Exception.Response) {
-              $staticStatus = [int]$_.Exception.Response.StatusCode
-            }
-            $serverHeader = "unknown"
-            try {
-              $resp = $_.Exception.Response
-              if ($resp -and $resp.Headers) {
-                $serverHeader = $resp.Headers["Server"]
-              }
-            } catch { }
-
-            Write-Host "Static probe $staticProbe -> HTTP $staticStatus (Server: $serverHeader)"
-            if ($staticStatus -eq 503) {
-              Write-Host ""
-              Write-Host "DIAGNOSIS: a request for a plain static file returned 503."
-              Write-Host "IIS serves robots.txt without running the application, so the"
-              Write-Host "application pool is not processing requests at all. A 'Server:"
-              Write-Host "Microsoft-HTTPAPI/2.0' header means http.sys answered because the"
-              Write-Host "worker process could not be started, so the application's own logs"
-              Write-Host "will be empty even though the files uploaded correctly."
-              Write-Host ""
-              Write-Host "Check, in this order:"
-              Write-Host "  1. Control Panel -> Files: is /wwwroot populated, or is the site archived?"
-              Write-Host "  2. Control Panel -> Logs -> Event logs: Event ID 5011 (worker process"
-              Write-Host "     cannot talk to http.sys) or 5059 (pool disabled by rapid-fail)."
-              Write-Host "  3. Control Panel -> Logs -> ASP.NET Core debug: enable it and click"
-              Write-Host "     'Restart application & reload log' to capture startup output."
-              Write-Host "  4. Control Panel -> Process: restart the application pool."
-              Write-Host ""
-            }
-          }
-
-          $deadline = (Get-Date).AddMinutes(5)
+          $deadline = (Get-Date).AddMinutes(6)
+          $healthy = $false
           while ((Get-Date) -lt $deadline) {
             try {
-              $response = Invoke-WebRequest -Uri $env:HEALTHCHECK_URL -UseBasicParsing -TimeoutSec 20
+              $response = Invoke-WebRequest -Uri $healthUrl -UseBasicParsing -TimeoutSec 25
               if ($response.StatusCode -eq 200) {
-                Write-Host "Deployment verified: health-check endpoint returned HTTP 200."
-                exit 0
+                Write-Host "Health check passed: $healthUrl -> HTTP 200"
+                Write-Host "Body: $($response.Content)"
+                $healthy = $true
+                break
               }
               Write-Host "Health check returned HTTP $($response.StatusCode); retrying."
             } catch {
-              Write-Host "Waiting for the application to restart: $($_.Exception.Message)"
+              Write-Host "Waiting for the application to start: $($_.Exception.Message)"
             }
             Start-Sleep -Seconds 15
           }
 
-          throw "Deployment verification failed. The application is not serving requests. See the diagnosis above and the README's Deploy Readiness Checklist."
+          if (-not $healthy) {
+            Write-Host ""
+            Write-Host "DIAGNOSIS: the app never answered on /health."
+            Write-Host "Somee serves plain HTML error pages with a 200 status for"
+            Write-Host "several failure modes, which is why /health is probed first."
+            Write-Host ""
+            Write-Host "Check, in this order:"
+            Write-Host "  1. Control Panel -> Files: is the site root populated (web.config, API.dll)?"
+            Write-Host "     The FTP path is /www.nexus-api-gp.somee.com/ - files outside"
+            Write-Host "     that folder are not part of the site."
+            Write-Host "  2. Control Panel -> IIS Application pool: Application mode must be"
+            Write-Host "     '32 bit' to match the x86 build."
+            Write-Host "  3. Control Panel -> Logs -> Event log: Event ID 5011/5059 (worker"
+            Write-Host "     process), or 500.19 (malformed web.config)."
+            Write-Host "  4. Control Panel -> Logs -> ASP.NET Core debug: enable it and click"
+            Write-Host "     'Restart application & reload log' to capture startup output."
+            Write-Host "  5. Control Panel -> Files: confirm appsettings.Production.json was"
+            Write-Host "     uploaded and contains ConnectionStrings:constr_somee."
+            Write-Host ""
+            throw "Deployment verification failed. The application is not serving requests."
+          }
+
+          # Swagger is served by the same app, so a 200 here confirms the full
+          # middleware pipeline came up, not just the minimal health route.
+          try {
+            $swagger = Invoke-WebRequest -Uri $swaggerUrl -UseBasicParsing -TimeoutSec 25
+            Write-Host "Swagger UI verified: $swaggerUrl -> HTTP $($swagger.StatusCode)"
+          } catch {
+            Write-Host "Swagger did not respond ($($_.Exception.Message)); the health endpoint did, so the app is up."
+          }
+
+          Write-Host "Deployment verified."

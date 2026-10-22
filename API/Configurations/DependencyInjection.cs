@@ -42,10 +42,13 @@ public static class DependencyInjection
                 "https://nexus-admin-panel.vercel.app",
                 "https://mental-health-drab.vercel.app",
                 // Local Development
+                // 5173 (Vite default) was missing, so a browser on the default
+                // Vite URL got a CORS failure that looked like a broken API.
                 "https://localhost:7221",
                 "http://localhost:5068",
                 "http://localhost:5500",
-                "http://localhost:3000"
+                "http://localhost:3000",
+                "http://localhost:5173"
             )
             .AllowAnyHeader()
             .AllowAnyMethod()
@@ -192,6 +195,9 @@ public static class DependencyInjection
 			.AddScoped<IAdminService, AdminService>()
 			.AddSignalR();
 
+		// Honour the reverse-proxy headers IIS adds in front of the app. This is
+		// what lets the app see the real client address and the real scheme,
+		// which the opt-in HTTPS redirect in Program.cs depends on.
 		services.Configure<ForwardedHeadersOptions>(options =>
 		{
 			options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
