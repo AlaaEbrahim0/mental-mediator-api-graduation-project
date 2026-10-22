@@ -54,6 +54,7 @@ public class PostRepository : RepositoryBase<Post>, IPostRepository
 		}
 
 		var posts = await query
+			.Include(p => p.AppUser)
 			.OrderByDescending(c => c.PostedOn)
 			.Select(p => new Post
 			{
@@ -81,6 +82,7 @@ public class PostRepository : RepositoryBase<Post>, IPostRepository
 	{
 		return await
 			FindByCondition(x => x.IsAnonymous, trackChanges)
+			.Include(p => p.AppUser)
 			.OrderByDescending(c => c.PostedOn)
 			.Select(p => new Post
 			{
@@ -106,6 +108,7 @@ public class PostRepository : RepositoryBase<Post>, IPostRepository
 	{
 		return await
 			FindByCondition(p => p.AppUserId == userId, trackChanges)
+			.Include(p => p.AppUser)
 			.OrderByDescending(c => c.PostedOn)
 			.Select(p => new Post
 			{
