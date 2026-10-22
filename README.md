@@ -242,7 +242,13 @@ The pipeline runs on every push to `master`:
 1. **Build** — `dotnet restore`, `dotnet build --configuration Release --no-restore`
 2. **Test** — `dotnet test --configuration Release --no-build --verbosity normal` (no test project yet; the step is a no-op that must keep passing)
 3. **Publish** — Build and push `systematicmess/nexus_api:latest` to Docker Hub
-4. **Deploy** — Publish the app for IIS and upload it to Somee over FTP
+3. **Deploy** — Publish the app for IIS and upload it to Somee over FTP
+
+### Recent production fixes
+
+| Commit | Type | Fix |
+|---|---|---|
+| `9043bf5` | `fix(api)` | `PostRepository`: included the `AppUser` navigation in **all four** post query sites (`GetAllPosts`, `GetConfessionOnly`, `GetPostsByUserId`, `GetPostById`) so projects no longer throw `NullReferenceException` when reading `AppUser.FullName`/`AppUser.PhotoUrl`. This fixed `GET /api/posts → 500` and `POST /api/auth/signin → 500` on the production Somee host. |
 
 Docker Hub publishing is **not** on the deploy critical path: the live host is IIS on
 Somee, so a registry failure cannot take the site down.
