@@ -282,21 +282,43 @@ the runner — it is gitignored and never committed.
 
 ### Deploy Readiness Checklist
 
-A `503 Service Unavailable` from `nexus-api.runasp.net` is an **IIS app-pool** answer
-(`server: Microsoft-HTTPAPI/2.0`), not an ASP.NET one. Check these in order:
+A `503 Service Unavailable` from `nexus-api.runasp.net` is an **IIS/http.sys**
+answer, not an ASP.NET one. Check these in order:
 
-1. **Did the pipeline actually deploy?** — the failed deploy leaves the old
+1. **Is the site suspended by the host's security system?** The control panel
+   says *"Your website is currently disabled on the server"* when this happens.
+   The host suspends any website that **launches a separate executable**. Publishing
+   an apphost `.exe` (a `web.config` with `processPath=".\API.exe"`) or calling
+   `Process.Start` trips it. Publish with `-p:UseAppHost=false` so the app runs as
+   the standard DLL runtime, and open a support ticket to lift the suspension.
+2. **Did the pipeline actually deploy?** — the failed deploy leaves the old
    `wwwroot` in place. Confirm the *Deploy to MonsterASP.NET* job is green, not just
    the build.
-2. **Do the FTP secrets exist and are they current?** — a missing
+3. **Do the FTP secrets exist and are they current?** — a missing
    `MONSTERASP_FTP_SERVER` fails the deploy with
    `Input required and not supplied: server`. The secrets are only read at run start,
    so editing one does **not** retry the in-flight run.
-3. **Did the app upload?** — verify `/wwwroot/` on the host contains `API.dll`,
-   `web.config` and `appsettings.Production.json`.
-4. **Did the app pool start?** — a runtime that cannot be loaded (for example a
+4. **Did the app upload?** — verify `/wwwroot/` on the host contains `API.dll`,
+   `web.config` and `appsettings.Production.json`, and **no `API.exe`**.
+5. **Did the app pool start?** — a runtime that cannot be loaded (for example a
    missing .NET 8 ASP.NET Core hosting bundle) leaves the pool stopped and IIS
    answers 503 before the app runs.
+
+### The `Server` header tells you which layer failed
+
+| Header | Layer that answered | Meaning |
+|---|---|---|
+| `Microsoft-HTTPAPI/2.0` | kernel `http.sys` | The app pool never started. The app's own logs are empty. |
+| `Microsoft-IIS/10.0` | IIS worker process | A worker process is alive and processing requests. |
+| `Kestrel` / none | the app | The app ran and produced the error — read its logs. |
+
+Because `http.sys` answers before user mode, a site in this state returns 503 for
+**every** request, including static files such as `/robots.txt` that IIS serves
+without the application. Probe a static file to confirm:
+
+```bash
+curl -o /dev/null -w "%{http_code}\n" https://nexus-api.runasp.net/robots.txt
+```
 
 ---
 
