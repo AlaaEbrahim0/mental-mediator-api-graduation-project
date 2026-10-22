@@ -79,6 +79,11 @@ jobs:
         with:
           dotnet-version: '8.0.x'
 
+      # Publish as the DLL runtime, not a custom EXE. The host suspends any
+      # website that launches a separate executable, so an apphost API.exe in
+      # wwwroot triggers their automated security system and the site answers
+      # 503 until the suspension is lifted. UseAppHost=false keeps the standard
+      # `dotnet API.dll` startup that IIS and the host both expect.
       - name: Publish for IIS
         shell: pwsh
         run: |
@@ -86,7 +91,8 @@ jobs:
             --configuration Release `
             --output ./publish `
             --runtime win-x64 `
-            --self-contained false
+            --self-contained false `
+            -p:UseAppHost=false
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       # Create production settings from GitHub Actions secrets. Never commit
@@ -185,6 +191,17 @@ jobs:
           if (-not (Test-Path ./publish/API.dll)) {
             throw "API.dll is missing from publish output."
           }
+          if (-not (Test-Path ./publish/web.config)) {
+            throw "web.config is missing from publish output; this is required for IIS hosting."
+          }
+          if (Test-Path ./publish/API.exe) {
+            throw "API.exe was published; a custom EXE runtime is unsupported on this host. Publish with -p:UseAppHost=false."
+          }
+          $webConfig = Get-Content ./publish/web.config -Raw
+          if ($webConfig -notmatch 'processPath="dotnet"') {
+            throw "web.config does not start the DLL runtime (processPath=`"dotnet`"). Found: $webConfig"
+          }
+          Write-Host "Publish output verified: DLL runtime, web.config present, no apphost executable."
 
       - name: Deploy to MonsterASP.NET via FTP
         uses: SamKirkland/FTP-Deploy-Action@v4.3.5
