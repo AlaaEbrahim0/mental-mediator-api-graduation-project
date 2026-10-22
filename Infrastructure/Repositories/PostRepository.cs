@@ -5,6 +5,7 @@ using Microsoft.EntityFrameworkCore;
 using Shared.RequestParameters;
 
 namespace Infrastructure.Repositories;
+
 public class PostRepository : RepositoryBase<Post>, IPostRepository
 {
 	public PostRepository(AppDbContext dbContext) : base(dbContext)
@@ -14,7 +15,6 @@ public class PostRepository : RepositoryBase<Post>, IPostRepository
 	public void CreatePost(Post post)
 	{
 		Create(post);
-
 	}
 
 	public void DeletePost(Post post)
@@ -53,6 +53,9 @@ public class PostRepository : RepositoryBase<Post>, IPostRepository
 			query = query.Where(p => p.PostedOn <= parameters.EndTime);
 		}
 
+		// The navigation must be included BEFORE projection. Projecting with
+		// Select<T>() (which returns a different type) cancels any previously
+		// applied Include, so p.AppUser would be unloaded and EF would throw.
 		var posts = await query
 			.Include(p => p.AppUser)
 			.OrderByDescending(c => c.PostedOn)
@@ -104,7 +107,7 @@ public class PostRepository : RepositoryBase<Post>, IPostRepository
 	}
 
 	public async Task<IEnumerable<Post>> GetPostsByUserId(string userId, PostRequestParameters
-		parameters, bool trackChanges)
+			parameters, bool trackChanges)
 	{
 		return await
 			FindByCondition(p => p.AppUserId == userId, trackChanges)
@@ -124,7 +127,6 @@ public class PostRepository : RepositoryBase<Post>, IPostRepository
 				PhotoUrl = p.IsAnonymous ? null : p.AppUser!.PhotoUrl,
 				PostPhotoUrl = p.PostPhotoUrl,
 				CommentsCount = p.Comments.Count()
-
 			})
 			.Paginate(parameters.PageNumber, parameters.PageSize)
 			.ToListAsync();
@@ -147,10 +149,8 @@ public class PostRepository : RepositoryBase<Post>, IPostRepository
 				Title = p.Title,
 				Username = p.IsAnonymous ? null : p.AppUser!.FullName,
 				PhotoUrl = p.IsAnonymous ? null : p.AppUser!.PhotoUrl,
-				IsAnonymous = p.IsAnonymous,
 				PostPhotoUrl = p.PostPhotoUrl,
 				CommentsCount = p.Comments.Count()
-
 			})
 			.SingleOrDefaultAsync();
 	}
