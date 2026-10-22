@@ -208,6 +208,50 @@ jobs:
             $env:HEALTHCHECK_URL = "https://nexus-api.runasp.net/swagger/v1/swagger.json"
           }
 
+          # Probe the site the way IIS would, so a 503 is explained instead of
+          # just reported. A raw http.sys 503 means the application pool never
+          # started and the app's own logs will be empty - see the README's
+          # "Deploy Readiness Checklist" for what that implies.
+          $site = "https://nexus-api.runasp.net"
+          $staticProbe = "$site/robots.txt"
+
+          try {
+            $static = Invoke-WebRequest -Uri $staticProbe -UseBasicParsing -TimeoutSec 20
+            Write-Host "Static probe $staticProbe -> HTTP $($static.StatusCode)"
+          } catch {
+            $staticStatus = $null
+            if ($_.Exception.Response) {
+              $staticStatus = [int]$_.Exception.Response.StatusCode
+            }
+            $serverHeader = "unknown"
+            try {
+              $resp = $_.Exception.Response
+              if ($resp -and $resp.Headers) {
+                $serverHeader = $resp.Headers["Server"]
+              }
+            } catch { }
+
+            Write-Host "Static probe $staticProbe -> HTTP $staticStatus (Server: $serverHeader)"
+            if ($staticStatus -eq 503) {
+              Write-Host ""
+              Write-Host "DIAGNOSIS: a request for a plain static file returned 503."
+              Write-Host "IIS serves robots.txt without running the application, so the"
+              Write-Host "application pool is not processing requests at all. A 'Server:"
+              Write-Host "Microsoft-HTTPAPI/2.0' header means http.sys answered because the"
+              Write-Host "worker process could not be started, so the application's own logs"
+              Write-Host "will be empty even though the files uploaded correctly."
+              Write-Host ""
+              Write-Host "Check, in this order:"
+              Write-Host "  1. Control Panel -> Files: is /wwwroot populated, or is the site archived?"
+              Write-Host "  2. Control Panel -> Logs -> Event logs: Event ID 5011 (worker process"
+              Write-Host "     cannot talk to http.sys) or 5059 (pool disabled by rapid-fail)."
+              Write-Host "  3. Control Panel -> Logs -> ASP.NET Core debug: enable it and click"
+              Write-Host "     'Restart application & reload log' to capture startup output."
+              Write-Host "  4. Control Panel -> Process: restart the application pool."
+              Write-Host ""
+            }
+          }
+
           $deadline = (Get-Date).AddMinutes(5)
           while ((Get-Date) -lt $deadline) {
             try {
@@ -223,4 +267,4 @@ jobs:
             Start-Sleep -Seconds 15
           }
 
-          throw "Deployment verification failed. Check the app's IIS/.NET hosting configuration and PRODUCTION_HEALTHCHECK_URL."
+          throw "Deployment verification failed. The application is not serving requests. See the diagnosis above and the README's Deploy Readiness Checklist."
