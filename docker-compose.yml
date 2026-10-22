@@ -1,0 +1,87 @@
+# Unified local stack for the Mental Mediator graduation project.
+#
+# Spin up the entire local development environment with a single command:
+#
+#   npm run dev:local
+#
+# This starts the ASP.NET Core API (port 5184) and the React frontend
+# (port 3000) and wires them together with a local DNS alias so the API
+# client can call http://api.local:5184 inside Docker while the browser
+# talks to http://localhost:3000.
+#
+# Requirements:
+#   - Docker + Docker Compose v2
+#   - An .env file created from .env.example in the backend repo
+#   - The frontend repo cloned at the path shown in the `web` service
+#
+# The `.env` file holds local development credentials only. It is
+# gitignored and must never be committed.
+
+services:
+  api:
+    build:
+      context: ..
+      dockerfile: mental-mediator-api-graduation-project/API/Dockerfile
+    container_name: nexus-api-dev
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      # Local SQL Server Express connection string. Override via .env:
+      # CONNECTIONSTRINGS_CONSTR=Server=localhost,1433;Database=MentalMediator;User Id=sa;Password=YourStrongPassword123!;TrustServerCertificate=True;
+      - ConnectionStrings__constr=${CONNECTIONSTRINGS_CONSTR:-Server=localhost,1433;Database=MentalMediator;User Id=sa;Password=YourStrongPassword123!;TrustServerCertificate=True;}
+      # JWT signing key (min 32 chars for this project). Override via .env.
+      - JwtSettings__Key=${JWT_SETTINGS_KEY:-dev-key-min-32-chars-long-for-local-dev}
+      # Issuer / audience are URLs, so use string interpolation instead of
+      # environment variables (Docker env substitution does not do nested
+      # variable expansion across multiple -e/-env entries reliably).
+      - JwtSettings__Issuer=http://localhost:5184
+      - JwtSettings__Audience=http://localhost:3000
+      - GoogleAuthentication__Id=
+      - GoogleAuthentication__Secret=
+      - NewsApi__ApiKey=
+    ports:
+      - "5184:5184"
+    extra_hosts:
+      - "api.local:127.0.0.1"
+    depends_on:
+      - db
+    networks:
+      - nexus-net
+
+  db:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: nexus-db-dev
+    environment:
+      - ACCEPT_EULA=Y
+      # Override via .env: SA_PASSWORD=YourStrongPassword123!
+      - SA_PASSWORD=${SA_PASSWORD:-YourStrongPassword123!}
+    ports:
+      - "1433:1433"
+    volumes:
+      - nexus_db_data:/var/opt/mssql
+    networks:
+      - nexus-net
+
+  web:
+    build:
+      context: ..
+      dockerfile: mental_mediator_doctor_ui_graduation_project/Dockerfile
+    container_name: nexus-web-dev
+    ports:
+      - "3000:3000"
+    environment:
+      - REACT_APP_API_URL=http://api.local:5184
+      - REACT_APP_IMAGE_BASE_URL=/images
+      # REACT_APP_IMAGE_BASE_URL=${REACT_APP_IMAGE_BASE_URL:-/images}
+    extra_hosts:
+      - "api.local:127.0.0.1"
+    depends_on:
+      - api
+    networks:
+      - nexus-net
+
+networks:
+  nexus-net:
+    driver: bridge
+
+volumes:
+  nexus_db_data:

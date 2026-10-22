@@ -116,6 +116,6 @@ app.MapGet("/health", () => Results.Ok(new
     time = DateTime.UtcNow
 }));
 
-// await app.InitializeDatabaseAsync();
+app.InitializeDatabaseAsync().Wait();
 
 app.Run();

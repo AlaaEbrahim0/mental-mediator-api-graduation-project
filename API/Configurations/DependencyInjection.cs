@@ -45,6 +45,7 @@ public static class DependencyInjection
                 // 5173 (Vite default) was missing, so a browser on the default
                 // Vite URL got a CORS failure that looked like a broken API.
                 "https://localhost:7221",
+                "http://localhost:5184",
                 "http://localhost:5068",
                 "http://localhost:5500",
                 "http://localhost:3000",
