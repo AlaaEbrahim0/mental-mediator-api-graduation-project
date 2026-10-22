@@ -4,7 +4,38 @@ using Infrastructure.Data;
 using Infrastructure.Hubs;
 using Microsoft.AspNetCore.HttpOverrides;
 
-DotEnv.Load(options: new DotEnvOptions(probeForEnv: true));
+// Load local .env values only when they exist, and never let a failure here
+// stop the app from starting.
+//
+// The previous call was `DotEnv.Load(new DotEnvOptions(probeForEnv: true))`.
+// With probeForEnv enabled, dotenv walks UP the directory tree from the
+// content root looking for a .env file. On shared IIS hosting the app runs
+// from a path such as
+// d:\DZHosts\LocalUser\<user>\www.<site>.somee.com\
+// and the walk reaches d:\DZHosts\LocalUser, which the application pool
+// identity cannot read. That throws UnauthorizedAccessException and the app
+// dies before any middleware is built - the host reports it as
+// 500.30 "ASP.NET Core app failed to start" and the application's own logs
+// stay empty.
+//
+// Probing is only wanted in local development, where it lets the repo be
+// cloned anywhere and still find its .env. On a host the connection string
+// and other secrets come from appsettings.Production.json / environment
+// variables, so no .env lookup is needed at all.
+if (string.Equals(Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT"),
+                   "Development", StringComparison.OrdinalIgnoreCase))
+{
+    try
+    {
+        DotEnv.Load(options: new DotEnvOptions(probeForEnv: true));
+    }
+    catch
+    {
+        // A missing or unreadable .env is not fatal: fall back to whatever is
+        // already in the process environment.
+    }
+}
+
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services

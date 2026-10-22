@@ -13,7 +13,23 @@ public class CloudinaryStorageService : IStorageService
 
 	public CloudinaryStorageService()
 	{
-		DotEnv.Load(options: new DotEnvOptions(probeForEnv: true));
+		// Same guard as Program.cs: probing walks up the directory tree looking
+		// for a .env, which throws UnauthorizedAccessException on shared IIS
+		// hosting where an ancestor directory is unreadable by the app pool.
+		// CLOUDINARY_URL is supplied by the host environment in production.
+		if (string.Equals(Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT"),
+		                   "Development", StringComparison.OrdinalIgnoreCase))
+		{
+			try
+			{
+				DotEnv.Load(options: new DotEnvOptions(probeForEnv: true));
+			}
+			catch
+			{
+				// Fall back to the process environment.
+			}
+		}
+
 		cloudinaryUrl = Environment.GetEnvironmentVariable("CLOUDINARY_URL");
 	}
 	public async Task<Result<string>> UploadPhoto(IFormFile photo)
