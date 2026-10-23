@@ -1,59 +1,109 @@
-name: Nexus API - MonsterASP Deployment
+name: Nexus API CI/CD Pipeline
 
 on:
   push:
-    branches: [master]
+    branches:
+      - master
   workflow_dispatch:
+    inputs:
+      deploy_to_production:
+        description: 'Build, publish and deploy to MonsterASP production'
+        type: boolean
+        default: true
 
 concurrency:
-  group: monsterasp-production
+  group: nexus-api-${{ github.ref }}
   cancel-in-progress: true
-
-permissions:
-  contents: read
 
 env:
   DOTNET_NOLOGO: true
   DOTNET_CLI_TELEMETRY_OPTOUT: true
+  DOTNET_SKIP_FIRST_TIME_EXPERIENCE: true
 
 jobs:
-  build-test:
+  build:
     name: Build and test
-    runs-on: windows-latest
+    runs-on: ubuntu-latest
     steps:
-      - name: Checkout
+      - name: Checkout code
         uses: actions/checkout@v4
-      - name: Setup .NET 8
+
+      - name: Setup .NET SDK
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: 8.0.x
-      - name: Restore
+          dotnet-version: '8.0.x'
+
+      - name: Restore dependencies
         run: dotnet restore
+
       - name: Build
         run: dotnet build --configuration Release --no-restore
+
       - name: Test
         run: dotnet test --configuration Release --no-build --verbosity normal
 
-  deploy:
-    name: Publish and deploy to MonsterASP
-    needs: build-test
-    runs-on: windows-latest
-    environment: production
+  # Docker Hub image. Kept as a separate channel; the site deploy below
+  # depends only on build, so a registry failure cannot take the site down.
+  publish:
+    name: Publish Docker image to Docker Hub
+    needs: build
+    runs-on: ubuntu-latest
+
     steps:
-      - name: Checkout
+      - name: Checkout code
         uses: actions/checkout@v4
-      - name: Setup .NET 8
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: systematicmess/nexus_api:latest
+
+  deploy:
+    name: Publish and deploy to MonsterASP.net (WebDeploy)
+    needs: [build]
+    # Production deploys are initiated deliberately via workflow_dispatch.
+    # Automatic deploys on push to master are enabled by the repo variable
+    # AUTO_DEPLOY_MONSTERASP once the first manual deployment is verified.
+    if: >-
+      (github.event_name == 'workflow_dispatch' && inputs.deploy_to_production) ||
+      (github.event_name == 'push' && vars.AUTO_DEPLOY_MONSTERASP == 'true')
+    runs-on: windows-latest
+    env:
+      MSDEPLOY_SITE_NAME: site101103
+      MSDEPLOY_COMPUTER: https://site101103.siteasp.net:8172/msdeploy.axd?site=site101103
+      MSDEPLOY_USER: site101103
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup .NET SDK
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: 8.0.x
+          dotnet-version: '8.0.x'
 
-      - name: Publish API for IIS
+      - name: Publish for IIS
         shell: pwsh
         run: |
-          dotnet publish API/API.csproj --configuration Release --output ./publish --runtime win-x86 --self-contained false -p:UseAppHost=false
+          dotnet publish API/API.csproj `
+            --configuration Release `
+            --output ./publish `
+            --runtime win-x86 `
+            --self-contained false `
+            -p:UseAppHost=false
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
-      - name: Create production settings
+      - name: Write production appsettings
         shell: pwsh
         env:
           CONSTR_SOMEE: ${{ secrets.PRODUCTION_CONSTR_SOMEE }}
@@ -64,12 +114,31 @@ jobs:
           MAIL_PASSWORD: ${{ secrets.PRODUCTION_MAIL_PASSWORD }}
           NEWS_API_KEY: ${{ secrets.PRODUCTION_NEWS_API_KEY }}
         run: |
-          $required = @("CONSTR_SOMEE", "JWT_KEY", "GOOGLE_ID", "GOOGLE_SECRET", "MAIL_USERNAME", "MAIL_PASSWORD", "NEWS_API_KEY")
-          foreach ($name in $required) {
-            if ([string]::IsNullOrWhiteSpace([Environment]::GetEnvironmentVariable($name))) {
-              throw "Required GitHub Actions secret for $name is missing."
-            }
+          # Every value is read through $env:NAME. Inlining ${{ secrets.* }}
+          # into the script body injects the raw secret into PowerShell source,
+          # where a quote, $ or backtick breaks the parser before it runs.
+          if ([string]::IsNullOrWhiteSpace($env:CONSTR_SOMEE)) {
+            throw "GitHub Actions secret PRODUCTION_CONSTR_SOMEE is not configured."
           }
+          if ([string]::IsNullOrWhiteSpace($env:JWT_KEY)) {
+            throw "GitHub Actions secret PRODUCTION_JWT_KEY is not configured."
+          }
+          if ([string]::IsNullOrWhiteSpace($env:GOOGLE_ID)) {
+            throw "GitHub Actions secret PRODUCTION_GOOGLE_ID is not configured."
+          }
+          if ([string]::IsNullOrWhiteSpace($env:GOOGLE_SECRET)) {
+            throw "GitHub Actions secret PRODUCTION_GOOGLE_SECRET is not configured."
+          }
+          if ([string]::IsNullOrWhiteSpace($env:MAIL_USERNAME)) {
+            throw "GitHub Actions secret PRODUCTION_MAIL_USERNAME is not configured."
+          }
+          if ([string]::IsNullOrWhiteSpace($env:MAIL_PASSWORD)) {
+            throw "GitHub Actions secret PRODUCTION_MAIL_PASSWORD is not configured."
+          }
+          if ([string]::IsNullOrWhiteSpace($env:NEWS_API_KEY)) {
+            throw "GitHub Actions secret PRODUCTION_NEWS_API_KEY is not configured."
+          }
+
           $settings = @{
             ConnectionStrings = @{
               constr = ""
@@ -84,8 +153,15 @@ jobs:
               }
             }
             AllowedHosts = "*"
+            # MonsterASP serves *.runasp.net subdomains over HTTPS with
+            # automatically managed certificates, so HTTPS redirection is safe
+            # to enable. Kept as a setting rather than unconditional so HTTP
+            # access can be restored without a code change if TLS ever lapses.
             RequireHttps = "true"
             JwtSettings = @{
+              # The issuer only has to match itself: generation and validation
+              # read the same configuration value. It records the intended
+              # public origin of the API.
               Issuer = "https://nexus-api.runasp.net"
               Audience = "https://mental-mediator-doctor-ui-graduation-project.vercel.app"
               Key = $env:JWT_KEY
@@ -94,3 +170,242 @@ jobs:
             GoogleAuthentication = @{
               Id = $env:GOOGLE_ID
               Secret = $env:GOOGLE_SECRET
+            }
+            MailSettings = @{
+              Host = "smtp.gmail.com"
+              Port = 587
+              Username = $env:MAIL_USERNAME
+              Password = $env:MAIL_PASSWORD
+            }
+            ClientUI = "https://mental-health-ochre.vercel.app"
+            DoctorUI = "https://mental-mediator-doctor-ui-graduation-project.vercel.app"
+            MLServerAddress = "https://sentiment-nja5.onrender.com/"
+            NewsApi = @{
+              Address = "https://newsapi.org/v2/"
+              ApiKey = $env:NEWS_API_KEY
+            }
+          }
+
+          $json = $settings | ConvertTo-Json -Depth 10
+          [System.IO.File]::WriteAllText(
+            (Join-Path (Get-Location) "publish/appsettings.Production.json"),
+            $json,
+            (New-Object System.Text.UTF8Encoding($false)))
+
+          Remove-Item ./publish/appsettings.Development.json -ErrorAction SilentlyContinue
+          Write-Host "Production appsettings generated."
+
+      - name: Inject runtime environment variables into web.config
+        shell: pwsh
+        env:
+          CLOUDINARY_URL: ${{ secrets.PRODUCTION_CLOUDINARY_URL }}
+        run: |
+          # Shared IIS hosting does not offer per-app process environment
+          # variables other than through the web.config <environmentVariables>
+          # block (read by the ASP.NET Core Module also for in-process apps).
+          #
+          # Two entries are needed here:
+          #  1. ASPNETCORE_ENVIRONMENT=Production — guarantees the
+          #     appsettings.Production.json written above is the one loaded and
+          #     that no Development behaviour leaks into production.
+          #  2. CLOUDINARY_URL — StorageService reads image-upload credentials
+          #     from the process environment only (no appsettings fallback).
+          #     It is optional: when absent the app starts and image uploads
+          #     return a controlled 503 instead of corrupting state.
+          $webConfigPath = Join-Path (Get-Location) "publish/web.config"
+          if (-not (Test-Path $webConfigPath)) {
+            throw "publish/web.config was not generated; the IIS deployment cannot work without it."
+          }
+
+          $xml = New-Object System.Xml.XmlDocument
+          $xml.PreserveWhitespace = $true
+          $xml.Load($webConfigPath)
+
+          $aspNetCore = $xml.SelectSingleNode("//aspNetCore")
+          if (-not $aspNetCore) {
+            throw "publish/web.config has no <aspNetCore> element to extend."
+          }
+
+          $existing = $aspNetCore.SelectSingleNode("environmentVariables")
+          if ($existing) { $aspNetCore.RemoveChild($existing) | Out-Null }
+
+          $envVars = $xml.CreateElement("environmentVariables")
+
+          $envSetting = $xml.CreateElement("environmentVariable")
+          $envSetting.SetAttribute("name", "ASPNETCORE_ENVIRONMENT")
+          $envSetting.SetAttribute("value", "Production")
+          $envVars.AppendChild($envSetting) | Out-Null
+
+          if (-not [string]::IsNullOrWhiteSpace($env:CLOUDINARY_URL)) {
+            $cloudinarySetting = $xml.CreateElement("environmentVariable")
+            $cloudinarySetting.SetAttribute("name", "CLOUDINARY_URL")
+            $cloudinarySetting.SetAttribute("value", $env:CLOUDINARY_URL)
+            $envVars.AppendChild($cloudinarySetting) | Out-Null
+            Write-Host "CLOUDINARY_URL injected into web.config (value not logged)."
+          } else {
+            Write-Host "PRODUCTION_CLOUDINARY_URL is not configured; image uploads will return a controlled 503 until the secret is added."
+          }
+
+          $aspNetCore.AppendChild($envVars) | Out-Null
+          $xml.Save($webConfigPath)
+          Write-Host "web.config updated with runtime environment variables."
+
+      - name: Validate publish output
+        shell: pwsh
+        run: |
+          if (-not (Test-Path ./publish/web.config)) {
+            throw "web.config is missing from publish output; this is required for IIS hosting."
+          }
+          if (-not (Test-Path ./publish/API.dll)) {
+            throw "API.dll is missing from publish output."
+          }
+          if (Test-Path ./publish/API.exe) {
+            throw "API.exe was published; a custom EXE runtime is unsupported on this host. Publish with -p:UseAppHost=false."
+          }
+          if (-not (Test-Path ./publish/appsettings.Production.json)) {
+            throw "appsettings.Production.json is missing from publish output."
+          }
+          $webConfig = Get-Content ./publish/web.config -Raw
+          if ($webConfig -notmatch 'processPath="dotnet"') {
+            throw "web.config does not start the DLL runtime (processPath=`"dotnet`"). Found: $webConfig"
+          }
+          if ($webConfig -notmatch 'hostingModel="inprocess"') {
+            throw "web.config is not using in-process hosting. Found: $webConfig"
+          }
+          if ($webConfig -notmatch 'name="ASPNETCORE_ENVIRONMENT"') {
+            throw "web.config does not pin ASPNETCORE_ENVIRONMENT=Production."
+          }
+
+          # A failed JWT or connection-string generation is invisible at deploy
+          # time and becomes a 401/500 only at runtime, so confirm the JSON
+          # values were actually written (lengths only, never the values).
+          $settings = Get-Content ./publish/appsettings.Production.json -Raw | ConvertFrom-Json
+          $checks = [ordered]@{
+            'ConnectionStrings:constr_somee' = $settings.ConnectionStrings.constr_somee
+            'JwtSettings:Key'                = $settings.JwtSettings.Key
+            'GoogleAuthentication:Id'        = $settings.GoogleAuthentication.Id
+            'GoogleAuthentication:Secret'    = $settings.GoogleAuthentication.Secret
+            'MailSettings:Username'          = $settings.MailSettings.Username
+            'MailSettings:Password'          = $settings.MailSettings.Password
+            'NewsApi:ApiKey'                 = $settings.NewsApi.ApiKey
+          }
+          foreach ($name in $checks.Keys) {
+            if ([string]::IsNullOrWhiteSpace([string]$checks[$name])) {
+              throw "appsettings.Production.json field $name is empty."
+            }
+          }
+          Write-Host "All required secret-backed settings are populated (values not logged)."
+
+          # Publish size is a sanity gate rather than a hard limit: MonsterASP
+          # allows far more storage than consumed here, but a bloat spike is a
+          # change worth failing loudly about before it reaches the site.
+          $sizeMB = [math]::Round((Get-ChildItem ./publish -Recurse -File |
+            Measure-Object -Property Length -Sum).Sum / 1MB, 1)
+          Write-Host "Publish size: $sizeMB MB."
+          if ($sizeMB -gt 120) {
+            throw "Publish output is $sizeMB MB, unexpectedly large for a framework-dependent publish."
+          }
+
+          Write-Host "Publish output verified: x86 DLL runtime, in-process, web.config with production environment, appsettings generated, no apphost executable."
+
+      - name: Deploy to MonsterASP.net via WebDeploy
+        shell: pwsh
+        env:
+          MSDEPLOY_PASSWORD: ${{ secrets.MONSTERASP_MSDEPLOY_PASSWORD }}
+        run: |
+          # Endpoint and parameter layout per the MonsterASP.NET
+          # "Deploy from the command line" documentation:
+          #   -dest:contentPath=<site>,computerName=https://<site>.siteasp.net:8172/msdeploy.axd?site=<site>,
+          #         userName=<site>,password=...,authtype=Basic,includeAcls=False
+          #   -allowUntrusted -disableLink:AppPoolExtension -disableLink:ContentExtension
+          #   -disableLink:CertificateExtension
+          # The password is read through $env:MSDEPLOY_PASSWORD so it never
+          # appears in the PowerShell source of this step.
+          if ([string]::IsNullOrWhiteSpace($env:MSDEPLOY_PASSWORD)) {
+            throw "GitHub Actions secret MONSTERASP_MSDEPLOY_PASSWORD is not configured."
+          }
+
+          $msdeploy = Join-Path ${env:ProgramFiles(x86)} "IIS\Microsoft Web Deploy V3\msdeploy.exe"
+          if (-not (Test-Path $msdeploy)) {
+            $msdeploy = Join-Path $env:ProgramFiles "IIS\Microsoft Web Deploy V3\msdeploy.exe"
+          }
+          if (-not (Test-Path $msdeploy)) {
+            throw "msdeploy.exe was not found on this runner."
+          }
+
+          Write-Host "msdeploy found: $msdeploy"
+
+          # The entire -dest argument is assembled with a single-quoted format
+          # string so nothing in the password is expanded or re-split by
+          # PowerShell: a $, backtick, comma or space in the password would
+          # otherwise break or corrupt the msdeploy invocation.
+          $destArg = '-dest:contentPath={0},computerName={1},userName={2},password={3},authtype="Basic",includeAcls="False"' -f `
+            $env:MSDEPLOY_SITE_NAME, $env:MSDEPLOY_COMPUTER, $env:MSDEPLOY_USER, $env:MSDEPLOY_PASSWORD
+
+          & $msdeploy `
+            -verb:sync `
+            "-source:contentPath=$((Get-Location).Path)\publish" `
+            $destArg `
+            -allowUntrusted `
+            -disableLink:AppPoolExtension `
+            -disableLink:ContentExtension `
+            -disableLink:CertificateExtension
+
+          if ($LASTEXITCODE -ne 0) {
+            throw "WebDeploy deployment failed with exit code $LASTEXITCODE."
+          }
+
+          Write-Host "WebDeploy sync completed for MonsterASP site $($env:MSDEPLOY_SITE_NAME)."
+
+      - name: Verify deployment
+        shell: pwsh
+        env:
+          SITE_URL: ${{ vars.PRODUCTION_SITE_URL }}
+        run: |
+          if ([string]::IsNullOrWhiteSpace($env:SITE_URL)) {
+            $env:SITE_URL = "https://nexus-api.runasp.net"
+          }
+
+          $healthUrl = "$env:SITE_URL/health"
+          $swaggerUrl = "$env:SITE_URL/swagger/v1/swagger.json"
+
+          $deadline = (Get-Date).AddMinutes(6)
+          $healthy = $false
+          while ((Get-Date) -lt $deadline) {
+            try {
+              $response = Invoke-WebRequest -Uri $healthUrl -UseBasicParsing -TimeoutSec 25
+              if ($response.StatusCode -eq 200) {
+                Write-Host "Health check passed: $healthUrl -> HTTP 200"
+                Write-Host "Body: $($response.Content)"
+                $healthy = $true
+                break
+              }
+              Write-Host "Health check returned HTTP $($response.StatusCode); retrying."
+            } catch {
+              Write-Host "Waiting for the application to start: $($_.Exception.Message)"
+            }
+            Start-Sleep -Seconds 15
+          }
+
+          if (-not $healthy) {
+            Write-Host ""
+            Write-Host "DIAGNOSIS: the app never answered on /health."
+            Write-Host "Check, in this order:"
+            Write-Host "  1. MonsterASP Control Panel -> Websites -> site101103: is the site root populated"
+            Write-Host "     (web.config, API.dll)? WebDeploy uploads the publish folder into /wwwroot."
+            Write-Host "  2. Control Panel -> Application & Access logs: ASP.NET Core startup output"
+            Write-Host "     indicates a 500.30-class failure (web.config, environment, hosting bundle)."
+            Write-Host "  3. Was appsettings.Production.json uploaded and does the database answer?"
+            Write-Host "     A blank connection string makes the app start but fail on first DB use."
+            Write-Host ""
+            throw "Deployment verification failed. The application is not serving requests on $healthUrl."
+          }
+
+          try {
+            $swagger = Invoke-WebRequest -Uri $swaggerUrl -UseBasicParsing -TimeoutSec 25
+            Write-Host "Swagger verified: $swaggerUrl -> HTTP $($swagger.StatusCode)"
+          } catch {
+            Write-Host "Swagger did not respond ($($_.Exception.Message)); the health endpoint did, so the app is up."
+          }
+
+          Write-Host "Deployment verified."
