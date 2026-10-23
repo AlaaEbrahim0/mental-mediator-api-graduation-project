@@ -47,26 +47,6 @@ jobs:
         with:
           dotnet-version: 8.0.x
 
-      - name: Install Microsoft Web Deploy if needed
-        shell: pwsh
-        run: |
-          $paths = @(
-            "$env:ProgramFiles\IIS\Microsoft Web Deploy V3\msdeploy.exe",
-            "${env:ProgramFiles(x86)}\IIS\Microsoft Web Deploy V3\msdeploy.exe"
-          )
-          $found = $paths | Where-Object { Test-Path $_ } | Select-Object -First 1
-          if (-not $found) {
-            choco install webdeploy -y --no-progress
-            if ($LASTEXITCODE -ne 0) { throw "Could not install Microsoft Web Deploy." }
-          }
-          $found = $paths | Where-Object { Test-Path $_ } | Select-Object -First 1
-          if (-not $found) {
-            $cmd = Get-Command msdeploy.exe -ErrorAction SilentlyContinue
-            if ($cmd) { $found = $cmd.Source }
-          }
-          if (-not $found) { throw "msdeploy.exe was not found after installation." }
-          "MSDEPLOY_EXE=$found" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
-
       - name: Publish API for IIS
         shell: pwsh
         run: |
@@ -94,3 +74,23 @@ jobs:
             ConnectionStrings = @{
               constr = ""
               constr_somee = $env:CONSTR_SOMEE
+              constr_docker = ""
+            }
+            Logging = @{
+              LogLevel = @{
+                Default = "Information"
+                Microsoft = "Warning"
+                "Microsoft.Hosting.Lifetime" = "Information"
+              }
+            }
+            AllowedHosts = "*"
+            RequireHttps = "true"
+            JwtSettings = @{
+              Issuer = "https://nexus-api.runasp.net"
+              Audience = "https://mental-mediator-doctor-ui-graduation-project.vercel.app"
+              Key = $env:JWT_KEY
+              Duration = 30
+            }
+            GoogleAuthentication = @{
+              Id = $env:GOOGLE_ID
+              Secret = $env:GOOGLE_SECRET
