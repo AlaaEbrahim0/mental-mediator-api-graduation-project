@@ -364,12 +364,6 @@ jobs:
 
           $pubPath = (Join-Path (Get-Location) "publish")
 
-          # Single msdeploy invocation runner. The command line goes through
-          # ProcessStartInfo.Arguments so CreateProcess receives the exact
-          # bytes with no PowerShell token passing in between (native arg
-          # passing re-quotes the long -dest token into "Unrecognized
-          # argument"). Output is printed with the password redacted, and the
-          # masked secret never appears anywhere else in the log.
           $script:LastOutput = ''
           function Invoke-MsDeploy {
             param([string] $Arguments)
@@ -397,22 +391,13 @@ jobs:
 
           # In-process IIS keeps API.dll open for the life of the worker
           # process, so a content sync onto a running site fails with
-          # ERROR_FILE_IN_USE on the second deploy. This is the host's
-          # documented flow: place app_offline.htm in the site root first
-          # (IIS unloads the app and serves the offline page), sync, then
-          # remove the file again. The offline page is staged outside the
-          # publish folder, so the main sync neither carries nor deletes it;
-          # the finally block removes it even when the sync fails so a broken
-          # run cannot leave the site stuck on the offline page.
-          $offlineLocal = Join-Path ([System.IO.Path]::GetTempPath()) "app_offline.htm"
-          Set-Content -Path $offlineLocal -Value '<!DOCTYPE html><html><head><meta charset="utf-8"><title>Nexus API - deployment in progress</title></head><body><h1>Deployment in progress</h1><p>The Nexus API is being updated. Please retry in a minute.</p></body></html>' -Encoding UTF8
-
-          $code = Invoke-MsDeploy (' -verb:sync -source:filePath="' + $offlineLocal + '" -dest:filePath=app_offline.htm,' + $destCommon + ' -allowUntrusted')
-          if ($code -ne 0) {
-            Write-Host "Could not stage app_offline.htm (the site may not be running); continuing with the sync."
-          }
-          Start-Sleep -Seconds 8
-
+          # ERROR_FILE_IN_USE. The AppOffline rule is the msdeploy-side fix
+          # (and what the error itself recommends): it drops app_offline.htm
+          # into the site root so IIS takes the app out of process for the
+          # sync, and removes the file again afterwards. Staging that file
+          # manually via the filePath provider is NOT authorized on this
+          # host (ERROR_USER_NOT_AUTHORIZED_FOR_DEPLOYMENTPROVIDER), which
+          # is why the rule must do it inside the sync.
           # DoNotDeleteRule keeps runtime-only folders (the data-protection
           # keys folder) alive across releases.
           $syncArgs = ' -verb:sync' +
@@ -422,33 +407,28 @@ jobs:
             ' -disableLink:AppPoolExtension' +
             ' -disableLink:ContentExtension' +
             ' -disableLink:CertificateExtension' +
+            ' -enableRule:AppOffline' +
             ' -enableRule:DoNotDeleteRule'
-          try {
-            $code = Invoke-MsDeploy $syncArgs
-            # A worker that did not tear down fast enough still holds file
-            # locks (ERROR_FILE_IN_USE); one short retry succeeds once the
-            # app has actually gone away.
-            if ($code -ne 0 -and ($script:LastOutput -match 'FILE_IN_USE')) {
-              Write-Host "Files were still locked; retrying the sync."
-              Start-Sleep -Seconds 12
-              $code = Invoke-MsDeploy $syncArgs
-            }
-            if ($code -ne 0) {
-              throw "WebDeploy deployment failed with exit code $code."
-            }
 
-            $summary = ($script:LastOutput -split "`n" | Select-String 'Total changes') | ForEach-Object { $_.ToString().Trim() }
-            if ($summary) { Write-Host $summary }
-            Write-Host "WebDeploy sync completed for MonsterASP site $($env:MSDEPLOY_SITE_NAME)."
-          } finally {
-            Start-Sleep -Seconds 2
-            $delCode = Invoke-MsDeploy (' -verb:delete -dest:filePath=app_offline.htm,' + $destCommon + ' -allowUntrusted')
-            if ($delCode -ne 0) {
-              Write-Host "::warning::app_offline.htm could not be removed (exit $delCode); check the site root in the MonsterASP file manager."
-            } else {
-              Write-Host "app_offline.htm removed; the site serves the app again on the next request."
+          # A worker that did not tear down fast enough still holds file
+          # locks; retrying a couple of times usually succeeds once the app
+          # has actually gone away. Non-lock errors are not retried.
+          for ($attempt = 1; $attempt -le 3; $attempt++) {
+            $code = Invoke-MsDeploy $syncArgs
+            if ($code -eq 0) { break }
+            if ($script:LastOutput -notmatch 'FILE_IN_USE') { break }
+            if ($attempt -lt 3) {
+              Write-Host "Files were still locked; retrying (attempt $($attempt + 1) of 3)."
+              Start-Sleep -Seconds 15
             }
           }
+          if ($code -ne 0) {
+            throw "WebDeploy deployment failed with exit code $code."
+          }
+
+          $summary = ($script:LastOutput -split "`n" | Select-String 'Total changes') | ForEach-Object { $_.ToString().Trim() }
+          if ($summary) { Write-Host $summary }
+          Write-Host "WebDeploy sync completed for MonsterASP site $($env:MSDEPLOY_SITE_NAME)."
 
       - name: Verify deployment
         shell: pwsh
