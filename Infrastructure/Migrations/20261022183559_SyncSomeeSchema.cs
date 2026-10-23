@@ -87,15 +87,23 @@ namespace Infrastructure.Migrations
             ");
 
             // Copy the doctor profile values that still live on Doctors into
-            // the columns the model now expects on AspNetUsers. Only rows
-            // where the source actually has a value are touched.
+            // the columns the model now expects on AspNetUsers. Only legacy
+            // databases that never ran ExpandDoctorProfileCommunity have
+            // those columns on Doctors; on a database where all migrations
+            // applied in order they were already moved, and the copy must
+            // not run (Invalid column name otherwise).
             migrationBuilder.Sql(@"
-                UPDATE u
-                SET u.Biography = d.Biography,
-                    u.City      = d.City
-                FROM [AspNetUsers] u
-                INNER JOIN [Doctors] d ON d.Id = u.Id
-                WHERE u.Biography IS NULL OR u.City IS NULL;
+                IF COL_LENGTH('Doctors', 'Biography') IS NOT NULL
+                   AND COL_LENGTH('AspNetUsers', 'Biography') IS NOT NULL
+                BEGIN
+                    UPDATE u
+                    SET u.Biography = d.Biography,
+                        u.City      = d.City
+                    FROM [AspNetUsers] u
+                    INNER JOIN [Doctors] d ON d.Id = u.Id
+                    WHERE (u.Biography IS NULL AND d.Biography IS NOT NULL)
+                       OR (u.City IS NULL AND d.City IS NOT NULL);
+                END
             ");
         }
 
