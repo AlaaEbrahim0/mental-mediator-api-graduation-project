@@ -370,7 +370,8 @@ jobs:
             ' -allowUntrusted' +
             ' -disableLink:AppPoolExtension' +
             ' -disableLink:ContentExtension' +
-            ' -disableLink:CertificateExtension'
+            ' -disableLink:CertificateExtension' +
+            ' -enableRule:DoNotDeleteRule'
 
           $argRedacted = $argString.Replace($env:MSDEPLOY_PASSWORD, '***')
           Write-Host "Invoking msdeploy with: $argRedacted"

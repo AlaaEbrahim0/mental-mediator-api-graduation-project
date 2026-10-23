@@ -196,6 +196,28 @@ public static class DependencyInjection
 			.AddScoped<IAdminService, AdminService>()
 			.AddSignalR();
 
+		// On shared IIS hosting the app pool has neither a user profile nor the
+		// HKLM registry, so the default data-protection provider warns that it
+		// is falling back to an ephemeral in-memory key repository: keys die
+		// with the worker process and every restart invalidates issued cookies
+		// and OAuth state payloads. Persist the keys to a folder in the app's
+		// physical directory instead. The folder is outside the app's static
+		// web root, so the keys are never served as files, and the deploy
+		// pipeline keeps it across releases with the DoNotDeleteRule.
+		// A failure here (for example an unwritable folder) downgrades to the
+		// previous ephemeral behaviour instead of blocking startup.
+		try
+		{
+			var keysPath = Path.Combine(AppContext.BaseDirectory, "keys");
+			Directory.CreateDirectory(keysPath);
+			services.AddDataProtection()
+				.PersistKeysToFileSystem(new DirectoryInfo(keysPath));
+		}
+		catch (Exception)
+		{
+			// Fall back to the ephemeral default.
+		}
+
 		// Honour the reverse-proxy headers IIS adds in front of the app. This is
 		// what lets the app see the real client address and the real scheme,
 		// which the opt-in HTTPS redirect in Program.cs depends on.
