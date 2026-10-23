@@ -319,12 +319,17 @@ jobs:
         run: |
           # Endpoint and parameter layout per the MonsterASP.NET
           # "Deploy from the command line" documentation:
+          #   -source:contentPath=<publish folder>
           #   -dest:contentPath=<site>,computerName=https://<site>.siteasp.net:8172/msdeploy.axd?site=<site>,
           #         userName=<site>,password=...,authtype=Basic,includeAcls=False
           #   -allowUntrusted -disableLink:AppPoolExtension -disableLink:ContentExtension
           #   -disableLink:CertificateExtension
-          # The password is read through $env:MSDEPLOY_PASSWORD so it never
-          # appears in the PowerShell source of this step.
+          #
+          # The command line is handed to CreateProcess verbatim through
+          # ProcessStartInfo.Arguments. Going through PowerShell argument
+          # passing re-quotes the long -dest token ("Unrecognized argument",
+          # seen in run 40003217370), so no PowerShell token splitting must be
+          # between us and msdeploy.
           if ([string]::IsNullOrWhiteSpace($env:MSDEPLOY_PASSWORD)) {
             throw "GitHub Actions secret MONSTERASP_MSDEPLOY_PASSWORD is not configured."
           }
@@ -340,33 +345,62 @@ jobs:
           if (-not (Test-Path $msdeploy)) {
             throw "msdeploy.exe was not found on this runner."
           }
-
           Write-Host "msdeploy found: $msdeploy"
 
-          # The entire -dest argument is assembled with a single-quoted format
-          # string so nothing in the password is expanded or re-split by
-          # PowerShell: a $, backtick, comma or space in the password would
-          # otherwise break or corrupt the msdeploy invocation. No literal
-          # double quotes may remain inside the argument: msdeploy rejects an
-          # argument carrying surrounding quotes ("Unrecognized argument"),
-          # and stops unquoting values itself, so AuthType=Basic must not be
-          # written as AuthType="Basic" here.
-          $destArg = '-dest:contentPath={0},computerName={1},userName={2},password={3},authtype=Basic,includeAcls=False' -f `
-            $env:MSDEPLOY_SITE_NAME, $env:MSDEPLOY_COMPUTER, $env:MSDEPLOY_USER, $env:MSDEPLOY_PASSWORD
-
-          & $msdeploy `
-            -verb:sync `
-            "-source:contentPath=$((Get-Location).Path)\publish" `
-            $destArg `
-            -allowUntrusted `
-            -disableLink:AppPoolExtension `
-            -disableLink:ContentExtension `
-            -disableLink:CertificateExtension
-
-          if ($LASTEXITCODE -ne 0) {
-            throw "WebDeploy deployment failed with exit code $LASTEXITCODE."
+          # Values are escaped the way CommandLineToArgvW parses them: a value
+          # carrying a space or a quote is wrapped in quotes and an embedded
+          # quote is backslash-escaped. The WebDeploy user name is the site id
+          # (alphanumeric) and needs no escaping.
+          function Esc([string] $value) {
+            $escaped = $value.Replace('"', '\"')
+            if ($escaped -match '[\s"]') { return '"{0}"' -f $escaped }
+            return $escaped
           }
 
+          $pwdPart = 'password=' + (Esc $env:MSDEPLOY_PASSWORD)
+          $sitePart = 'contentPath=' + (Esc $env:MSDEPLOY_SITE_NAME) +
+            ',computerName=' + (Esc $env:MSDEPLOY_COMPUTER) +
+            ',userName=' + (Esc $env:MSDEPLOY_USER) +
+            ',' + $pwdPart + ',authtype=Basic,includeAcls=False'
+
+          $pubPath = (Join-Path (Get-Location) "publish")
+          $argString = ' -verb:sync' +
+            ' -source:contentPath="' + $pubPath + '"' +
+            ' -dest:' + $sitePart +
+            ' -allowUntrusted' +
+            ' -disableLink:AppPoolExtension' +
+            ' -disableLink:ContentExtension' +
+            ' -disableLink:CertificateExtension'
+
+          $argRedacted = $argString.Replace($env:MSDEPLOY_PASSWORD, '***')
+          Write-Host "Invoking msdeploy with: $argRedacted"
+
+          $psi = [System.Diagnostics.ProcessStartInfo]::new()
+          $psi.FileName = $msdeploy
+          $psi.Arguments = $argString.TrimStart()
+          $psi.UseShellExecute = $false
+          $psi.RedirectStandardOutput = $true
+          $psi.RedirectStandardError = $true
+
+          $proc = [System.Diagnostics.Process]::new()
+          $proc.StartInfo = $psi
+          [void]$proc.Start()
+
+          $outTask = $proc.StandardOutput.ReadToEndAsync()
+          $errTask = $proc.StandardError.ReadToEndAsync()
+          $proc.WaitForExit()
+
+          $stdout = $outTask.Result.TrimEnd()
+          $stderr = $errTask.Result.TrimEnd()
+          if ($stdout) { Write-Host $stdout }
+          if ($stderr) { Write-Host $stderr }
+
+          if ($proc.ExitCode -ne 0) {
+            throw "WebDeploy deployment failed with exit code $($proc.ExitCode)."
+          }
+
+          $summary = ($stdout -split "`n" | Select-String 'Total changes') | ForEach-Object { $_.ToString().Trim() }
+          if ($summary) { Write-Host $summary }
           Write-Host "WebDeploy sync completed for MonsterASP site $($env:MSDEPLOY_SITE_NAME)."
 
       - name: Verify deployment
