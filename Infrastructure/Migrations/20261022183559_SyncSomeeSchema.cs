@@ -90,19 +90,23 @@ namespace Infrastructure.Migrations
             // the columns the model now expects on AspNetUsers. Only legacy
             // databases that never ran ExpandDoctorProfileCommunity have
             // those columns on Doctors; on a database where all migrations
-            // applied in order they were already moved, and the copy must
-            // not run (Invalid column name otherwise).
+            // applied in order they were already moved. The copy runs through
+            // EXEC: SQL Server resolves column names at batch compile time,
+            // and a false COL_LENGTH guard does not stop the batch from
+            // failing to compile against a schema where the columns are
+            // gone - deferral only covers tables that do not exist at all.
             migrationBuilder.Sql(@"
                 IF COL_LENGTH('Doctors', 'Biography') IS NOT NULL
                    AND COL_LENGTH('AspNetUsers', 'Biography') IS NOT NULL
                 BEGIN
+                    EXEC(N'
                     UPDATE u
                     SET u.Biography = d.Biography,
                         u.City      = d.City
                     FROM [AspNetUsers] u
                     INNER JOIN [Doctors] d ON d.Id = u.Id
                     WHERE (u.Biography IS NULL AND d.Biography IS NOT NULL)
-                       OR (u.City IS NULL AND d.City IS NOT NULL);
+                       OR (u.City IS NULL AND d.City IS NOT NULL);');
                 END
             ");
         }
