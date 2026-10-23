@@ -1,118 +1,79 @@
-name: Nexus API CI/CD Pipeline
+name: Nexus API - MonsterASP Deployment
 
 on:
   push:
-    branches:
-      - master
+    branches: [master]
   workflow_dispatch:
 
 concurrency:
-  group: nexus-api-${{ github.ref }}
+  group: monsterasp-production
   cancel-in-progress: true
+
+permissions:
+  contents: read
 
 env:
   DOTNET_NOLOGO: true
   DOTNET_CLI_TELEMETRY_OPTOUT: true
-  DOTNET_SKIP_FIRST_TIME_EXPERIENCE: true
 
 jobs:
-  build:
+  build-test:
     name: Build and test
-    runs-on: ubuntu-latest
+    runs-on: windows-latest
     steps:
-      - name: Checkout code
+      - name: Checkout
         uses: actions/checkout@v4
-
-      - name: Setup .NET SDK
+      - name: Setup .NET 8
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: '8.0.x'
-
-      - name: Restore dependencies
+          dotnet-version: 8.0.x
+      - name: Restore
         run: dotnet restore
-
       - name: Build
         run: dotnet build --configuration Release --no-restore
-
       - name: Test
         run: dotnet test --configuration Release --no-build --verbosity normal
 
-  # Docker Hub publishing. The live host is IIS on Somee, so this job is not on
-  # the deploy critical path; a registry failure must not leave the site down.
-  # The image is kept in sync for container-based deploys.
-  publish:
-    name: Publish Docker image to Docker Hub
-    needs: build
-    runs-on: ubuntu-latest
-    continue-on-error: true
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Login to Docker Hub
-        uses: docker/login-action@v3
-        with:
-          username: ${{ secrets.DOCKER_USERNAME }}
-          password: ${{ secrets.DOCKER_PASSWORD }}
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Build and push Docker image
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          push: true
-          tags: systematicmess/nexus_api:latest
-
   deploy:
-    name: Publish and deploy to MonsterASP.net (WebDeploy)
-    needs: [build, publish]
+    name: Publish and deploy to MonsterASP
+    needs: build-test
     runs-on: windows-latest
+    environment: production
     steps:
-      - name: Checkout code
+      - name: Checkout
         uses: actions/checkout@v4
-
-      - name: Setup .NET SDK
+      - name: Setup .NET 8
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: '8.0.x'
+          dotnet-version: 8.0.x
 
-      # Publish as a framework-dependent 32-bit (x86) deployment.
-      #
-      # Two independent reasons, both hard requirements on this host:
-      #
-      # 1. The Somee application pool is configured for 32-bit. A
-      #    framework-dependent app is AnyCPU and only loads in a 64-bit pool,
-      #    so an x86 build is what matches the pool as provisioned.
-      #
-      # 2. -p:UseAppHost=false suppresses the apphost launcher. With a RID
-      #    specified, `dotnet publish` would otherwise emit API.exe and a
-      #    web.config pointing at it. A custom EXE runtime is exactly what a
-      #    shared host's security watchdog treats as a website launching a
-      #    separate program, and it suspends the site - the host then answers
-      #    503 before the application ever runs. The standard
-      #    `dotnet API.dll` startup is the supported form in both in-process
-      #    and out-of-process hosting.
-      - name: Publish for IIS
+      - name: Install Microsoft Web Deploy if needed
         shell: pwsh
         run: |
-          dotnet publish API/API.csproj `
-            --configuration Release `
-            --output ./publish `
-            --runtime win-x86 `
-            --self-contained false `
-            -p:UseAppHost=false
+          $paths = @(
+            "$env:ProgramFiles\IIS\Microsoft Web Deploy V3\msdeploy.exe",
+            "${env:ProgramFiles(x86)}\IIS\Microsoft Web Deploy V3\msdeploy.exe"
+          )
+          $found = $paths | Where-Object { Test-Path $_ } | Select-Object -First 1
+          if (-not $found) {
+            choco install webdeploy -y --no-progress
+            if ($LASTEXITCODE -ne 0) { throw "Could not install Microsoft Web Deploy." }
+          }
+          $found = $paths | Where-Object { Test-Path $_ } | Select-Object -First 1
+          if (-not $found) {
+            $cmd = Get-Command msdeploy.exe -ErrorAction SilentlyContinue
+            if ($cmd) { $found = $cmd.Source }
+          }
+          if (-not $found) { throw "msdeploy.exe was not found after installation." }
+          "MSDEPLOY_EXE=$found" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+
+      - name: Publish API for IIS
+        shell: pwsh
+        run: |
+          dotnet publish API/API.csproj --configuration Release --output ./publish --runtime win-x86 --self-contained false -p:UseAppHost=false
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
-      # Create production settings from GitHub Actions secrets. Never commit
-      # appsettings.Production.json or place credentials in this workflow.
-      #
-      # The app reads ConnectionStrings:constr_somee outside Development
-      # (see ConfigureDbContext), so this is the only connection string that
-      # matters here.
-      - name: Write production appsettings
+      - name: Create production settings
         shell: pwsh
         env:
           CONSTR_SOMEE: ${{ secrets.PRODUCTION_CONSTR_SOMEE }}
@@ -123,225 +84,13 @@ jobs:
           MAIL_PASSWORD: ${{ secrets.PRODUCTION_MAIL_PASSWORD }}
           NEWS_API_KEY: ${{ secrets.PRODUCTION_NEWS_API_KEY }}
         run: |
-          # Every value is read through $env:NAME. Inlining ${{ secrets.* }}
-          # into the script body injects the raw secret into PowerShell source,
-          # where a quote, $ or backtick breaks the parser before it runs.
-          if ([string]::IsNullOrWhiteSpace($env:CONSTR_SOMEE)) {
-            throw "GitHub Actions secret PRODUCTION_CONSTR_SOMEE is not configured."
+          $required = @("CONSTR_SOMEE", "JWT_KEY", "GOOGLE_ID", "GOOGLE_SECRET", "MAIL_USERNAME", "MAIL_PASSWORD", "NEWS_API_KEY")
+          foreach ($name in $required) {
+            if ([string]::IsNullOrWhiteSpace([Environment]::GetEnvironmentVariable($name))) {
+              throw "Required GitHub Actions secret for $name is missing."
+            }
           }
-          if ([string]::IsNullOrWhiteSpace($env:JWT_KEY)) {
-            throw "GitHub Actions secret PRODUCTION_JWT_KEY is not configured."
-          }
-          if ([string]::IsNullOrWhiteSpace($env:GOOGLE_ID)) {
-            throw "GitHub Actions secret PRODUCTION_GOOGLE_ID is not configured."
-          }
-          if ([string]::IsNullOrWhiteSpace($env:GOOGLE_SECRET)) {
-            throw "GitHub Actions secret PRODUCTION_GOOGLE_SECRET is not configured."
-          }
-          if ([string]::IsNullOrWhiteSpace($env:MAIL_USERNAME)) {
-            throw "GitHub Actions secret PRODUCTION_MAIL_USERNAME is not configured."
-          }
-          if ([string]::IsNullOrWhiteSpace($env:MAIL_PASSWORD)) {
-            throw "GitHub Actions secret PRODUCTION_MAIL_PASSWORD is not configured."
-          }
-          if ([string]::IsNullOrWhiteSpace($env:NEWS_API_KEY)) {
-            throw "GitHub Actions secret PRODUCTION_NEWS_API_KEY is not configured."
-          }
-
           $settings = @{
-            ConnectionStrings = @{
-              constr = ""
-              constr_somee = $env:CONSTR_SOMEE
-              constr_docker = ""
-            }
-            Logging = @{
-              LogLevel = @{
-                Default = "Information"
-                Microsoft = "Warning"
-                "Microsoft.Hosting.Lifetime" = "Information"
-              }
-            }
+            ConnectionStrings = @{ constr = ""; constr_somee = $env:CONSTR_SOMEE; constr_docker = "" }
+            Logging = @{ LogLevel = @{ Default = "Information"; Microsoft = "Warning"; "Microsoft.Hosting.Lifetime" = "Information" } }
             AllowedHosts = "*"
-            # A Let's Encrypt certificate is installed for both the apex and
-            # www hostnames, so HTTPS redirection is safe to enable. It is kept
-            # as a setting rather than unconditional because Somee's free plan
-            # renews certificates manually: if the certificate ever lapses, set
-            # this to "false" to bring the site back up on plain HTTP instead
-            # of leaving it redirecting into a loop.
-            RequireHttps = "true"
-            JwtSettings = @{
-              # The issuer must match the URL clients actually call, otherwise
-              # token validation fails with a 401 on every request.
-              Issuer = "http://nexus-api.runasp.net"
-              Audience = "https://mental-mediator-doctor-ui-graduation-project.vercel.app"
-              Key = $env:JWT_KEY
-              Duration = 30
-            }
-            GoogleAuthentication = @{
-              Id = $env:GOOGLE_ID
-              Secret = $env:GOOGLE_SECRET
-            }
-            MailSettings = @{
-              Host = "smtp.gmail.com"
-              Port = 587
-              Username = $env:MAIL_USERNAME
-              Password = $env:MAIL_PASSWORD
-            }
-            ClientUI = "https://mental-health-ochre.vercel.app"
-            DoctorUI = "https://mental-mediator-doctor-ui-graduation-project.vercel.app"
-            MLServerAddress = "https://sentiment-nja5.onrender.com/"
-            NewsApi = @{
-              Address = "https://newsapi.org/v2/"
-              ApiKey = $env:NEWS_API_KEY
-            }
-          }
-
-          $json = $settings | ConvertTo-Json -Depth 10
-          [System.IO.File]::WriteAllText(
-            (Join-Path (Get-Location) "publish/appsettings.Production.json"),
-            $json,
-            (New-Object System.Text.UTF8Encoding($false)))
-
-          Remove-Item ./publish/appsettings.Development.json -ErrorAction SilentlyContinue
-          Write-Host "Production appsettings generated."
-
-      - name: Validate publish output
-        shell: pwsh
-        run: |
-          if (-not (Test-Path ./publish/web.config)) {
-            throw "web.config is missing from publish output; this is required for IIS hosting."
-          }
-          if (-not (Test-Path ./publish/API.dll)) {
-            throw "API.dll is missing from publish output."
-          }
-          if (Test-Path ./publish/API.exe) {
-            throw "API.exe was published; a custom EXE runtime is unsupported on this host. Publish with -p:UseAppHost=false."
-          }
-          $webConfig = Get-Content ./publish/web.config -Raw
-          if ($webConfig -notmatch 'processPath="dotnet"') {
-            throw "web.config does not start the DLL runtime (processPath=`"dotnet`"). Found: $webConfig"
-          }
-          if ($webConfig -notmatch 'hostingModel="inprocess"') {
-            throw "web.config is not using in-process hosting. Found: $webConfig"
-          }
-
-          # The plan is 150MB. Publish size is a real constraint here, so fail
-          # loudly rather than discovering it as a half-uploaded site.
-          $sizeMB = [math]::Round((Get-ChildItem ./publish -Recurse -File |
-            Measure-Object -Property Length -Sum).Sum / 1MB, 1)
-          Write-Host "Publish size: $sizeMB MB (plan limit 150 MB)."
-          if ($sizeMB -gt 120) {
-            throw "Publish output is $sizeMB MB, too close to the 150 MB plan limit."
-          }
-
-          Write-Host "Publish output verified: x86 DLL runtime, in-process, web.config present, no apphost executable."
-
-      - name: Deploy to MonsterASP.net via WebDeploy
-        shell: pwsh
-        env:
-          MSDEPLOY_PASSWORD: ${{ secrets.MONSTERASP_MSDEPLOY_PASSWORD }}
-        run: |
-          $msdeploy = @(
-            "${env:ProgramFiles}\IIS\Microsoft Web Deploy V3\msdeploy.exe",
-            "${env:ProgramFiles(x86)}\IIS\Microsoft Web Deploy V3\msdeploy.exe"
-          ) | Where-Object { Test-Path $_ } | Select-Object -First 1
-
-          if (-not $msdeploy) {
-            $command = Get-Command msdeploy.exe -ErrorAction SilentlyContinue
-            if ($command) { $msdeploy = $command.Source }
-          }
-          if (-not $msdeploy) {
-            throw "msdeploy.exe was not found on this Windows runner. Install Microsoft Web Deploy before deployment."
-          }
-          if ([string]::IsNullOrWhiteSpace($env:MSDEPLOY_PASSWORD)) {
-            throw "GitHub Actions secret MONSTERASP_MSDEPLOY_PASSWORD is not configured."
-          }
-          if (-not (Test-Path ./publish/web.config) -or -not (Test-Path ./publish/API.dll)) {
-            throw "Publish output is incomplete; expected ./publish/web.config and ./publish/API.dll."
-          }
-
-          $endpoint = "https://site101103.siteasp.net:8172/msdeploy.axd?site=site101103"
-          $arguments = @(
-            "-verb:sync",
-            "-source:contentPath=./publish",
-            "-dest:contentPath=site101103,ComputerName=$endpoint,UserName=site101103,Password=$($env:MSDEPLOY_PASSWORD),AuthType=Basic",
-            "-enableRule:AppOffline",
-            "-retryAttempts:2",
-            "-retryInterval:5000",
-            "-verbose"
-          )
-
-          # Keep credentials in the process arguments only; never print them.
-          & $msdeploy @arguments
-          if ($LASTEXITCODE -ne 0) {
-            throw "WebDeploy failed with exit code $LASTEXITCODE."
-          }
-          Write-Host "WebDeploy synchronization completed."
-          
-      - name: Verify deployment
-        shell: pwsh
-        env:
-          SITE_URL: "http://nexus-api.runasp.net"
-        run: |
-          if ([string]::IsNullOrWhiteSpace($env:SITE_URL)) {
-            $env:SITE_URL = "http://nexus-api.runasp.net"
-          }
-
-          # /health is unauthenticated and touches no database and no external
-          # service, so a 200 means the app is actually running. It is also
-          # the right first probe: on Somee a stopped or crashed app pool
-          # still returns an HTML error page, so a 200 on any other URL could
-          # be a false pass.
-          $healthUrl = "$env:SITE_URL/health"
-          $swaggerUrl = "$env:SITE_URL/swagger/v1/swagger.json"
-
-          $deadline = (Get-Date).AddMinutes(6)
-          $healthy = $false
-          while ((Get-Date) -lt $deadline) {
-            try {
-              $response = Invoke-WebRequest -Uri $healthUrl -UseBasicParsing -TimeoutSec 25
-              if ($response.StatusCode -eq 200) {
-                Write-Host "Health check passed: $healthUrl -> HTTP 200"
-                Write-Host "Body: $($response.Content)"
-                $healthy = $true
-                break
-              }
-              Write-Host "Health check returned HTTP $($response.StatusCode); retrying."
-            } catch {
-              Write-Host "Waiting for the application to start: $($_.Exception.Message)"
-            }
-            Start-Sleep -Seconds 15
-          }
-
-          if (-not $healthy) {
-            Write-Host ""
-            Write-Host "DIAGNOSIS: the app never answered on /health."
-            Write-Host "The hosting platform may serve HTML error pages for"
-            Write-Host "several failure modes, which is why /health is probed first."
-            Write-Host ""
-            Write-Host "Check, in this order:"
-            Write-Host "  1. Control Panel -> Files: is the site root populated (web.config, API.dll)?"
-            Write-Host "     WebDeploy targets the configured site name; verify the destination"
-            Write-Host "     site root contains the deployed files."
-            Write-Host "  2. Control Panel -> IIS Application pool: verify the application pool"
-            Write-Host "     configuration matches the x86 build."
-            Write-Host "  3. Control Panel -> Logs -> Event log: Event ID 5011/5059 (worker"
-            Write-Host "     process), or 500.19 (malformed web.config)."
-            Write-Host "  4. Control Panel -> Logs -> ASP.NET Core debug: enable it and click"
-            Write-Host "     'Restart application & reload log' to capture startup output."
-            Write-Host "  5. Control Panel -> Files: confirm appsettings.Production.json was"
-            Write-Host "     uploaded and contains ConnectionStrings:constr_somee."
-            Write-Host ""
-            throw "Deployment verification failed. The application is not serving requests."
-          }
-
-          # Swagger is served by the same app, so a 200 here confirms the full
-          # middleware pipeline came up, not just the minimal health route.
-          try {
-            $swagger = Invoke-WebRequest -Uri $swaggerUrl -UseBasicParsing -TimeoutSec 25
-            Write-Host "Swagger UI verified: $swaggerUrl -> HTTP $($swagger.StatusCode)"
-          } catch {
-            throw "Swagger endpoint verification failed: $($_.Exception.Message)"
-          }
-
-          Write-Host "Deployment verified."
