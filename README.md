@@ -23,7 +23,7 @@ The backend is built with **ASP.NET Core 8**, following **Clean Architecture** p
 | **Security** | JWT + Google OAuth auth, role-based access, input validation, no hardcoded secrets, production exception handling |
 | **Performance** | Database indexes on FK/status columns, lazy-loaded repository pattern, structured logging, HTTP client factory |
 | **Reliability** | `Result<T>` pattern, global validation filter, configurable exception handler, structured logging |
-| **DevOps** | GitHub Actions CI/CD pipeline, Docker multi-stage builds, Render deployment, Somee hosting support |
+| **DevOps** | GitHub Actions CI/CD pipeline, Docker multi-stage builds, MonsterASP (WebDeploy) hosting |
 
 ---
 
@@ -105,7 +105,7 @@ MentalMediator.sln
 | Requirement | Version | Notes |
 |-------------|---------|-------|
 | **.NET SDK** | 8.0+ | Required for building and running the API |
-| **SQL Server** | 2019+ | Local development or somee hosting |
+| **SQL Server** | 2019+ | Local development or MonsterASP MSSQL hosting |
 | **Git** | 2.x+ | Version control |
 | **Cloudinary Account** | Optional | For media uploads |
 | **News API Key** | Optional | For news integration |
@@ -237,12 +237,12 @@ The `API/Dockerfile` uses multi-stage builds to minimize image size:
 
 ### GitHub Actions Workflow
 
-The pipeline runs on every push to `master`:
+The pipeline runs on every push to `master` and on manual `workflow_dispatch`:
 
 1. **Build** — `dotnet restore`, `dotnet build --configuration Release --no-restore`
 2. **Test** — `dotnet test --configuration Release --no-build --verbosity normal` (no test project yet; the step is a no-op that must keep passing)
 3. **Publish** — Build and push `systematicmess/nexus_api:latest` to Docker Hub
-3. **Deploy** — Publish the app for IIS and upload it to Somee over FTP
+4. **Deploy** — Publish the app for IIS and upload it to MonsterASP over WebDeploy (manual or on push when `AUTO_DEPLOY_MONSTERASP` is enabled)
 
 ### Recent production fixes
 
@@ -251,7 +251,7 @@ The pipeline runs on every push to `master`:
 | `9043bf5` | `fix(api)` | `PostRepository`: included the `AppUser` navigation in **all four** post query sites (`GetAllPosts`, `GetConfessionOnly`, `GetPostsByUserId`, `GetPostById`) so projects no longer throw `NullReferenceException` when reading `AppUser.FullName`/`AppUser.PhotoUrl`. This fixed `GET /api/posts → 500` and `POST /api/auth/signin → 500` on the production Somee host. |
 
 Docker Hub publishing is **not** on the deploy critical path: the live host is IIS on
-Somee, so a registry failure cannot take the site down.
+MonsterASP, so a registry failure cannot take the site down.
 
 ### Pipeline Steps
 
@@ -264,17 +264,25 @@ Somee, so a registry failure cannot take the site down.
 | Docker Build & Push | `docker/build-push-action@v5` → `systematicmess/nexus_api:latest` |
 | Publish for IIS | `dotnet publish API/API.csproj -c Release --output ./publish --runtime win-x86 --self-contained false -p:UseAppHost=false` |
 | Production settings | Generated in the runner from secrets into `publish/appsettings.Production.json` (never committed) |
-| FTP Deploy | `SamKirkland/FTP-Deploy-Action@v4.3.5` → `/www.nexus-api-gp.somee.com/` |
-| Verify | Polls `http://nexus-api-gp.somee.com/health` for HTTP 200 |
+| web.config injection | `ASPNETCORE_ENVIRONMENT=Production` (+ optional `CLOUDINARY_URL`) written into the generated `publish/web.config` |
+| WebDeploy | `msdeploy.exe -verb:sync` → `<publish folder>` → `/wwwroot` of MonsterASP site `site101103` |
+| Verify | Polls `https://nexus-api.runasp.net/health` for HTTP 200 |
+
+### Deploy trigger
+
+- **Manual:** `workflow_dispatch` with the `deploy_to_production` input (first deployments are
+  initiated deliberately).
+- **Automatic on push to `master`:** enabled by setting the repository **variable**
+  `AUTO_DEPLOY_MONSTERASP` to `true`. Until then, pushes only build and test.
 
 ### Why `win-x86` and `-p:UseAppHost=false`
 
-Both are hard requirements on this host, for different reasons:
+Both match the host, for different reasons:
 
 | Flag | Why |
 |---|---|
-| `--runtime win-x86` | The Somee application pool is configured for **32-bit**. A framework-dependent app is AnyCPU and only loads in a 64-bit pool, so the build must match the pool as provisioned. |
-| `-p:UseAppHost=false` | With a RID specified, `dotnet publish` otherwise emits an apphost `API.exe` and a `web.config` pointing at it. A custom EXE runtime reads as a website *launching a separate program*, which shared-host security watchdogs treat as an abuse signal and suspend the site for. The standard `dotnet API.dll` startup is the supported form in both hosting models. |
+| `--runtime win-x86` | MonsterASP's own deploy documentation publishes with `win-x86`, matching the 32-bit application pool provisioned on the free shared host. |
+| `-p:UseAppHost=false` | With a RID specified, `dotnet publish` otherwise emits an apphost `API.exe` and a `web.config` pointing at it. A framework-dependent DLL started as `dotnet API.dll` in-process is the form MonsterASP (and shared IIS hosts generally) support. |
 
 The pipeline fails fast if `API.exe` appears in the publish output, so a regression
 surfaces as a red build rather than a site that mysteriously stops answering.
@@ -285,62 +293,73 @@ surfaces as a red build rather than a site that mysteriously stops answering.
 |--------|---------|
 | `DOCKER_USERNAME` | Docker Hub username |
 | `DOCKER_PASSWORD` | Docker Hub access token |
-| `SOMEE_FTP_SERVER` | Somee FTP host (`ftp://nexus-api-gp.somee.com`) |
-| `SOMEE_FTP_USERNAME` | Somee FTP username |
-| `SOMEE_FTP_PASSWORD` | Somee FTP password (the control-panel password) |
-| `PRODUCTION_CONSTR_SOMEE` | SQL Server connection string for the hosted database |
+| `MONSTERASP_MSDEPLOY_PASSWORD` | WebDeploy password from the MonsterASP **Deploy → Visual Studio access** card (user name is the site id, `site101103`) |
+| `PRODUCTION_CONSTR_SOMEE` | SQL Server connection string for the hosted MonsterASP MSSQL database (the `constr_somee` key is what the app reads outside Development) |
 | `PRODUCTION_JWT_KEY` | JWT signing key (must be ≥32 bytes for HS256) |
 | `PRODUCTION_GOOGLE_ID` / `PRODUCTION_GOOGLE_SECRET` | Google OAuth client credentials |
 | `PRODUCTION_MAIL_USERNAME` / `PRODUCTION_MAIL_PASSWORD` | Gmail SMTP credentials |
 | `PRODUCTION_NEWS_API_KEY` | News API key |
+| `PRODUCTION_CLOUDINARY_URL` (optional) | `cloudinary://<key>:<secret>@<cloud>` — injected into the generated `web.config` so image uploads work on the host |
+
+`PRODUCTION_CLOUDINARY_URL` is the only optional secret: without it the API starts and
+everything except image uploads works (uploads return a controlled 503). The setting is
+read from the process environment only (`Infrastructure/Services/StorageService.cs`), so
+the pipeline writes it, together with `ASPNETCORE_ENVIRONMENT=Production`, into the
+generated `publish/web.config` `<environmentVariables>` block.
+
+### Repository variables
+
+| Variable | Purpose |
+|----------|---------|
+| `PRODUCTION_SITE_URL` | Overrides the default production URL (`https://nexus-api.runasp.net`) used by the deploy verification probe |
+| `AUTO_DEPLOY_MONSTERASP` (`true`/`false`) | When `true`, a push to `master` deploys to production; when `false` (or unset), production deploys happen only via `workflow_dispatch` |
 
 Every secret is passed through `env:` and read with `$env:NAME`. Secrets are never
 inlined into a PowerShell script body, and `appsettings.Production.json` is generated in
 the runner — it is gitignored and never committed.
 
-### Hosting Constraints (Somee free plan)
+### Hosting Constraints (MonsterASP free plan)
 
 | Constraint | Value | Consequence |
 |---|---|---|
-| Storage | 150 MB | The publish output is ~30 MB. The pipeline fails above 120 MB. |
-| Database | MS SQL Express, 30 MB data + 30 MB log | Keep seeded data lean; a full rebuild may not fit. |
-| Bandwidth | 5 GB / month | External calls (ML, News) count against it. |
-| WebSockets | **Not supported** | SignalR falls back to Server-Sent Events and long polling. The app already uses `AddSignalR()` with no explicit WebSocket transport, so no change was needed. |
-| SSL | Free Let's Encrypt, **manual renewal** | The site is served over plain HTTP. `RequireHttps` is set to `false` for this reason — see below. |
-| Ads | Injected by the host | The host appends an ad to responses; source files are untouched. |
-| Activity | Must be visited at least 5×/month | An untouched free site is deleted. |
+| Storage | 5 GB per website | The framework-dependent publish output is ~30 MB, far below the limit; the pipeline still fails above 120 MB as a bloat check. |
+| Database | 1× MSSQL, 1 GB | Managed via WebMSSQL / SSMS. Keep data lean. |
+| RAM | 256 MB dedicated | In-process hosting only — with in-process IIS, no separate process is spawned. |
+| WebSockets | Supported | SignalR uses its default WebSocket transport with fallbacks. |
+| HTTPS | Let's Encrypt on `*.runasp.net` subdomains | Free subdomains are served over TLS automatically, so `RequireHttps=true` is safe (see below). |
+| Activity | Free sites need periodic visits | Check the plan terms; an untouched free site is suspended or deleted. |
 
-### HTTPS is opt-in
+### HTTPS
 
-`UseHttpsRedirection` is **not** called unconditionally. Somee's free plan does not
-auto-issue a certificate for `*.somee.com` subdomains (only paid plans renew
-automatically), so an unconditional redirect bounced every request into a loop and the
-site never answered. HTTPS is enabled by setting `RequireHttps=true` in
-`appsettings.Production.json` — do this only once a certificate is actually installed.
-
-HSTS is likewise not enabled, for the same reason: it would advertise
-`Strict-Transport-Security` over plain HTTP and browsers would refuse to connect.
+MonsterASP serves `*.runasp.net` subdomains over TLS, so production
+`appsettings.Production.json` sets `RequireHttps=true`, which enables
+`UseHttpsRedirection` for the public site. HSTS is deliberately still not enabled: it is
+only safe behind a certificate we control end-to-end (it advertises
+`Strict-Transport-Security` at the HTTP layer, and a lapsed certificate would then leave
+browsers unable to reach the site at all).
 
 ### Deploy Readiness Checklist
 
 If the site stops answering, check these in order:
 
 1. **Did the pipeline actually deploy?** A failed deploy leaves the previous upload in
-   place. Confirm the *Deploy to Somee* job is green, not just the build.
-2. **Do the FTP secrets exist and are they current?** A missing `SOMEE_FTP_SERVER`
-   fails the deploy with `Input required and not supplied: server`. Secrets are read at
-   run start, so editing one does **not** retry the in-flight run.
-3. **Did the files land in the right folder?** The FTP path is
-   `/www.nexus-api-gp.somee.com/` — that subdirectory *is* the site root. Files uploaded
-   one level up are outside the site and are never served.
+   place. Confirm the *Deploy to MonsterASP.net* job is green, not just the build.
+2. **Is the deploy secret current?** A missing or stale `MONSTERASP_MSDEPLOY_PASSWORD`
+   fails with an HTTP 401/login-refused from `msdeploy.axd`. The password lives on the
+   Control Panel **Deploy → Visual Studio access** card; WebDeploy must be *Enabled* there.
+3. **Did the files land in `/wwwroot`?** WebDeploy uploads the entire publish folder into
+   `/wwwroot` of site `site101103`; files outside that folder are never served.
 4. **Is the app pool still 32-bit?** The build is `win-x86`; a 64-bit pool will not load
-   it (`500.32 ANCM Failed to Load dll`). Control Panel → IIS Application pool →
-   Application mode must be `32 bit`.
+   it (`500.32 ANCM Failed to Load dll`). Control Panel → Website → detailed settings.
 5. **Did the app pool start?** A missing .NET 8 ASP.NET Core hosting bundle leaves the
    pool stopped and IIS answers before the app runs.
 6. **Is `appsettings.Production.json` present** with a populated
    `ConnectionStrings:constr_somee`? A blank value makes the app start but fail on the
    first database call.
+7. **Do the runtime environment variables exist in `web.config`?** The pipeline writes
+   `ASPNETCORE_ENVIRONMENT=Production` (and optionally `CLOUDINARY_URL`) into the
+   generated web.config; a hand-edited web.config that lost them drops the app back into
+   Development defaults and breaks image uploads.
 
 ### The `Server` header tells you which layer failed
 
@@ -355,13 +374,14 @@ Because `http.sys` answers before user mode, a site in this state returns 503 fo
 without the application. Probe a static file to confirm:
 
 ```bash
-curl -o /dev/null -w "%{http_code}\n" http://nexus-api-gp.somee.com/robots.txt
+curl -o /dev/null -w "%{http_code}\n" https://nexus-api.runasp.net/robots.txt
 ```
 
-Note that Somee serves plain HTML error pages with a **200** status for several failure
-modes, so a 200 on an arbitrary URL is not proof the app is up. That is why the
-pipeline probes `/health` first: it is unauthenticated, performs no database
-round-trip and calls no external service, so a 200 means the app is genuinely running.
+IIS error pages carry an accurate status code on MonsterASP, but a 200 on an arbitrary
+URL is still not proof the app is up: IIS can serve content before the application ever
+runs. That is why the pipeline probes `/health` first: it is unauthenticated, performs no
+database round-trip and calls no external service, so a 200 means the app is genuinely
+running.
 
 ---
 
@@ -436,4 +456,4 @@ Built as a **final-year undergraduate project** in Computer Science. Special tha
 - **Faculty advisors** for guidance and mentorship
 - **Open-source communities** — ASP.NET Core, EF Core, SignalR, Cloudinary, MailKit, Bogus, AutoMapper
 - **External service providers** — Google OAuth, Google SMTP, News API, Cloudinary, ML detection services
-- **GitHub Actions** and **Render** for hosting and CI/CD infrastructure
+- **GitHub Actions** for CI/CD and **MonsterASP** for production hosting (WebDeploy)
