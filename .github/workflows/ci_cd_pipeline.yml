@@ -15,6 +15,9 @@ concurrency:
   group: nexus-api-${{ github.ref }}
   cancel-in-progress: true
 
+permissions:
+  contents: read
+
 env:
   DOTNET_NOLOGO: true
   DOTNET_CLI_TELEMETRY_OPTOUT: true
@@ -79,6 +82,7 @@ jobs:
       (github.event_name == 'workflow_dispatch' && inputs.deploy_to_production) ||
       (github.event_name == 'push' && vars.AUTO_DEPLOY_MONSTERASP == 'true')
     runs-on: windows-latest
+    environment: production
     env:
       MSDEPLOY_SITE_NAME: site101103
       MSDEPLOY_COMPUTER: https://site101103.siteasp.net:8172/msdeploy.axd?site=site101103
@@ -330,6 +334,10 @@ jobs:
             $msdeploy = Join-Path $env:ProgramFiles "IIS\Microsoft Web Deploy V3\msdeploy.exe"
           }
           if (-not (Test-Path $msdeploy)) {
+            $found = Get-Command msdeploy.exe -ErrorAction SilentlyContinue
+            if ($found) { $msdeploy = $found.Source }
+          }
+          if (-not (Test-Path $msdeploy)) {
             throw "msdeploy.exe was not found on this runner."
           }
 
@@ -338,8 +346,12 @@ jobs:
           # The entire -dest argument is assembled with a single-quoted format
           # string so nothing in the password is expanded or re-split by
           # PowerShell: a $, backtick, comma or space in the password would
-          # otherwise break or corrupt the msdeploy invocation.
-          $destArg = '-dest:contentPath={0},computerName={1},userName={2},password={3},authtype="Basic",includeAcls="False"' -f `
+          # otherwise break or corrupt the msdeploy invocation. No literal
+          # double quotes may remain inside the argument: msdeploy rejects an
+          # argument carrying surrounding quotes ("Unrecognized argument"),
+          # and stops unquoting values itself, so AuthType=Basic must not be
+          # written as AuthType="Basic" here.
+          $destArg = '-dest:contentPath={0},computerName={1},userName={2},password={3},authtype=Basic,includeAcls=False' -f `
             $env:MSDEPLOY_SITE_NAME, $env:MSDEPLOY_COMPUTER, $env:MSDEPLOY_USER, $env:MSDEPLOY_PASSWORD
 
           & $msdeploy `
