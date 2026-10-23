@@ -17,6 +17,7 @@ using Infrastructure.Repositories;
 using Infrastructure.Services;
 using Infrastructure.Utilities;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;

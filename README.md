@@ -391,7 +391,7 @@ running.
 
 - **Migrations** are stored in `Infrastructure/Migrations/`
 - **Reverse engineering** available via `dotnet ef dbcontext scaffold`
-- **Seeding** uses the Bogus library for test data insertion
+- **Seeding** runs through `scripts/seed.sql` (run manually from WebMSSQL / SSMS — the application only applies migrations at startup, and only when the database exists)
 
 ### Key Entity Relationships
 
