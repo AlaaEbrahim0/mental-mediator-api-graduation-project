@@ -91,6 +91,6 @@ jobs:
             }
           }
           $settings = @{
-            ConnectionStrings = @{ constr = ""; constr_somee = $env:CONSTR_SOMEE; constr_docker = "" }
-            Logging = @{ LogLevel = @{ Default = "Information"; Microsoft = "Warning"; "Microsoft.Hosting.Lifetime" = "Information" } }
-            AllowedHosts = "*"
+            ConnectionStrings = @{
+              constr = ""
+              constr_somee = $env:CONSTR_SOMEE
