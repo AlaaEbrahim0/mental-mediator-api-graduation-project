@@ -67,7 +67,7 @@ jobs:
           tags: systematicmess/nexus_api:latest
 
   deploy:
-    name: Publish and deploy to Somee (FTP)
+    name: Publish and deploy to MonsterASP.net (WebDeploy)
     needs: [build, publish]
     runs-on: windows-latest
     steps:
@@ -172,7 +172,7 @@ jobs:
             JwtSettings = @{
               # The issuer must match the URL clients actually call, otherwise
               # token validation fails with a 401 on every request.
-              Issuer = "https://nexus-api-gp.somee.com"
+              Issuer = "http://nexus-api.runasp.net"
               Audience = "https://mental-mediator-doctor-ui-graduation-project.vercel.app"
               Key = $env:JWT_KEY
               Duration = 30
@@ -236,109 +236,55 @@ jobs:
 
           Write-Host "Publish output verified: x86 DLL runtime, in-process, web.config present, no apphost executable."
 
-      - name: Take the app offline before uploading
+      - name: Deploy to MonsterASP.net via WebDeploy
         shell: pwsh
-        run: |
-          # IIS keeps API.dll loaded for the life of the worker process, so a
-          # plain FTP overwrite fails with:
-          #   550 The process cannot access the file because it is being
-          #   used by another process.
-          # app_offline.htm is IIS's supported mechanism for this: IIS sees the
-          # file, immediately shuts the app domain down, and serves the file
-          # contents for every request until it is removed. The running process
-          # then releases its file handles and the upload can proceed.
-          $server = $env:SOMEE_FTP_SERVER
-          $user = $env:SOMEE_FTP_USERNAME
-          $pass = $env:SOMEE_FTP_PASSWORD
-          if ([string]::IsNullOrWhiteSpace($server)) {
-            throw "SOMEE_FTP_SERVER is not configured."
-          }
-
-          $body = '<!DOCTYPE html><html><head><title>Deploying</title></head>' +
-                  '<body><h1>Deployment in progress</h1></body></html>'
-          $remote = "ftp://$server/www.nexus-api-gp.somee.com/app_offline.htm"
-
-          try {
-            $req = [System.Net.FtpWebRequest]::Create($remote)
-            $req.Method = [System.Net.WebRequestMethods+Ftp]::UploadFile
-            $req.Credentials = New-Object System.Net.NetworkCredential($user, $pass)
-            $req.UseBinary = $true
-            $req.UsePassive = $true
-            $req.Timeout = 60000
-            $bytes = [System.Text.Encoding]::UTF8.GetBytes($body)
-            $req.ContentLength = $bytes.Length
-            $stream = $req.GetRequestStream()
-            $stream.Write($bytes, 0, $bytes.Length)
-            $stream.Close()
-            $resp = $req.GetResponse()
-            Write-Host "app_offline.htm published -> FTP $([int]$resp.StatusCode)"
-            $resp.Close()
-          } catch {
-            # A failure here must not block the deploy: if the file could not
-            # be written the upload will surface the same lock error and the
-            # run fails loudly anyway.
-            Write-Host "Could not publish app_offline.htm: $($_.Exception.Message)"
-          }
-
-          # Give IIS a moment to unload the app domain before overwriting files.
-          Start-Sleep -Seconds 10
         env:
-          SOMEE_FTP_SERVER: ${{ secrets.SOMEE_FTP_SERVER }}
-          SOMEE_FTP_USERNAME: ${{ secrets.SOMEE_FTP_USERNAME }}
-          SOMEE_FTP_PASSWORD: ${{ secrets.SOMEE_FTP_PASSWORD }}
-
-      - name: Deploy to Somee via FTP
-        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
-        with:
-          server: ${{ secrets.SOMEE_FTP_SERVER }}
-          username: ${{ secrets.SOMEE_FTP_USERNAME }}
-          password: ${{ secrets.SOMEE_FTP_PASSWORD }}
-          protocol: ftp
-          port: 21
-          local-dir: ./publish/
-          # Somee's FTP root for the site is a subdirectory named after the
-          # host. Uploading to / would land the files outside the site root.
-          server-dir: /www.nexus-api-gp.somee.com/
-          dangerous-clean-slate: false
-          log-level: standard
-
-      - name: Bring the app back online
-        shell: pwsh
+          MSDEPLOY_PASSWORD: ${{ secrets.MONSTERASP_MSDEPLOY_PASSWORD }}
         run: |
-          # Remove app_offline.htm so IIS starts serving the app again. This
-          # step has no `if: always()` guard because a failure to remove it is
-          # itself a real problem - the site would be stuck on the offline page
-          # and the next deploy would fail the same way.
-          $server = $env:SOMEE_FTP_SERVER
-          $user = $env:SOMEE_FTP_USERNAME
-          $pass = $env:SOMEE_FTP_PASSWORD
-          if ([string]::IsNullOrWhiteSpace($server)) { exit 0 }
+          $msdeploy = @(
+            "${env:ProgramFiles}\IIS\Microsoft Web Deploy V3\msdeploy.exe",
+            "${env:ProgramFiles(x86)}\IIS\Microsoft Web Deploy V3\msdeploy.exe"
+          ) | Where-Object { Test-Path $_ } | Select-Object -First 1
 
-          $remote = "ftp://$server/www.nexus-api-gp.somee.com/app_offline.htm"
-          try {
-            $req = [System.Net.FtpWebRequest]::Create($remote)
-            $req.Method = [System.Net.WebRequestMethods+Ftp]::DeleteFile
-            $req.Credentials = New-Object System.Net.NetworkCredential($user, $pass)
-            $req.UsePassive = $true
-            $req.Timeout = 60000
-            $resp = $req.GetResponse()
-            Write-Host "app_offline.htm removed -> FTP $([int]$resp.StatusCode)"
-            $resp.Close()
-          } catch {
-            Write-Host "Could not remove app_offline.htm: $($_.Exception.Message)"
+          if (-not $msdeploy) {
+            $command = Get-Command msdeploy.exe -ErrorAction SilentlyContinue
+            if ($command) { $msdeploy = $command.Source }
           }
-        env:
-          SOMEE_FTP_SERVER: ${{ secrets.SOMEE_FTP_SERVER }}
-          SOMEE_FTP_USERNAME: ${{ secrets.SOMEE_FTP_USERNAME }}
-          SOMEE_FTP_PASSWORD: ${{ secrets.SOMEE_FTP_PASSWORD }}
+          if (-not $msdeploy) {
+            throw "msdeploy.exe was not found on this Windows runner. Install Microsoft Web Deploy before deployment."
+          }
+          if ([string]::IsNullOrWhiteSpace($env:MSDEPLOY_PASSWORD)) {
+            throw "GitHub Actions secret MONSTERASP_MSDEPLOY_PASSWORD is not configured."
+          }
+          if (-not (Test-Path ./publish/web.config) -or -not (Test-Path ./publish/API.dll)) {
+            throw "Publish output is incomplete; expected ./publish/web.config and ./publish/API.dll."
+          }
 
+          $endpoint = "https://site101103.siteasp.net:8172/msdeploy.axd?site=site101103"
+          $arguments = @(
+            "-verb:sync",
+            "-source:contentPath=./publish",
+            "-dest:contentPath=site101103,ComputerName=$endpoint,UserName=site101103,Password=$($env:MSDEPLOY_PASSWORD),AuthType=Basic",
+            "-enableRule:AppOffline",
+            "-retryAttempts:2",
+            "-retryInterval:5000",
+            "-verbose"
+          )
+
+          # Keep credentials in the process arguments only; never print them.
+          & $msdeploy @arguments
+          if ($LASTEXITCODE -ne 0) {
+            throw "WebDeploy failed with exit code $LASTEXITCODE."
+          }
+          Write-Host "WebDeploy synchronization completed."
+          
       - name: Verify deployment
         shell: pwsh
         env:
-          SITE_URL: ${{ vars.PRODUCTION_SITE_URL }}
+          SITE_URL: "http://nexus-api.runasp.net"
         run: |
           if ([string]::IsNullOrWhiteSpace($env:SITE_URL)) {
-            $env:SITE_URL = "https://nexus-api-gp.somee.com"
+            $env:SITE_URL = "http://nexus-api.runasp.net"
           }
 
           # /health is unauthenticated and touches no database and no external
@@ -370,15 +316,15 @@ jobs:
           if (-not $healthy) {
             Write-Host ""
             Write-Host "DIAGNOSIS: the app never answered on /health."
-            Write-Host "Somee serves plain HTML error pages with a 200 status for"
+            Write-Host "The hosting platform may serve HTML error pages for"
             Write-Host "several failure modes, which is why /health is probed first."
             Write-Host ""
             Write-Host "Check, in this order:"
             Write-Host "  1. Control Panel -> Files: is the site root populated (web.config, API.dll)?"
-            Write-Host "     The FTP path is /www.nexus-api-gp.somee.com/ - files outside"
-            Write-Host "     that folder are not part of the site."
-            Write-Host "  2. Control Panel -> IIS Application pool: Application mode must be"
-            Write-Host "     '32 bit' to match the x86 build."
+            Write-Host "     WebDeploy targets the configured site name; verify the destination"
+            Write-Host "     site root contains the deployed files."
+            Write-Host "  2. Control Panel -> IIS Application pool: verify the application pool"
+            Write-Host "     configuration matches the x86 build."
             Write-Host "  3. Control Panel -> Logs -> Event log: Event ID 5011/5059 (worker"
             Write-Host "     process), or 500.19 (malformed web.config)."
             Write-Host "  4. Control Panel -> Logs -> ASP.NET Core debug: enable it and click"
@@ -395,7 +341,7 @@ jobs:
             $swagger = Invoke-WebRequest -Uri $swaggerUrl -UseBasicParsing -TimeoutSec 25
             Write-Host "Swagger UI verified: $swaggerUrl -> HTTP $($swagger.StatusCode)"
           } catch {
-            Write-Host "Swagger did not respond ($($_.Exception.Message)); the health endpoint did, so the app is up."
+            throw "Swagger endpoint verification failed: $($_.Exception.Message)"
           }
 
           Write-Host "Deployment verified."
