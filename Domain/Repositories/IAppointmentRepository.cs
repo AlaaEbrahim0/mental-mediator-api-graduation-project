@@ -29,6 +29,7 @@ public interface IAppointmentRepository
 	/// change conflict checks that can span several days.
 	/// </summary>
 	Task<IEnumerable<Appointment>> GetActiveAppointmentsByDoctorIdInRange(string doctorId, DateTime rangeStart, DateTime rangeEnd, bool trackChanges);
+
 	Task<(int totalAppointments, decimal totalProfit)> GetDoctorStats(string doctorId);
 	Task<(List<WeekdayAppointmentCount> weekdayCounts, List<MonthlyAppointmentCount> monthlyCounts)> GetDoctorAppointmentCounts(string doctorId);
 	Task<List<AppointmentStatusCount>> GetAppointmentStatusCounts(string doctorId);
