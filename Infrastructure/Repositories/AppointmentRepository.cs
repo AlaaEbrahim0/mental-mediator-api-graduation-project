@@ -1,4 +1,4 @@
-﻿using System.Globalization;
+using System.Globalization;
 using Domain.Entities;
 using Domain.Enums;
 using Domain.Repositories;
@@ -149,6 +149,52 @@ public class AppointmentRepository : RepositoryBase<Appointment>, IAppointmentRe
 				trackChanges)
 			.Select(x => new Appointment
 			{
+				StartTime = x.StartTime,
+				Duration = x.Duration,
+				Status = x.Status,
+			})
+			.ToListAsync();
+	}
+
+	/// <summary>
+	/// Active appointments (Pending + Confirmed) whose [StartTime, EndTime)
+	/// window intersects the given calendar day. Pending requests reserve
+	/// their slot too, otherwise two patients could both be told a slot is
+	/// free while the doctor still has to choose only one of them.
+	/// </summary>
+	public async Task<IEnumerable<Appointment>> GetActiveAppointmentsByDoctorIdAndDate(string doctorId, DateTime date, bool trackChanges)
+	{
+		var dayStart = date.Date;
+		var dayEnd = dayStart.AddDays(1);
+
+		return await FindByCondition(x =>
+				x.DoctorId == doctorId &&
+				x.StartTime < dayEnd &&
+				x.StartTime.Add(x.Duration) > dayStart &&
+				(x.Status == AppointmentStatus.Pending || x.Status == AppointmentStatus.Confirmed),
+				trackChanges)
+			.Select(x => new Appointment
+			{
+				Id = x.Id,
+				StartTime = x.StartTime,
+				Duration = x.Duration,
+				Status = x.Status,
+			})
+			.ToListAsync();
+	}
+
+	/// <inheritdoc />
+	public async Task<IEnumerable<Appointment>> GetActiveAppointmentsByDoctorIdInRange(string doctorId, DateTime rangeStart, DateTime rangeEnd, bool trackChanges)
+	{
+		return await FindByCondition(x =>
+				x.DoctorId == doctorId &&
+				x.StartTime < rangeEnd &&
+				x.StartTime.Add(x.Duration) > rangeStart &&
+				(x.Status == AppointmentStatus.Pending || x.Status == AppointmentStatus.Confirmed),
+				trackChanges)
+			.Select(x => new Appointment
+			{
+				Id = x.Id,
 				StartTime = x.StartTime,
 				Duration = x.Duration,
 				Status = x.Status,

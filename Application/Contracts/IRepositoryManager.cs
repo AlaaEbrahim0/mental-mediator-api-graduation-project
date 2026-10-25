@@ -1,4 +1,4 @@
-﻿using Domain.Repositories;
+using Domain.Repositories;
 
 namespace Application.Contracts;
 public interface IRepositoryManager
@@ -14,6 +14,7 @@ public interface IRepositoryManager
 	IUserRepository Users { get; }
 	IDoctorScheduleRepository DoctorSchedule { get; }
 	IAppointmentRepository Appointments { get; }
+	IDoctorScheduleBlockRepository DoctorScheduleBlocks { get; }
 	IDepressionTestResultRepository DepressionTestResults { get; }
 
 	Task SaveAsync();

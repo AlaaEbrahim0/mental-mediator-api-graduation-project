@@ -1,4 +1,4 @@
-﻿using System.Reflection;
+using System.Reflection;
 using Domain.Entities;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
@@ -35,5 +35,6 @@ public class AppDbContext : IdentityDbContext<BaseUser>
 	public DbSet<Admin> Admins { get; set; }
 	public DbSet<Appointment> Appointments { get; set; }
 	public DbSet<DoctorScheduleWeekDay> ScheduleWeekDays { get; set; }
+	public DbSet<DoctorScheduleBlock> DoctorScheduleBlocks { get; set; }
 
 }

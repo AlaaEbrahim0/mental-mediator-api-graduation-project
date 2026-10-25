@@ -1,4 +1,4 @@
-﻿using Application.Contracts;
+using Application.Contracts;
 using Domain.Repositories;
 using Infrastructure.Data;
 
@@ -19,6 +19,7 @@ public class RepositoryManager : IRepositoryManager
 	private readonly Lazy<IChatRoomRepository> chatRoomRepository;
 	private readonly Lazy<IChatMessageRepository> chatMessageRepository;
 	private readonly Lazy<IChatMessageReportRepository> chatMessageReportRepository;
+	private readonly Lazy<IDoctorScheduleBlockRepository> doctorScheduleBlockRepository;
 
 	public RepositoryManager(AppDbContext dbContext)
 	{
@@ -35,6 +36,7 @@ public class RepositoryManager : IRepositoryManager
 		chatRoomRepository = new(() => new ChatRoomRepository(dbContext));
 		chatMessageRepository = new(() => new ChatMessageRepository(dbContext));
 		chatMessageReportRepository = new(() => new ChatMessageReportRepository(dbContext));
+		doctorScheduleBlockRepository = new(() => new DoctorScheduleBlockRepository(dbContext));
 	}
 
 	public IPostRepository Posts => postRepository.Value;
@@ -48,6 +50,7 @@ public class RepositoryManager : IRepositoryManager
 	public IUserRepository Users => userRepository.Value;
 	public IDoctorScheduleRepository DoctorSchedule => weeklyScheduleRepository.Value;
 	public IAppointmentRepository Appointments => appointementRepository.Value;
+	public IDoctorScheduleBlockRepository DoctorScheduleBlocks => doctorScheduleBlockRepository.Value;
 	public IDepressionTestResultRepository DepressionTestResults => depressionTestResultRepository.Value;
 
 	public async Task SaveAsync() => await _dbContext.SaveChangesAsync();

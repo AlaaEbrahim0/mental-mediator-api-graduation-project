@@ -1,4 +1,4 @@
-﻿using System.Globalization;
+using System.Globalization;
 using System.Security.Claims;
 using System.Text;
 using System.Text.Json.Serialization;
@@ -137,6 +137,7 @@ public static class DependencyInjection
 		services.AddScoped<IUserRepository, UserRepository>();
 		services.AddScoped<IAppointmentRepository, AppointmentRepository>();
 		services.AddScoped<IDoctorScheduleRepository, DoctorScheduleRepository>();
+		services.AddScoped<IDoctorScheduleBlockRepository, DoctorScheduleBlockRepository>();
 		services.AddScoped<IDepressionTestResultRepository, DepressionTestResultRepository>();
 		return services;
 	}
