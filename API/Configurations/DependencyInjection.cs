@@ -1,6 +1,8 @@
-﻿using System.Security.Claims;
+﻿using System.Globalization;
+using System.Security.Claims;
 using System.Text;
 using System.Text.Json.Serialization;
+using System.Threading.RateLimiting;
 using Application.Contracts;
 using Application.Dtos.WeeklyScheduleDtos;
 using Application.Options;
@@ -13,6 +15,7 @@ using FluentValidation.AspNetCore;
 using Infrastructure.Caching;
 using Infrastructure.Clients;
 using Infrastructure.Data;
+using Infrastructure.Hubs;
 using Infrastructure.Repositories;
 using Infrastructure.Services;
 using Infrastructure.Utilities;
@@ -20,6 +23,8 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
@@ -125,6 +130,9 @@ public static class DependencyInjection
 		services.AddScoped<ICommentRepository, CommentRepository>();
 		services.AddScoped<IReplyRepository, ReplyRepository>();
 		services.AddScoped<INotificationRepository, NotificationRepository>();
+		services.AddScoped<IChatRoomRepository, ChatRoomRepository>();
+		services.AddScoped<IChatMessageRepository, ChatMessageRepository>();
+		services.AddScoped<IChatMessageReportRepository, ChatMessageReportRepository>();
 		services.AddScoped<IDoctorRepository, DoctorRepository>();
 		services.AddScoped<IUserRepository, UserRepository>();
 		services.AddScoped<IAppointmentRepository, AppointmentRepository>();
@@ -170,6 +178,20 @@ public static class DependencyInjection
 			config.BaseAddress = new Uri(baseAddress!);
 		});
 
+		// Chat moderation is deliberately isolated from the existing ML client:
+		// it gets its own short timeout and is called on the chat path only.
+		services.AddHttpClient("chat-ml-client", config =>
+		{
+			var baseAddress = configuration["MLServerAddress"];
+			if (string.IsNullOrWhiteSpace(baseAddress))
+			{
+				throw new InvalidOperationException("MLServerAddress must be configured for chat moderation.");
+			}
+
+			config.BaseAddress = new Uri(baseAddress);
+			config.Timeout = TimeSpan.FromSeconds(3);
+		});
+		services.AddScoped<IChatContentModerator, ChatContentModerator>();
 
 		return services;
 	}
@@ -195,7 +217,16 @@ public static class DependencyInjection
 			.AddTransient<IMailService, MailService>()
 			.AddScoped<IDepressionTestService, DepressionTestService>()
 			.AddScoped<IAdminService, AdminService>()
-			.AddSignalR();
+			.AddScoped<IChatService, ChatService>()
+			.AddSingleton<IChatConnectionRegistry, ChatConnectionRegistry>()
+			.AddSingleton<IChatRealtimeNotifier, ChatRealtimeNotifier>()
+			.AddSignalR()
+			.AddJsonProtocol(options =>
+			{
+				// Keep hub payload enums consistent with the REST API, which
+				// already serializes enums as strings.
+				options.PayloadSerializerOptions.Converters.Add(new JsonStringEnumConverter());
+			});
 
 		// On shared IIS hosting the app pool has neither a user profile nor the
 		// HKLM registry, so the default data-protection provider warns that it
@@ -229,6 +260,81 @@ public static class DependencyInjection
 
 		return services;
 	}
+
+	public static IServiceCollection ConfigureRateLimiting(this IServiceCollection services)
+	{
+		services.AddRateLimiter(options =>
+		{
+			options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+
+			options.AddPolicy(RateLimitPolicies.ChatMessages, context =>
+				RateLimitPartition.GetFixedWindowLimiter(
+					GetRateLimitPartitionKey(context),
+					_ => new FixedWindowRateLimiterOptions
+					{
+						PermitLimit = 30,
+						Window = TimeSpan.FromMinutes(1),
+						QueueLimit = 0,
+						AutoReplenishment = true
+					}));
+
+			options.AddPolicy(RateLimitPolicies.ChatRoomCreation, context =>
+				RateLimitPartition.GetFixedWindowLimiter(
+					GetRateLimitPartitionKey(context),
+					_ => new FixedWindowRateLimiterOptions
+					{
+						PermitLimit = 5,
+						Window = TimeSpan.FromHours(1),
+						QueueLimit = 0,
+						AutoReplenishment = true
+					}));
+
+			options.AddPolicy(RateLimitPolicies.ChatReports, context =>
+				RateLimitPartition.GetFixedWindowLimiter(
+					GetRateLimitPartitionKey(context),
+					_ => new FixedWindowRateLimiterOptions
+					{
+						PermitLimit = 10,
+						Window = TimeSpan.FromHours(1),
+						QueueLimit = 0,
+						AutoReplenishment = true
+					}));
+
+			options.OnRejected = async (context, cancellationToken) =>
+			{
+				context.HttpContext.Response.StatusCode = StatusCodes.Status429TooManyRequests;
+				context.HttpContext.Response.ContentType = "application/problem+json";
+
+				if (context.Lease.TryGetMetadata(MetadataName.RetryAfter, out var retryAfter))
+				{
+					context.HttpContext.Response.Headers.RetryAfter =
+						Math.Ceiling(retryAfter.TotalSeconds).ToString(CultureInfo.InvariantCulture);
+				}
+
+				await context.HttpContext.Response.WriteAsJsonAsync(
+					new ProblemDetails
+					{
+						Status = StatusCodes.Status429TooManyRequests,
+						Title = "Too Many Requests",
+						Detail = "You have reached the rate limit for this action. Please try again later."
+					},
+					cancellationToken);
+			};
+		});
+
+		return services;
+	}
+
+	private static string GetRateLimitPartitionKey(HttpContext context)
+	{
+		var userId = context.User.FindFirst("uid")?.Value
+			?? context.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+		return string.IsNullOrWhiteSpace(userId)
+			? context.Connection.RemoteIpAddress?.ToString() ?? "anonymous"
+			: userId;
+	}
+
 	public static IServiceCollection ConfigureCaching(this IServiceCollection services)
 	{
 		services
@@ -279,8 +385,15 @@ public static class DependencyInjection
 					OnMessageReceived = context =>
 					{
 						var accessToken = context.Request.Query["access_token"];
+						var path = context.HttpContext.Request.Path;
+
+						// Query-string tokens are limited to the hub paths. REST
+						// endpoints must continue to use the Authorization header.
+						// Production request logging stays at Warning so the token
+						// is not written to logs.
 						if (!string.IsNullOrEmpty(accessToken) &&
-							context.HttpContext.Request.Path.StartsWithSegments("/notification-hub"))
+							(path.StartsWithSegments("/notification-hub") ||
+							 path.StartsWithSegments("/chat-hub")))
 						{
 							context.Token = accessToken;
 						}

@@ -25,6 +25,10 @@ public class AppDbContext : IdentityDbContext<BaseUser>
 	public DbSet<Comment> Comments { get; set; }
 	public DbSet<Reply> Replies { get; set; }
 	public DbSet<Notification> Notifications { get; set; }
+	public DbSet<ChatRoom> ChatRooms { get; set; }
+	public DbSet<ChatRoomMember> ChatRoomMembers { get; set; }
+	public DbSet<ChatMessage> ChatMessages { get; set; }
+	public DbSet<ChatMessageReport> ChatMessageReports { get; set; }
 	public DbSet<User> AppUsers { get; set; }
 	public DbSet<Doctor> Doctors { get; set; }
 	public DbSet<User> Clients { get; set; }

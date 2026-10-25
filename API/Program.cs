@@ -50,6 +50,7 @@ builder.Services
     .ConfigureRepositories()
     .ConfigureAutoMapper()
     .ConfigureServices()
+    .ConfigureRateLimiting()
     .ConfigureCaching()
     .ConfigureHttpClients(builder.Configuration, builder.Environment.IsDevelopment());
 
@@ -94,9 +95,12 @@ app.UseAuthentication();
 
 app.UseAuthorization();
 
+app.UseRateLimiter();
+
 app.MapControllers();
 
 app.MapHub<NotificationHub>("notification-hub");
+app.MapHub<ChatHub>("chat-hub");
 
 app.MapGet("/error", () => Results.Problem(
     title: "An error occurred",

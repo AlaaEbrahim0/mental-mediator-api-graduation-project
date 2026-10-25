@@ -10,7 +10,22 @@ public static class ResultExtensions
 			throw new InvalidOperationException();
 		}
 
-		var errorType = result.Error.ErrorType;
+		return CreateProblemDetails(result.Error);
+	}
+
+	public static IActionResult ToProblemDetails(this Result result)
+	{
+		if (result.IsSuccess)
+		{
+			throw new InvalidOperationException();
+		}
+
+		return CreateProblemDetails(result.Error);
+	}
+
+	private static IActionResult CreateProblemDetails(Error error)
+	{
+		var errorType = error.ErrorType;
 
 		var statusCode = GetStatusCode(errorType);
 		var title = GetTitle(errorType);
@@ -22,8 +37,8 @@ public static class ResultExtensions
 		{
 			Status = statusCode,
 			Title = title,
-			Detail = result.Error.Description,
-			Extensions = { { "errors", new[] { result.Error } } }
+			Detail = error.Description,
+			Extensions = { { "errors", new[] { error } } }
 		};
 
 		return new ObjectResult(problemDetails)
