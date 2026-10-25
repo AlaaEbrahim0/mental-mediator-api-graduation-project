@@ -8,6 +8,7 @@ using Application.Dtos.CommentsDtos;
 using Application.Dtos.DepressionTestDtos;
 using Application.Dtos.PostsDto;
 using Application.Dtos.ReplyDtos;
+using Application.Dtos.SchedulingDtos;
 using Application.Dtos.UserDtos;
 using Application.Dtos.WeeklyScheduleDtos;
 using AutoMapper;
@@ -67,6 +68,18 @@ public class MappingProfile : Profile
 		CreateMap<CreateAppointmentRequest, Appointment>();
 
 		CreateMap<DepressionTestResult, DepressionTestResultResponse>();
+
+		CreateMap<CreateRecurringBreakRequest, DoctorRecurringBreak>();
+		CreateMap<DoctorRecurringBreak, RecurringBreakResponse>();
+
+		CreateMap<CreateAvailabilityOverrideRequest, DoctorAvailabilityOverride>();
+		CreateMap<DoctorAvailabilityOverride, AvailabilityOverrideResponse>();
+
+		CreateMap<CreateTimeBlockRequest, DoctorTimeBlock>();
+		CreateMap<DoctorTimeBlock, TimeBlockResponse>();
+
+		CreateMap<UpdateSchedulingSettingsRequest, DoctorSchedulingSettings>();
+		CreateMap<DoctorSchedulingSettings, SchedulingSettingsResponse>();
 
 	}
 }

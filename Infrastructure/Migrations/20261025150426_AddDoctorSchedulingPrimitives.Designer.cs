@@ -12,8 +12,8 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Infrastructure.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20261025130411_AddDoctorScheduleBlocks")]
-    partial class AddDoctorScheduleBlocks
+    [Migration("20261025150426_AddDoctorSchedulingPrimitives")]
+    partial class AddDoctorSchedulingPrimitives
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -441,7 +441,7 @@ namespace Infrastructure.Migrations
                     b.ToTable("DepressionTestResult");
                 });
 
-            modelBuilder.Entity("Domain.Entities.DoctorScheduleBlock", b =>
+            modelBuilder.Entity("Domain.Entities.DoctorAvailabilityOverride", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -449,32 +449,69 @@ namespace Infrastructure.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
+                    b.Property<DateOnly>("Date")
+                        .HasColumnType("date");
+
                     b.Property<string>("DoctorId")
                         .IsRequired()
                         .HasColumnType("nvarchar(450)");
 
-                    b.Property<DateTime>("EndTime")
-                        .HasColumnType("datetime2");
+                    b.Property<TimeSpan?>("EndTime")
+                        .HasColumnType("time");
 
-                    b.Property<string>("Reason")
-                        .IsRequired()
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("PrivateReason")
                         .HasMaxLength(500)
                         .HasColumnType("nvarchar(500)");
 
-                    b.Property<int>("Recurrence")
+                    b.Property<TimeSpan?>("StartTime")
+                        .HasColumnType("time");
+
+                    b.Property<int>("Type")
                         .HasColumnType("int");
-
-                    b.Property<DateTime?>("RecurrenceEndDate")
-                        .HasColumnType("datetime2");
-
-                    b.Property<DateTime>("StartTime")
-                        .HasColumnType("datetime2");
 
                     b.HasKey("Id");
 
-                    b.HasIndex("DoctorId", "StartTime");
+                    b.HasIndex("DoctorId", "Date", "Type", "IsActive");
 
-                    b.ToTable("DoctorScheduleBlocks");
+                    b.ToTable("DoctorAvailabilityOverrides", (string)null);
+                });
+
+            modelBuilder.Entity("Domain.Entities.DoctorRecurringBreak", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("DayOfWeek")
+                        .HasColumnType("int");
+
+                    b.Property<string>("DoctorId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<TimeSpan>("EndTime")
+                        .HasColumnType("time");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Name")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<TimeSpan>("StartTime")
+                        .HasColumnType("time");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("DoctorId", "DayOfWeek", "StartTime", "EndTime");
+
+                    b.ToTable("DoctorRecurringBreaks", (string)null);
                 });
 
             modelBuilder.Entity("Domain.Entities.DoctorScheduleWeekDay", b =>
@@ -497,6 +534,83 @@ namespace Infrastructure.Migrations
                     b.HasKey("DoctorId", "DayOfWeek");
 
                     b.ToTable("ScheduleWeekDays");
+                });
+
+            modelBuilder.Entity("Domain.Entities.DoctorSchedulingSettings", b =>
+                {
+                    b.Property<string>("DoctorId")
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<int>("BufferAfterMinutes")
+                        .HasColumnType("int");
+
+                    b.Property<int>("BufferBeforeMinutes")
+                        .HasColumnType("int");
+
+                    b.Property<int>("MaxBookingDaysAhead")
+                        .HasColumnType("int");
+
+                    b.Property<int>("MinimumNoticeMinutes")
+                        .HasColumnType("int");
+
+                    b.Property<int>("SlotIncrementMinutes")
+                        .HasColumnType("int");
+
+                    b.Property<string>("TimeZoneId")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)");
+
+                    b.HasKey("DoctorId");
+
+                    b.ToTable("DoctorSchedulingSettings", (string)null);
+                });
+
+            modelBuilder.Entity("Domain.Entities.DoctorTimeBlock", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime?>("CancelledAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("CreatedByUserId")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("DoctorId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<DateTime>("EndTimeUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("IsCancelled")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("PrivateReason")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<DateTime>("StartTimeUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("Type")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("UpdatedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("DoctorId", "StartTimeUtc", "EndTimeUtc", "IsCancelled");
+
+                    b.ToTable("DoctorTimeBlocks", (string)null);
                 });
 
             modelBuilder.Entity("Domain.Entities.Notification", b =>
@@ -954,10 +1068,21 @@ namespace Infrastructure.Migrations
                     b.Navigation("User");
                 });
 
-            modelBuilder.Entity("Domain.Entities.DoctorScheduleBlock", b =>
+            modelBuilder.Entity("Domain.Entities.DoctorAvailabilityOverride", b =>
                 {
                     b.HasOne("Domain.Entities.Doctor", "Doctor")
-                        .WithMany()
+                        .WithMany("AvailabilityOverrides")
+                        .HasForeignKey("DoctorId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Doctor");
+                });
+
+            modelBuilder.Entity("Domain.Entities.DoctorRecurringBreak", b =>
+                {
+                    b.HasOne("Domain.Entities.Doctor", "Doctor")
+                        .WithMany("RecurringBreaks")
                         .HasForeignKey("DoctorId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
@@ -969,6 +1094,28 @@ namespace Infrastructure.Migrations
                 {
                     b.HasOne("Domain.Entities.Doctor", "Doctor")
                         .WithMany("DoctorScheduleWeekDays")
+                        .HasForeignKey("DoctorId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Doctor");
+                });
+
+            modelBuilder.Entity("Domain.Entities.DoctorSchedulingSettings", b =>
+                {
+                    b.HasOne("Domain.Entities.Doctor", "Doctor")
+                        .WithOne("SchedulingSettings")
+                        .HasForeignKey("Domain.Entities.DoctorSchedulingSettings", "DoctorId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Doctor");
+                });
+
+            modelBuilder.Entity("Domain.Entities.DoctorTimeBlock", b =>
+                {
+                    b.HasOne("Domain.Entities.Doctor", "Doctor")
+                        .WithMany("TimeBlocks")
                         .HasForeignKey("DoctorId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
@@ -1133,7 +1280,15 @@ namespace Infrastructure.Migrations
                 {
                     b.Navigation("Appointments");
 
+                    b.Navigation("AvailabilityOverrides");
+
                     b.Navigation("DoctorScheduleWeekDays");
+
+                    b.Navigation("RecurringBreaks");
+
+                    b.Navigation("SchedulingSettings");
+
+                    b.Navigation("TimeBlocks");
                 });
 
             modelBuilder.Entity("Domain.Entities.User", b =>

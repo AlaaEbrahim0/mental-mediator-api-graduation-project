@@ -138,24 +138,6 @@ public class AppointmentRepository : RepositoryBase<Appointment>, IAppointmentRe
 			.ToListAsync();
 	}
 
-	public async Task<IEnumerable<Appointment>> GetByDoctorIdAndDate(string doctorId, DateTime date, bool trackChanges)
-	{
-		return await
-			FindByCondition(x =>
-				x.DoctorId == doctorId &&
-				x.StartTime >= date && x.StartTime < date.AddDays(1) &&
-				x.Status == AppointmentStatus.Confirmed
-				,
-				trackChanges)
-			.Select(x => new Appointment
-			{
-				StartTime = x.StartTime,
-				Duration = x.Duration,
-				Status = x.Status,
-			})
-			.ToListAsync();
-	}
-
 	/// <summary>
 	/// Active appointments (Pending + Confirmed) whose [StartTime, EndTime)
 	/// window intersects the given calendar day. Pending requests reserve

@@ -20,9 +20,10 @@ public class AppointmentService : IAppointmentService
 	private readonly ICacheService _cacheService;
 	private readonly INotificationService _notificationService;
 	private readonly IMailService _mailService;
+	private readonly IDoctorSchedulingService _schedulingService;
 	private readonly ILogger<AppointmentService> _logger;
 
-	public AppointmentService(IRepositoryManager repos, IMapper mapper, IUserClaimsService userClaimsService, IHateSpeechDetector hateSpeechDetector, IStorageService storageService, ICacheService cacheService, INotificationService notificationService, IMailService mailService, ILogger<AppointmentService> logger)
+	public AppointmentService(IRepositoryManager repos, IMapper mapper, IUserClaimsService userClaimsService, IHateSpeechDetector hateSpeechDetector, IStorageService storageService, ICacheService cacheService, INotificationService notificationService, IMailService mailService, IDoctorSchedulingService schedulingService, ILogger<AppointmentService> logger)
 	{
 		_repos = repos;
 		_mapper = mapper;
@@ -32,6 +33,7 @@ public class AppointmentService : IAppointmentService
 		_cacheService = cacheService;
 		_notificationService = notificationService;
 		_mailService = mailService;
+		_schedulingService = schedulingService;
 		_logger = logger;
 	}
 
@@ -173,6 +175,19 @@ public class AppointmentService : IAppointmentService
 		var photoUrl = _userClaimsService.GetPhotoUrl();
 		var userEmail = _userClaimsService.GetEmail();
 		var appointment = _mapper.Map<Appointment>(request);
+
+		// Enforce the same availability rules the slot calculator uses, so a
+		// client cannot book a slot the calculator would never have offered
+		// (outside working hours, on a break, or on top of another appointment).
+		var bookingValidation = await _schedulingService.ValidateBookingTimeAsync(
+			doctorId,
+			request.StartTime,
+			request.Duration);
+
+		if (bookingValidation.IsFailure)
+		{
+			return bookingValidation.Error;
+		}
 
 		appointment.DoctorId = doctorId;
 		appointment.UserId = userId;

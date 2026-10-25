@@ -14,7 +14,7 @@ public interface IRepositoryManager
 	IUserRepository Users { get; }
 	IDoctorScheduleRepository DoctorSchedule { get; }
 	IAppointmentRepository Appointments { get; }
-	IDoctorScheduleBlockRepository DoctorScheduleBlocks { get; }
+	IDoctorSchedulingRepository DoctorScheduling { get; }
 	IDepressionTestResultRepository DepressionTestResults { get; }
 
 	Task SaveAsync();

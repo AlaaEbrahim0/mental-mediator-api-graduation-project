@@ -13,11 +13,13 @@ public class DoctorController : ControllerBase
 {
 	private readonly IDoctorService _doctorService;
 	private readonly INotificationService _notificationService;
+	private readonly IDoctorSchedulingService _schedulingService;
 
-	public DoctorController(IDoctorService userService, INotificationService notificationService)
+	public DoctorController(IDoctorService userService, INotificationService notificationService, IDoctorSchedulingService schedulingService)
 	{
 		_doctorService = userService;
 		_notificationService = notificationService;
+		_schedulingService = schedulingService;
 	}
 
 	[HttpGet]
@@ -49,7 +51,12 @@ public class DoctorController : ControllerBase
 	[Authorize]
 	public async Task<IActionResult> GetAvailableSlots(string id, [FromQuery] DateTime dateTime)
 	{
-		var result = await _doctorService.GetAvailableSlots(id, dateTime);
+		// The scheduling-aware calculator owns this endpoint: it honours breaks,
+		// overrides, time blocks and per-doctor settings. The legacy TimeSpan
+		// calculator in IDoctorService was removed rather than kept alongside
+		// it, so there is one definition of "available".
+		var date = DateOnly.FromDateTime(dateTime);
+		var result = await _schedulingService.GetAvailableSlotsAsync(id, date);
 		if (result.IsFailure)
 		{
 			return result.ToProblemDetails();

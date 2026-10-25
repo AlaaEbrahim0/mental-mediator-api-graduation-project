@@ -137,7 +137,7 @@ public static class DependencyInjection
 		services.AddScoped<IUserRepository, UserRepository>();
 		services.AddScoped<IAppointmentRepository, AppointmentRepository>();
 		services.AddScoped<IDoctorScheduleRepository, DoctorScheduleRepository>();
-		services.AddScoped<IDoctorScheduleBlockRepository, DoctorScheduleBlockRepository>();
+		services.AddScoped<IDoctorSchedulingRepository, DoctorSchedulingRepository>();
 		services.AddScoped<IDepressionTestResultRepository, DepressionTestResultRepository>();
 		return services;
 	}
@@ -208,6 +208,7 @@ public static class DependencyInjection
 			.AddScoped<INotificationSender, NotificationSender>()
 			.AddScoped<IAppointmentService, AppointmentService>()
 			.AddScoped<IWeeklyScheduleService, WeeklyScheduleService>()
+			.AddScoped<IDoctorSchedulingService, DoctorSchedulingService>()
 			.AddScoped<ClaimsPrincipal>()
 			.AddScoped<MachineLearningService>()
 			.AddTransient<MailTemplates>()

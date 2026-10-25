@@ -13,7 +13,6 @@ public interface IAppointmentRepository
 	void DeleteAppointment(Appointment appointment);
 	void UpdateAppointment(Appointment appointment);
 	Task<Appointment?> GetById(int appointmentId, bool trackChanges);
-	Task<IEnumerable<Appointment>> GetByDoctorIdAndDate(string doctorId, DateTime date, bool trackChanges);
 
 	/// <summary>
 	/// Appointments that currently reserve the doctor's time for the given
