@@ -11,5 +11,8 @@ public class Doctor : BaseUser
 	public DoctorSpecialization Specialization { get; set; }
 	public List<Appointment> Appointments { get; set; } = new();
 	public List<DoctorScheduleWeekDay> DoctorScheduleWeekDays { get; set; } = new();
+	public List<DoctorRecurringBreak> RecurringBreaks { get; set; } = new();
+	public List<DoctorAvailabilityOverride> AvailabilityOverrides { get; set; } = new();
+	public List<DoctorTimeBlock> TimeBlocks { get; set; } = new();
+	public DoctorSchedulingSettings? SchedulingSettings { get; set; }
 }
-
