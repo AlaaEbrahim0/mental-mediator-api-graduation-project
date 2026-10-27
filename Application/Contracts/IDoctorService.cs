@@ -12,7 +12,6 @@ public interface IDoctorService
 	Task<Result<DoctorInfoResponse>> GetCurrentDoctorInfo();
 	Task<Result<DoctorInfoResponse>> UpdateDoctorInfo(string id, UpdateDoctorInfoRequest request);
 	Task<Result<DoctorInfoResponse>> UpdateCurrentDoctorInfo(UpdateDoctorInfoRequest request);
-	IWeeklyScheduleService WeeklyScheduleService { get; }
 
 	Task<Result<DoctorInfoResponse>> DeleteDoctor(string doctorId);
 	Task<Result<DoctorReportResponse>> GetReports();

@@ -1,27 +1,21 @@
-﻿using Application.Dtos.NotificationDtos;
-
-namespace API.Configurations;
-
-using Application.Dtos.AppointmentDtos;
+﻿using Application.Dtos.AppointmentDtos;
 using Application.Dtos.AuthDtos;
 using Application.Dtos.CommentsDtos;
 using Application.Dtos.DepressionTestDtos;
+using Application.Dtos.NotificationDtos;
 using Application.Dtos.PostsDto;
 using Application.Dtos.ReplyDtos;
-using Application.Dtos.SchedulingDtos;
 using Application.Dtos.UserDtos;
-using Application.Dtos.WeeklyScheduleDtos;
 using AutoMapper;
 using Domain.Entities;
 using Shared;
 
+namespace API.Configurations;
 
 public class MappingProfile : Profile
 {
-
 	public MappingProfile()
 	{
-
 		CreateMap<Post, PostResponse>();
 		CreateMap<CreatePostRequest, Post>();
 		CreateMap<UpdatePostRequest, Post>().ReverseMap();
@@ -37,14 +31,12 @@ public class MappingProfile : Profile
 		CreateMap<UpdateUserInfoRequest, User>();
 		CreateMap<UpdateDoctorInfoRequest, Doctor>();
 
-
 		CreateMap<User, UserInfoResponse>();
 		CreateMap<Admin, UserInfoResponse>();
 		CreateMap<Doctor, DoctorInfoResponse>();
 
 		CreateMap<Notification, NotificationResponse>()
-		.ForMember(dest => dest.Resources, src =>
-				src.MapFrom(m => m.ResourcesObject));
+			.ForMember(dest => dest.Resources, src => src.MapFrom(m => m.ResourcesObject));
 
 		CreateMap<RegisterationRequest, BaseUser>()
 			.IncludeAllDerived();
@@ -53,33 +45,16 @@ public class MappingProfile : Profile
 		CreateMap<RegisterationRequest, Doctor>();
 		CreateMap<RegisterationRequest, Admin>();
 
-		CreateMap<CreateScheduleWeekDayRequest, DoctorScheduleWeekDay>();
-		CreateMap<UpdateScheduleWeekDayRequest, DoctorScheduleWeekDay>();
-
-		CreateMap<CreateDoctorWeeklyScheduleRequest, WeeklySchedule>();
-
-		CreateMap<DoctorScheduleWeekDay, WeekDayResponse>();
-
-		CreateMap<WeeklySchedule, DoctorWeeklyScheduleResponse>()
-			.ForMember(x => x.DoctorId, src => src.MapFrom(x => x.WeekDays.Select(x => x.DoctorId).First()))
-			.ForMember(x => x.WeekDays, src => src.MapFrom(x => x.WeekDays));
-
-		CreateMap<Appointment, AppointmentResponse>();
-		CreateMap<CreateAppointmentRequest, Appointment>();
+		CreateMap<Appointment, AppointmentResponse>()
+			// SQL Server returns DateTime values without a kind. Appointment
+			// instants are UTC by contract, so keep the trailing "Z" in JSON;
+			// otherwise clients interpret the value in their own time zone.
+			.ForMember(dest => dest.StartTime, src =>
+				src.MapFrom(appointment => DateTime.SpecifyKind(appointment.StartTime, DateTimeKind.Utc)));
+		CreateMap<CreateAppointmentRequest, Appointment>()
+			.ForMember(dest => dest.Duration, src => src.Ignore())
+			.ForMember(dest => dest.Fees, src => src.Ignore());
 
 		CreateMap<DepressionTestResult, DepressionTestResultResponse>();
-
-		CreateMap<CreateRecurringBreakRequest, DoctorRecurringBreak>();
-		CreateMap<DoctorRecurringBreak, RecurringBreakResponse>();
-
-		CreateMap<CreateAvailabilityOverrideRequest, DoctorAvailabilityOverride>();
-		CreateMap<DoctorAvailabilityOverride, AvailabilityOverrideResponse>();
-
-		CreateMap<CreateTimeBlockRequest, DoctorTimeBlock>();
-		CreateMap<DoctorTimeBlock, TimeBlockResponse>();
-
-		CreateMap<UpdateSchedulingSettingsRequest, DoctorSchedulingSettings>();
-		CreateMap<DoctorSchedulingSettings, SchedulingSettingsResponse>();
-
 	}
 }

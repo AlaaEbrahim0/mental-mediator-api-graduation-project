@@ -18,6 +18,16 @@ public class AppointmentRepository : RepositoryBase<Appointment>, IAppointmentRe
 		Create(appointment);
 	}
 
+	public Task<IAppointmentBookingLock> AcquireBookingLockAsync(string doctorId)
+	{
+		if (!_dbContext.Database.IsSqlServer())
+		{
+			return Task.FromResult<IAppointmentBookingLock>(NoOpAppointmentBookingLock.Instance);
+		}
+
+		return SqlServerAppointmentBookingLock.AcquireAsync(_dbContext, doctorId);
+	}
+
 	public void DeleteAppointment(Appointment appointment)
 	{
 		Delete(appointment);
@@ -139,6 +149,24 @@ public class AppointmentRepository : RepositoryBase<Appointment>, IAppointmentRe
 	}
 
 	/// <summary>
+	/// Appointments are persisted as a start plus an elapsed duration, so the
+	/// end is not a column SQL Server can compare directly. EF Core cannot
+	/// translate DateTime.Add(TimeSpan) either. Read the small window that
+	/// could possibly overlap, then apply the half-open check in memory.
+	/// Durations are capped at eight hours by the request validator, so a
+	/// two-day lookback covers every real appointment without scanning the
+	/// doctor's whole history.
+	/// </summary>
+	private const int AppointmentLookbackDays = 2;
+
+	private static DateTime LookbackStart(DateTime rangeStart)
+	{
+		return rangeStart <= DateTime.MinValue.AddDays(AppointmentLookbackDays)
+			? DateTime.MinValue
+			: rangeStart.AddDays(-AppointmentLookbackDays);
+	}
+
+	/// <summary>
 	/// Active appointments (Pending + Confirmed) whose [StartTime, EndTime)
 	/// window intersects the given calendar day. Pending requests reserve
 	/// their slot too, otherwise two patients could both be told a slot is
@@ -148,11 +176,12 @@ public class AppointmentRepository : RepositoryBase<Appointment>, IAppointmentRe
 	{
 		var dayStart = date.Date;
 		var dayEnd = dayStart.AddDays(1);
+		var lookbackStart = LookbackStart(dayStart);
 
-		return await FindByCondition(x =>
+		var candidates = await FindByCondition(x =>
 				x.DoctorId == doctorId &&
 				x.StartTime < dayEnd &&
-				x.StartTime.Add(x.Duration) > dayStart &&
+				x.StartTime >= lookbackStart &&
 				(x.Status == AppointmentStatus.Pending || x.Status == AppointmentStatus.Confirmed),
 				trackChanges)
 			.Select(x => new Appointment
@@ -163,15 +192,21 @@ public class AppointmentRepository : RepositoryBase<Appointment>, IAppointmentRe
 				Status = x.Status,
 			})
 			.ToListAsync();
+
+		return candidates
+			.Where(x => x.StartTime.Add(x.Duration) > dayStart)
+			.ToList();
 	}
 
 	/// <inheritdoc />
 	public async Task<IEnumerable<Appointment>> GetActiveAppointmentsByDoctorIdInRange(string doctorId, DateTime rangeStart, DateTime rangeEnd, bool trackChanges)
 	{
-		return await FindByCondition(x =>
+		var lookbackStart = LookbackStart(rangeStart);
+
+		var candidates = await FindByCondition(x =>
 				x.DoctorId == doctorId &&
 				x.StartTime < rangeEnd &&
-				x.StartTime.Add(x.Duration) > rangeStart &&
+				x.StartTime >= lookbackStart &&
 				(x.Status == AppointmentStatus.Pending || x.Status == AppointmentStatus.Confirmed),
 				trackChanges)
 			.Select(x => new Appointment
@@ -182,6 +217,10 @@ public class AppointmentRepository : RepositoryBase<Appointment>, IAppointmentRe
 				Status = x.Status,
 			})
 			.ToListAsync();
+
+		return candidates
+			.Where(x => x.StartTime.Add(x.Duration) > rangeStart)
+			.ToList();
 	}
 
 	public async Task<Appointment?> GetById(int appointmentId, bool trackChanges)

@@ -15,19 +15,25 @@ public interface IAppointmentRepository
 	Task<Appointment?> GetById(int appointmentId, bool trackChanges);
 
 	/// <summary>
-	/// Appointments that currently reserve the doctor's time for the given
-	/// date: Pending requests hold their slot until the doctor confirms or
-	/// rejects them, and Confirmed appointments are booked. Cancelled,
-	/// rejected and completed appointments do not reserve time.
+	/// Appointments that currently reserve the doctor's time: Pending requests
+	/// hold their slot until confirmed or rejected, and Confirmed appointments
+	/// are booked. Cancelled, rejected and completed appointments do not
+	/// reserve time.
 	/// </summary>
 	Task<IEnumerable<Appointment>> GetActiveAppointmentsByDoctorIdAndDate(string doctorId, DateTime date, bool trackChanges);
 
 	/// <summary>
-	/// Appointments that reserve the doctor's time inside [rangeStart,
-	/// rangeEnd) regardless of which day they start on. Used by schedule
-	/// change conflict checks that can span several days.
+	/// Active appointments whose [StartTime, StartTime + Duration) window
+	/// intersects [rangeStart, rangeEnd).
 	/// </summary>
 	Task<IEnumerable<Appointment>> GetActiveAppointmentsByDoctorIdInRange(string doctorId, DateTime rangeStart, DateTime rangeEnd, bool trackChanges);
+
+	/// <summary>
+	/// Acquires a database-backed, transaction-scoped lock for the doctor.
+	/// Must be held while availability is revalidated and the appointment is
+	/// inserted, then committed before the lock is disposed.
+	/// </summary>
+	Task<IAppointmentBookingLock> AcquireBookingLockAsync(string doctorId);
 
 	Task<(int totalAppointments, decimal totalProfit)> GetDoctorStats(string doctorId);
 	Task<(List<WeekdayAppointmentCount> weekdayCounts, List<MonthlyAppointmentCount> monthlyCounts)> GetDoctorAppointmentCounts(string doctorId);

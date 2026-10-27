@@ -49,14 +49,50 @@ public class DoctorController : ControllerBase
 
 	[HttpGet("{id}/slots")]
 	[Authorize]
-	public async Task<IActionResult> GetAvailableSlots(string id, [FromQuery] DateTime dateTime)
+	public async Task<IActionResult> GetAvailableSlots(
+		string id,
+		[FromQuery] DateOnly? date,
+		[FromQuery] DateOnly? from,
+		[FromQuery] DateOnly? to)
 	{
-		// The scheduling-aware calculator owns this endpoint: it honours breaks,
-		// overrides, time blocks and per-doctor settings. The legacy TimeSpan
-		// calculator in IDoctorService was removed rather than kept alongside
-		// it, so there is one definition of "available".
-		var date = DateOnly.FromDateTime(dateTime);
-		var result = await _schedulingService.GetAvailableSlotsAsync(id, date);
+		DateOnly rangeStart;
+		DateOnly rangeEnd;
+
+		if (date.HasValue)
+		{
+			if (from.HasValue || to.HasValue)
+			{
+				return BadRequest(new ValidationProblemDetails(new Dictionary<string, string[]>
+				{
+					["range"] = new[] { "Use either date or from/to, not both." }
+				})
+				{
+					Status = StatusCodes.Status400BadRequest,
+					Title = "Validation Failed"
+				});
+			}
+
+			rangeStart = date.Value;
+			rangeEnd = date.Value;
+		}
+		else if (from.HasValue && to.HasValue)
+		{
+			rangeStart = from.Value;
+			rangeEnd = to.Value;
+		}
+		else
+		{
+			return BadRequest(new ValidationProblemDetails(new Dictionary<string, string[]>
+			{
+				["range"] = new[] { "Provide date, or both from and to." }
+			})
+			{
+				Status = StatusCodes.Status400BadRequest,
+				Title = "Validation Failed"
+			});
+		}
+
+		var result = await _schedulingService.GetAvailabilityAsync(id, rangeStart, rangeEnd);
 		if (result.IsFailure)
 		{
 			return result.ToProblemDetails();

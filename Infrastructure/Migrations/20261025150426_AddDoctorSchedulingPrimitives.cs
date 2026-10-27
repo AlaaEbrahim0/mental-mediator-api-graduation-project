@@ -11,8 +11,14 @@ namespace Infrastructure.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.DropTable(
-                name: "DoctorScheduleBlocks");
+            // The superseded DoctorScheduleBlocks migration was removed before
+            // every environment applied it. Drop the table only when it exists
+            // so this migration works for both branches of that history.
+            migrationBuilder.Sql(
+                """
+                IF OBJECT_ID(N'[DoctorScheduleBlocks]', N'U') IS NOT NULL
+                    DROP TABLE [DoctorScheduleBlocks];
+                """);
 
             migrationBuilder.CreateTable(
                 name: "DoctorAvailabilityOverrides",

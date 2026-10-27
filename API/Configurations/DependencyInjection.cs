@@ -4,7 +4,7 @@ using System.Text;
 using System.Text.Json.Serialization;
 using System.Threading.RateLimiting;
 using Application.Contracts;
-using Application.Dtos.WeeklyScheduleDtos;
+using Application.Dtos.SchedulingDtos;
 using Application.Options;
 using Application.Services;
 using Application.Utilities;
@@ -117,7 +117,7 @@ public static class DependencyInjection
 
 			});
 
-		services.AddValidatorsFromAssemblyContaining<CreateScheduleWeekDayRequest>();
+		services.AddValidatorsFromAssemblyContaining<UpdateDoctorScheduleRequest>();
 		services.AddFluentValidationAutoValidation();
 		services.AddFluentValidationClientsideAdapters();
 
@@ -136,7 +136,6 @@ public static class DependencyInjection
 		services.AddScoped<IDoctorRepository, DoctorRepository>();
 		services.AddScoped<IUserRepository, UserRepository>();
 		services.AddScoped<IAppointmentRepository, AppointmentRepository>();
-		services.AddScoped<IDoctorScheduleRepository, DoctorScheduleRepository>();
 		services.AddScoped<IDoctorSchedulingRepository, DoctorSchedulingRepository>();
 		services.AddScoped<IDepressionTestResultRepository, DepressionTestResultRepository>();
 		return services;
@@ -207,7 +206,6 @@ public static class DependencyInjection
 			.AddScoped<INotificationService, NotificationService>()
 			.AddScoped<INotificationSender, NotificationSender>()
 			.AddScoped<IAppointmentService, AppointmentService>()
-			.AddScoped<IWeeklyScheduleService, WeeklyScheduleService>()
 			.AddScoped<IDoctorSchedulingService, DoctorSchedulingService>()
 			.AddScoped<ClaimsPrincipal>()
 			.AddScoped<MachineLearningService>()

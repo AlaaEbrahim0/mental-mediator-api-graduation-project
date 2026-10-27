@@ -5,35 +5,54 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Infrastructure.Repositories;
 
-public class DoctorSchedulingRepository : RepositoryBase<DoctorRecurringBreak>, IDoctorSchedulingRepository
+public class DoctorSchedulingRepository : RepositoryBase<DoctorAvailabilityPeriod>, IDoctorSchedulingRepository
 {
 	public DoctorSchedulingRepository(AppDbContext dbContext) : base(dbContext) { }
 
-	public async Task<IEnumerable<DoctorRecurringBreak>> GetActiveRecurringBreaks(string doctorId, bool trackChanges)
+	public async Task<IReadOnlyList<DoctorAvailabilityPeriod>> GetAvailabilityPeriods(string doctorId, bool trackChanges)
 	{
-		return await FindByCondition(x => x.DoctorId == doctorId && x.IsActive, trackChanges)
+		return await _dbContext.DoctorAvailabilityPeriods
+			.AsTracking(trackChanges ? QueryTrackingBehavior.TrackAll : QueryTrackingBehavior.NoTracking)
+			.Where(x => x.DoctorId == doctorId)
 			.OrderBy(x => x.DayOfWeek)
 			.ThenBy(x => x.StartTime)
 			.ToListAsync();
 	}
 
-	public async Task<IEnumerable<DoctorAvailabilityOverride>> GetActiveOverrides(string doctorId, DateOnly from, DateOnly to, bool trackChanges)
+	public void CreateAvailabilityPeriod(DoctorAvailabilityPeriod period)
 	{
-		return await _dbContext.DoctorAvailabilityOverrides
+		Create(period);
+	}
+
+	public void DeleteAvailabilityPeriod(DoctorAvailabilityPeriod period)
+	{
+		Delete(period);
+	}
+
+	public async Task<IReadOnlyList<DoctorTimeOff>> GetTimeOff(string doctorId, DateTime fromUtc, DateTime toUtc, bool trackChanges)
+	{
+		return await _dbContext.DoctorTimeOff
 			.AsTracking(trackChanges ? QueryTrackingBehavior.TrackAll : QueryTrackingBehavior.NoTracking)
-			.Where(x => x.DoctorId == doctorId && x.IsActive && x.Date >= from && x.Date <= to)
-			.OrderBy(x => x.Date)
-			.ThenBy(x => x.StartTime)
+			.Where(x => x.DoctorId == doctorId && x.StartTimeUtc < toUtc && x.EndTimeUtc > fromUtc)
+			.OrderBy(x => x.StartTimeUtc)
 			.ToListAsync();
 	}
 
-	public async Task<IEnumerable<DoctorTimeBlock>> GetActiveTimeBlocks(string doctorId, DateTime fromUtc, DateTime toUtc, bool trackChanges)
+	public async Task<DoctorTimeOff?> GetTimeOff(int id, bool trackChanges)
 	{
-		return await _dbContext.DoctorTimeBlocks
+		return await _dbContext.DoctorTimeOff
 			.AsTracking(trackChanges ? QueryTrackingBehavior.TrackAll : QueryTrackingBehavior.NoTracking)
-			.Where(x => x.DoctorId == doctorId && !x.IsCancelled && x.EndTimeUtc > fromUtc && x.StartTimeUtc < toUtc)
-			.OrderBy(x => x.StartTimeUtc)
-			.ToListAsync();
+			.FirstOrDefaultAsync(x => x.Id == id);
+	}
+
+	public void CreateTimeOff(DoctorTimeOff timeOff)
+	{
+		_dbContext.DoctorTimeOff.Add(timeOff);
+	}
+
+	public void DeleteTimeOff(DoctorTimeOff timeOff)
+	{
+		_dbContext.DoctorTimeOff.Remove(timeOff);
 	}
 
 	public async Task<DoctorSchedulingSettings?> GetSettings(string doctorId, bool trackChanges)
@@ -41,71 +60,6 @@ public class DoctorSchedulingRepository : RepositoryBase<DoctorRecurringBreak>, 
 		return await _dbContext.DoctorSchedulingSettings
 			.AsTracking(trackChanges ? QueryTrackingBehavior.TrackAll : QueryTrackingBehavior.NoTracking)
 			.FirstOrDefaultAsync(x => x.DoctorId == doctorId);
-	}
-
-	public async Task<DoctorAvailabilityOverride?> GetOverride(int id, bool trackChanges)
-	{
-		return await _dbContext.DoctorAvailabilityOverrides
-			.AsTracking(trackChanges ? QueryTrackingBehavior.TrackAll : QueryTrackingBehavior.NoTracking)
-			.FirstOrDefaultAsync(x => x.Id == id);
-	}
-
-	public async Task<DoctorRecurringBreak?> GetRecurringBreak(int id, bool trackChanges)
-	{
-		return await FindByCondition(x => x.Id == id, trackChanges)
-			.FirstOrDefaultAsync();
-	}
-
-	public async Task<DoctorTimeBlock?> GetTimeBlock(int id, bool trackChanges)
-	{
-		return await _dbContext.DoctorTimeBlocks
-			.AsTracking(trackChanges ? QueryTrackingBehavior.TrackAll : QueryTrackingBehavior.NoTracking)
-			.FirstOrDefaultAsync(x => x.Id == id);
-	}
-
-	public void CreateOverride(DoctorAvailabilityOverride availabilityOverride)
-	{
-		_dbContext.DoctorAvailabilityOverrides.Add(availabilityOverride);
-	}
-
-	public void UpdateOverride(DoctorAvailabilityOverride availabilityOverride)
-	{
-		_dbContext.DoctorAvailabilityOverrides.Update(availabilityOverride);
-	}
-
-	public void DeleteOverride(DoctorAvailabilityOverride availabilityOverride)
-	{
-		_dbContext.DoctorAvailabilityOverrides.Remove(availabilityOverride);
-	}
-
-	public void CreateRecurringBreak(DoctorRecurringBreak recurringBreak)
-	{
-		Create(recurringBreak);
-	}
-
-	public void UpdateRecurringBreak(DoctorRecurringBreak recurringBreak)
-	{
-		Update(recurringBreak);
-	}
-
-	public void DeleteRecurringBreak(DoctorRecurringBreak recurringBreak)
-	{
-		Delete(recurringBreak);
-	}
-
-	public void CreateTimeBlock(DoctorTimeBlock timeBlock)
-	{
-		_dbContext.DoctorTimeBlocks.Add(timeBlock);
-	}
-
-	public void UpdateTimeBlock(DoctorTimeBlock timeBlock)
-	{
-		_dbContext.DoctorTimeBlocks.Update(timeBlock);
-	}
-
-	public void DeleteTimeBlock(DoctorTimeBlock timeBlock)
-	{
-		_dbContext.DoctorTimeBlocks.Remove(timeBlock);
 	}
 
 	public void CreateSettings(DoctorSchedulingSettings settings)

@@ -174,33 +174,43 @@ public class AppointmentService : IAppointmentService
 		var userName = _userClaimsService.GetUserName();
 		var photoUrl = _userClaimsService.GetPhotoUrl();
 		var userEmail = _userClaimsService.GetEmail();
-		var appointment = _mapper.Map<Appointment>(request);
+		var startUtc = AsUtc(request.StartTime);
 
-		// Enforce the same availability rules the slot calculator uses, so a
-		// client cannot book a slot the calculator would never have offered
-		// (outside working hours, on a break, or on top of another appointment).
-		var bookingValidation = await _schedulingService.ValidateBookingTimeAsync(
-			doctorId,
-			request.StartTime,
-			request.Duration);
+		Appointment appointment;
 
-		if (bookingValidation.IsFailure)
+		// Revalidate availability while holding the per-doctor lock, then insert
+		// and commit before releasing it. Two concurrent requests for the same
+		// slot therefore cannot both pass validation and book.
+		await using (var bookingLock = await _repos.Appointments.AcquireBookingLockAsync(doctorId))
 		{
-			return bookingValidation.Error;
+			var bookingValidation = await _schedulingService.ValidateBookingTimeAsync(
+				doctorId,
+				startUtc,
+				request.Duration);
+
+			if (bookingValidation.IsFailure)
+			{
+				return bookingValidation.Error;
+			}
+
+			appointment = _mapper.Map<Appointment>(request);
+			appointment.StartTime = startUtc;
+			appointment.Duration = bookingValidation.Value;
+			appointment.Fees = doctor.SessionFees;
+			appointment.DoctorId = doctorId;
+			appointment.UserId = userId;
+			appointment.Status = AppointmentStatus.Pending;
+			appointment.DoctorName = doctor.FullName;
+			appointment.DoctorEmail = doctor.Email!;
+			appointment.ClientEmail = userEmail;
+			appointment.ClientName = userName;
+			appointment.DoctorPhotoUrl = doctor.PhotoUrl;
+			appointment.ClientPhotoUrl = photoUrl;
+
+			_repos.Appointments.CreateAppointment(appointment);
+			await _repos.SaveAsync();
+			await bookingLock.CommitAsync();
 		}
-
-		appointment.DoctorId = doctorId;
-		appointment.UserId = userId;
-		appointment.Status = AppointmentStatus.Pending;
-		appointment.DoctorName = doctor.FullName;
-		appointment.DoctorEmail = doctor.Email!;
-		appointment.ClientEmail = userEmail;
-		appointment.ClientName = userName;
-		appointment.DoctorPhotoUrl = doctor.PhotoUrl;
-		appointment.ClientPhotoUrl = photoUrl;
-
-		_repos.Appointments.CreateAppointment(appointment);
-		await _repos.SaveAsync();
 
 		var notification = Notification.CreateNotification(
 			doctorId,
@@ -224,6 +234,16 @@ public class AppointmentService : IAppointmentService
 
 		var appointmentResponse = _mapper.Map<AppointmentResponse>(appointment);
 		return appointmentResponse;
+	}
+
+	private static DateTime AsUtc(DateTime value)
+	{
+		return value.Kind switch
+		{
+			DateTimeKind.Utc => value,
+			DateTimeKind.Local => value.ToUniversalTime(),
+			_ => DateTime.SpecifyKind(value, DateTimeKind.Utc),
+		};
 	}
 
 	public async Task<Result<AppointmentResponse?>> RejectAppointment(int id, RejectAppointmentRequest request)

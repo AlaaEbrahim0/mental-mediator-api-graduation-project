@@ -12,7 +12,6 @@ public interface IRepositoryManager
 	IChatMessageReportRepository ChatMessageReports { get; }
 	IDoctorRepository Doctors { get; }
 	IUserRepository Users { get; }
-	IDoctorScheduleRepository DoctorSchedule { get; }
 	IAppointmentRepository Appointments { get; }
 	IDoctorSchedulingRepository DoctorScheduling { get; }
 	IDepressionTestResultRepository DepressionTestResults { get; }

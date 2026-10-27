@@ -17,16 +17,13 @@ public class DoctorService : IDoctorService
 	private readonly IStorageService _storageService;
 	private readonly IMapper _mapper;
 
-	public DoctorService(IUserClaimsService userClaimsService, IStorageService storageService, IMapper mapper, IRepositoryManager repoManager, IWeeklyScheduleService weeklyScheduleService)
+	public DoctorService(IUserClaimsService userClaimsService, IStorageService storageService, IMapper mapper, IRepositoryManager repoManager)
 	{
 		_userClaimsService = userClaimsService;
 		_storageService = storageService;
 		_mapper = mapper;
 		_repoManager = repoManager;
-		WeeklyScheduleService = weeklyScheduleService;
 	}
-
-	public IWeeklyScheduleService WeeklyScheduleService { get; }
 
 	public async Task<Result<DoctorInfoResponse>> GetDoctorInfo(string id)
 	{

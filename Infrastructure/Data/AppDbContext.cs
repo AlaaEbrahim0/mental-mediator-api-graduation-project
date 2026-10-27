@@ -34,10 +34,8 @@ public class AppDbContext : IdentityDbContext<BaseUser>
 	public DbSet<User> Clients { get; set; }
 	public DbSet<Admin> Admins { get; set; }
 	public DbSet<Appointment> Appointments { get; set; }
-	public DbSet<DoctorScheduleWeekDay> ScheduleWeekDays { get; set; }
-	public DbSet<DoctorRecurringBreak> DoctorRecurringBreaks { get; set; }
-	public DbSet<DoctorAvailabilityOverride> DoctorAvailabilityOverrides { get; set; }
-	public DbSet<DoctorTimeBlock> DoctorTimeBlocks { get; set; }
+	public DbSet<DoctorAvailabilityPeriod> DoctorAvailabilityPeriods { get; set; }
+	public DbSet<DoctorTimeOff> DoctorTimeOff { get; set; }
 	public DbSet<DoctorSchedulingSettings> DoctorSchedulingSettings { get; set; }
 
 }

@@ -14,7 +14,6 @@ public class RepositoryManager : IRepositoryManager
 	private readonly Lazy<IDoctorRepository> doctorRepository;
 	private readonly Lazy<IUserRepository> userRepository;
 	private readonly Lazy<IAppointmentRepository> appointementRepository;
-	private readonly Lazy<IDoctorScheduleRepository> weeklyScheduleRepository;
 	private readonly Lazy<IDepressionTestResultRepository> depressionTestResultRepository;
 	private readonly Lazy<IChatRoomRepository> chatRoomRepository;
 	private readonly Lazy<IChatMessageRepository> chatMessageRepository;
@@ -29,7 +28,6 @@ public class RepositoryManager : IRepositoryManager
 		replyRepository = new(() => new ReplyRepository(dbContext));
 		doctorRepository = new(() => new DoctorRepository(dbContext));
 		userRepository = new(() => new UserRepository(dbContext));
-		weeklyScheduleRepository = new(() => new DoctorScheduleRepository(dbContext));
 		notificationRepository = new(() => new NotificationRepository(dbContext));
 		appointementRepository = new(() => new AppointmentRepository(dbContext));
 		depressionTestResultRepository = new(() => new DepressionTestResultRepository(dbContext));
@@ -48,7 +46,6 @@ public class RepositoryManager : IRepositoryManager
 	public IChatMessageReportRepository ChatMessageReports => chatMessageReportRepository.Value;
 	public IDoctorRepository Doctors => doctorRepository.Value;
 	public IUserRepository Users => userRepository.Value;
-	public IDoctorScheduleRepository DoctorSchedule => weeklyScheduleRepository.Value;
 	public IAppointmentRepository Appointments => appointementRepository.Value;
 	public IDoctorSchedulingRepository DoctorScheduling => doctorSchedulingRepository.Value;
 	public IDepressionTestResultRepository DepressionTestResults => depressionTestResultRepository.Value;
