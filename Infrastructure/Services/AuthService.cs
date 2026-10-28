@@ -12,6 +12,8 @@ using Domain.Errors;
 using Infrastructure.Utilities;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 using Shared;
 
 namespace Infrastructure.Services;
@@ -24,6 +26,8 @@ public class AuthService : IAuthService
 	private readonly MailTemplates _MailTemplates;
 	private readonly IMailService _mailService;
 	private readonly IMapper _mapper;
+	private readonly IConfiguration _configuration;
+	private readonly ILogger<AuthService> _logger;
 
 	public AuthService(
 		UserManager<BaseUser> userManager,
@@ -31,7 +35,9 @@ public class AuthService : IAuthService
 		JwtTokenGenerator jwtTokenGenerator,
 		IMailService mailService,
 		IMapper mapper,
-		MailTemplates MailTemplates)
+		MailTemplates MailTemplates,
+		IConfiguration configuration,
+		ILogger<AuthService> logger)
 	{
 		_userManager = userManager;
 		_mapper = mapper;
@@ -39,6 +45,8 @@ public class AuthService : IAuthService
 		_jwtTokenGenerator = jwtTokenGenerator;
 		_mailService = mailService;
 		_MailTemplates = MailTemplates;
+		_configuration = configuration;
+		_logger = logger;
 	}
 
 	public async Task<Result<AuthResponse>> SignInAsync(SignInRequest signInModel)
@@ -119,12 +127,35 @@ public class AuthService : IAuthService
 			$"token={WebUtility.UrlEncode(token)}";
 	}
 
-	private string GenerateResetPasswordLink(string email, string token)
+	/// <summary>
+	/// Both portals expose /forgetpassword/resetpassword, so the link is pointed at
+	/// the portal the account actually belongs to. The doctor host was previously
+	/// hardcoded, which sent every patient through the doctor sign-in screen, and
+	/// the scheme was taken from the request while the host was a literal, so a
+	/// plain-HTTP hop produced a broken mixed-scheme link.
+	/// </summary>
+	private async Task<string> GenerateResetPasswordLinkAsync(BaseUser user, string token)
 	{
+		var roles = await _userManager.GetRolesAsync(user);
+		var onDoctorPortal = roles.Contains("Doctor", StringComparer.OrdinalIgnoreCase);
+		var settingName = onDoctorPortal ? "DoctorUI" : "ClientUI";
+		var configured = _configuration[settingName];
+
+		var baseUrl = string.IsNullOrWhiteSpace(configured)
+			? $"{_signInManager.Context.Request.Scheme}://{_signInManager.Context.Request.Host}"
+			: configured.TrimEnd('/');
+
+		if (string.IsNullOrWhiteSpace(configured))
+		{
+			_logger.LogWarning(
+				"{Setting} is not configured; the password reset link falls back to the request origin {Origin}",
+				settingName,
+				baseUrl);
+		}
+
 		return
-			$"{_signInManager.Context.Request.Scheme}://" +
-			$"mental-mediator-doctor-ui-graduation-project.vercel.app/forgetpassword/resetpassword?" +
-			$"email={WebUtility.UrlEncode(email)}&" +
+			$"{baseUrl}/forgetpassword/resetpassword?" +
+			$"email={WebUtility.UrlEncode(user.Email)}&" +
 			$"token={WebUtility.UrlEncode(token)}";
 	}
 
@@ -260,7 +291,7 @@ public class AuthService : IAuthService
 		}
 
 		var token = await _userManager.GeneratePasswordResetTokenAsync(user);
-		var resetPasswordLink = GenerateResetPasswordLink(email, token);
+		var resetPasswordLink = await GenerateResetPasswordLinkAsync(user, token);
 
 		var mailResult = await _mailService.SendEmailAsync(new MailRequest
 		{
