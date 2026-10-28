@@ -4,6 +4,14 @@ Date of audit: 2026-10-23. Baseline: the application works locally (docker-compo
 `dotnet run` against a local SQL Server). The goal of this document is to record what was
 verified before any change was made, so that the pipeline and hosting changes are evidence-backed.
 
+> **Points that have since moved:** the patient portal's live production origin is now
+> `https://mental-health-ochre-xi.vercel.app` — the unsuffixed name in the table below belongs to a
+> different Vercel account and answers with a login redirect. `ClientUI` in `appsettings.json`,
+> `appsettings.Development.json`, and the pipeline's generated production settings now use the `-xi`
+> origin; `JwtSettings:Audience` is still the value recorded here (see "Known integration
+> limitations" in the README for why it must not be edited casually). This table is kept as the
+> audit record as of 2026-10-23, not as current configuration.
+
 ## Verified environment facts
 
 | Item | Value | Evidence |

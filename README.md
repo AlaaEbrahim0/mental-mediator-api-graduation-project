@@ -263,7 +263,11 @@ The `API/Dockerfile` uses multi-stage builds to minimize image size:
 The pipeline runs on every push to `master` and on manual `workflow_dispatch`:
 
 1. **Build** — `dotnet restore`, `dotnet build --configuration Release --no-restore`
-2. **Test** — `dotnet test --configuration Release --no-build --verbosity normal` (no test project yet; the step is a no-op that must keep passing)
+2. **Test** — `dotnet test --configuration Release --no-build --verbosity normal`. This runs the
+   41 unit tests in `Tests/MentalMediator.Tests.csproj` (booking validation, slot calculation,
+   schedule mutation, profile validation). The project is now registered in `MentalMediator.sln`;
+   while it was absent, solution-level `dotnet test` discovered no test assembly and the step passed
+   while asserting nothing.
 3. **Publish** — Build and push `systematicmess/nexus_api:latest` to Docker Hub
 4. **Deploy** — Publish the app for IIS and upload it to MonsterASP over WebDeploy (manual or on push when `AUTO_DEPLOY_MONSTERASP` is enabled)
 
@@ -282,7 +286,7 @@ MonsterASP, so a registry failure cannot take the site down.
 |------|-----------------|
 | Restore | `dotnet restore` |
 | Build | `dotnet build --configuration Release --no-restore` |
-| Test | `dotnet test --configuration Release --no-build --verbosity normal` |
+| Test | `dotnet test --configuration Release --no-build --verbosity normal` (41 tests in `Tests/`, which is now in the solution) |
 | Docker Login | `docker/login-action@v3` using `DOCKER_USERNAME` / `DOCKER_PASSWORD` |
 | Docker Build & Push | `docker/build-push-action@v5` → `systematicmess/nexus_api:latest` |
 | Publish for IIS | `dotnet publish API/API.csproj -c Release --output ./publish --runtime win-x86 --self-contained false -p:UseAppHost=false` |
@@ -320,15 +324,21 @@ surfaces as a red build rather than a site that mysteriously stops answering.
 | `PRODUCTION_CONSTR_SOMEE` | SQL Server connection string for the hosted MonsterASP MSSQL database (the `constr_somee` key is what the app reads outside Development) |
 | `PRODUCTION_JWT_KEY` | JWT signing key (must be ≥32 bytes for HS256) |
 | `PRODUCTION_GOOGLE_ID` / `PRODUCTION_GOOGLE_SECRET` | Google OAuth client credentials |
-| `PRODUCTION_MAIL_USERNAME` / `PRODUCTION_MAIL_PASSWORD` | Gmail SMTP credentials |
+| `PRODUCTION_MAIL_USERNAME` / `PRODUCTION_MAIL_PASSWORD` | Gmail SMTP credentials — must be an **app password**, not the account password |
 | `PRODUCTION_NEWS_API_KEY` | News API key |
-| `PRODUCTION_CLOUDINARY_URL` (optional) | `cloudinary://<key>:<secret>@<cloud>` — injected into the generated `web.config` so image uploads work on the host |
+| `PRODUCTION_CLOUDINARY_URL` ⚠️ **not configured** | `cloudinary://<key>:<secret>@<cloud>` — injected into the generated `web.config` so image uploads work on the host |
 
-`PRODUCTION_CLOUDINARY_URL` is the only optional secret: without it the API starts and
-everything except image uploads works (uploads return a controlled 503). The setting is
-read from the process environment only (`Infrastructure/Services/StorageService.cs`), so
-the pipeline writes it, together with `ASPNETCORE_ENVIRONMENT=Production`, into the
-generated `publish/web.config` `<environmentVariables>` block.
+`PRODUCTION_CLOUDINARY_URL` is the only optional secret, and it is **currently absent from the
+repository's secrets**, so image uploads on `nexus-api.runasp.net` return the controlled 503 until it
+is added (`gh secret set PRODUCTION_CLOUDINARY_URL`). Without it the API starts and everything except
+uploads works. The setting is read from the process environment only
+(`Infrastructure/Services/StorageService.cs`), so the pipeline writes it, together with
+`ASPNETCORE_ENVIRONMENT=Production`, into the generated `publish/web.config`
+`<environmentVariables>` block.
+
+Gmail rejects plain account passwords with `534 5.7.9 Please log in with your web browser`.
+`MailSettings:SenderName` is optional and non-secret; when set it becomes the display name on the
+`From` header.
 
 ### Repository variables
 
@@ -457,19 +467,32 @@ Comment 1───── N Reply
 
 ### Known integration limitations
 
-- **Google sign-in is not reachable from either portal today.** The API implements
-  `GET /api/auth/external-login` and `GET /api/auth/external-login-callback`, and the callback
-  redirects the browser to the `ClientUI` configuration value with a one-time `temporaryToken`.
-  `ClientUI` still points at `https://mental-health-ochre.vercel.app`, which is **not** the active
-  patient deployment (`https://mental-health-ochre-xi.vercel.app`), and neither portal calls the
-  endpoint. Re-enabling Google sign-in needs both: set `ClientUI` to the live patient origin and add
-  the client-side flow that exchanges `temporaryToken` via `GET /api/auth/exchange-token`.
-- **`JwtSettings:Audience` is intentionally unchanged.** It still reads
-  `https://mental-health-ochre.vercel.app`. `ValidateAudience = true` with
-  `ValidAudience = JwtSettings:Audience`, and tokens are issued with the same value, so sessions
-  work today — but rewriting it would invalidate every already-issued token and log everyone out.
-  Change it only together with a deliberate sign-out of all users.
-- **`DoctorUI` is configured but never read** by any controller or service — dead configuration.
+- **Google sign-in is configured on the API but has no entry point in either portal.** The API
+  implements `GET /api/auth/external-login` and `GET /api/auth/external-login-callback`; the callback
+  redirects the browser to `ClientUI` with a one-time `temporaryToken`, which the client exchanges at
+  `GET /api/auth/exchange-token`. The `state` parameter is generated and validated by ASP.NET
+  Identity's OAuth handler, so the flow is not open to CSRF. `ClientUI` now points at the live
+  patient portal (`https://mental-health-ochre-xi.vercel.app`) in `appsettings.json`,
+  `appsettings.Development.json`, and the pipeline's generated production settings. Still required
+  before this works end to end:
+  1. an authorized redirect URI for `https://nexus-api.runasp.net/api/auth/external-login-callback`
+     in Google Cloud Console (not verifiable from this repository), and
+  2. a portal screen that starts the challenge and consumes `?temporaryToken=`. Neither portal has
+     one today, so no user-facing path reaches the endpoint.
+- **`JwtSettings:Audience` differs per environment and must not be "corrected".** Production issues
+  and validates tokens with `https://mental-mediator-doctor-ui-graduation-project.vercel.app` (the
+  pipeline's generated settings); the committed `appsettings.json` now carries the patient portal
+  origin for local runs. Because `ValidateAudience = true` and issuance reads the same value, both
+  work, but changing a deployed audience invalidates every already-issued token and signs everyone
+  out. Treat it as a coordinated sign-out event, not a typo fix.
+- **Email delivery depends on a valid Gmail app password.** `MailService` reports a missing
+  `MailSettings` value, a message-construction failure, and a provider rejection as three distinct
+  errors, and logs the offending setting name server-side only. A successful `SendAsync` means the
+  SMTP provider accepted the message, not that it reached an inbox.
+- **Image uploads need `CLOUDINARY_URL`.** Cloudinary is the only `IStorageService` implementation;
+  no local-filesystem provider exists. Replacing a photo leaves the previous asset in Cloudinary —
+  deletion was intentionally not implemented, since removing stored files needs explicit approval and
+  the interface exposes no delete operation.
 
 ---
 
