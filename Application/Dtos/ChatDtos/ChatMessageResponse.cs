@@ -8,6 +8,9 @@ public class ChatMessageResponse
 
 	public int SenderMemberId { get; set; }
 
+	/// <summary>The sender's account id, used to open their profile.</summary>
+	public string SenderUserId { get; set; } = string.Empty;
+
 	/// <summary>
 	/// The sender's idempotency key. It is a random GUID, not a user id, and
 	/// lets a client reconcile its optimistic message with the persisted one.

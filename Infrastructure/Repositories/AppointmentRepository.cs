@@ -327,6 +327,15 @@ public class AppointmentRepository : RepositoryBase<Appointment>, IAppointmentRe
 
 		return (totalAppointments, totalProfit);
 	}
+	public async Task<int> GetDoctorCompletedAppointmentsCount(string doctorId)
+	{
+		return await FindByCondition(
+				appointment => appointment.DoctorId == doctorId &&
+					appointment.Status == AppointmentStatus.Completed,
+				false)
+			.CountAsync();
+	}
+
 	public async Task<(List<WeekdayAppointmentCount> weekdayCounts, List<MonthlyAppointmentCount> monthlyCounts)> GetDoctorAppointmentCounts(string doctorId)
 	{
 		var appointments = await FindByCondition(x => x.DoctorId == doctorId, false)

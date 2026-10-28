@@ -1031,6 +1031,7 @@ public class ChatService : IChatService
 		new()
 		{
 			MemberId = member.Id,
+			UserId = member.UserId,
 			DisplayName = member.DisplayName,
 			IsDoctor = member.IsDoctor,
 			Role = member.Role,
@@ -1045,6 +1046,7 @@ public class ChatService : IChatService
 			Id = message.Id,
 			RoomId = message.RoomId,
 			SenderMemberId = message.SenderMemberId,
+			SenderUserId = message.SenderId,
 			ClientMessageId = message.ClientMessageId,
 			SenderDisplayName = message.SenderDisplayName,
 			SenderIsDoctor = message.SenderIsDoctor,

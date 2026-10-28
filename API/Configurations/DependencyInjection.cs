@@ -55,6 +55,7 @@ public static class DependencyInjection
                 "http://localhost:5068",
                 "http://localhost:5500",
                 "http://localhost:3000",
+                "http://localhost:3001",
                 "http://localhost:5173"
             )
             .AllowAnyHeader()
@@ -135,6 +136,7 @@ public static class DependencyInjection
 		services.AddScoped<IChatMessageReportRepository, ChatMessageReportRepository>();
 		services.AddScoped<IDoctorRepository, DoctorRepository>();
 		services.AddScoped<IUserRepository, UserRepository>();
+		services.AddScoped<IProfileRepository, ProfileRepository>();
 		services.AddScoped<IAppointmentRepository, AppointmentRepository>();
 		services.AddScoped<IDoctorSchedulingRepository, DoctorSchedulingRepository>();
 		services.AddScoped<IDepressionTestResultRepository, DepressionTestResultRepository>();
@@ -212,6 +214,7 @@ public static class DependencyInjection
 			.AddTransient<MailTemplates>()
 			.AddScoped<IUserService, UserService>()
 			.AddScoped<IDoctorService, DoctorService>()
+			.AddScoped<IProfileService, ProfileService>()
 			.AddScoped<IStorageService, CloudinaryStorageService>()
 			.AddScoped<IWebRootFileProvider, WebRootFileProvider>()
 			.AddTransient<IMailService, MailService>()

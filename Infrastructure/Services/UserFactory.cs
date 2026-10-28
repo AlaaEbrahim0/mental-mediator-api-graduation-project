@@ -16,7 +16,11 @@ public class UserFactory
 				break;
 
 			case "DOCTOR":
-				user = mapper.Map<Doctor>(request);
+				var doctor = mapper.Map<Doctor>(request);
+				// Doctor profiles are public by default; account holders can
+				// hide them from the profile editor.
+				doctor.IsProfilePublic = true;
+				user = doctor;
 				break;
 
 			case "ADMIN":

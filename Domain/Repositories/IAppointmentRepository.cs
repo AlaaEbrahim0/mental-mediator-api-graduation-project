@@ -36,6 +36,7 @@ public interface IAppointmentRepository
 	Task<IAppointmentBookingLock> AcquireBookingLockAsync(string doctorId);
 
 	Task<(int totalAppointments, decimal totalProfit)> GetDoctorStats(string doctorId);
+	Task<int> GetDoctorCompletedAppointmentsCount(string doctorId);
 	Task<(List<WeekdayAppointmentCount> weekdayCounts, List<MonthlyAppointmentCount> monthlyCounts)> GetDoctorAppointmentCounts(string doctorId);
 	Task<List<AppointmentStatusCount>> GetAppointmentStatusCounts(string doctorId);
 	Task<int> GetTotalAppointments();

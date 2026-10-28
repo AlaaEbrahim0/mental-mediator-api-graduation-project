@@ -10,6 +10,8 @@ public class DoctorConfiguration : IEntityTypeConfiguration<Doctor>
 	{
 		builder.ToTable("Doctors");
 		builder.Property(x => x.Qualifications).HasMaxLength(2000);
+		builder.Property(x => x.ProfessionalTitle).HasMaxLength(120);
+		builder.Property(x => x.ClinicName).HasMaxLength(200);
 		builder.Property(x => x.IsAvailable).HasDefaultValue(true);
 		builder.Property(x => x.SessionFees).HasPrecision(18, 2);
 		builder.Property(x => x.City).HasMaxLength(100).IsRequired(false);

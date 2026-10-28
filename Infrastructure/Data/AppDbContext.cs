@@ -37,5 +37,7 @@ public class AppDbContext : IdentityDbContext<BaseUser>
 	public DbSet<DoctorAvailabilityPeriod> DoctorAvailabilityPeriods { get; set; }
 	public DbSet<DoctorTimeOff> DoctorTimeOff { get; set; }
 	public DbSet<DoctorSchedulingSettings> DoctorSchedulingSettings { get; set; }
+	public DbSet<UserCertificate> UserCertificates { get; set; }
+	public DbSet<UserQualification> UserQualifications { get; set; }
 
 }
