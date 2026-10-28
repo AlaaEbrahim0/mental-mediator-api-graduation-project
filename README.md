@@ -7,6 +7,15 @@
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE.txt)
 [![Commit](https://img.shields.io/github/last-commit/AlaaEbrahim0/mental-mediator-api-graduation-project)](https://github.com/AlaaEbrahim0/mental-mediator-api-graduation-project/commits/master)
 
+**Production API:** https://nexus-api.runasp.net/  
+**Swagger UI:** https://nexus-api.runasp.net/swagger/index.html
+
+| Frontend | URL | Repository |
+|----------|-----|-----------|
+| Doctor portal | https://mental-mediator-doctor-ui-graduation-project.vercel.app | [mental_mediator_doctor_ui_graduation_project](https://github.com/AlaaEbrahim0/mental_mediator_doctor_ui_graduation_project) |
+| Patient portal | https://mental-health-ochre.vercel.app | [mental_mediator_patient_ui_graduation_project-](https://github.com/AlaaEbrahim0/mental_mediator_patient_ui_graduation_project-) |
+| Shared UI | — | [nexus-shared-ui](https://github.com/AlaaEbrahim0/nexus-shared-ui) |
+
 ---
 
 ## 📋 Project Overview
@@ -33,6 +42,7 @@ The backend is built with **ASP.NET Core 8**, following **Clean Architecture** p
 - **Community Support** — Users post thoughts, comment, and reply; doctors and other users can advise
 - **Anonymity Mode** — Posts and comments can be shared anonymously to protect privacy
 - **Role-Based Access Control** — Four roles: `User`, `Doctor`, `Admin`, `Anonymous` (JWT + Google OAuth)
+- **Rich Profiles** — Public doctor and user profiles with certificates, structured education, languages, interests, social links, and optional public contact details
 - **Appointment System** — Doctors set weekly schedules; users book available time slots; confirm/reject/cancel with notifications
 - **Real-Time Notifications** — SignalR hub for instant in-app notifications
 
@@ -191,8 +201,21 @@ https://<your-deploy-url>/swagger
 | **News** | `GET /api/articles` | Fetch latest articles |
 | **Notification** | `GET /api/notifications/users/me` | My notifications |
 | **User** | `GET /api/users/me` | Current profile |
+| **Profiles** | `GET /api/profiles/{id}` | Public rich profile (anonymous access) |
+| **Profiles** | `GET /api/profiles/me` | My rich profile |
+| **Profiles** | `PUT /api/profiles/me` | Update profile, social links, contact info, and doctor practice details |
+| **Profiles** | `PUT /api/profiles/me/photo` | Upload a profile photo (`multipart/form-data`, field `Photo`) |
+| **Profiles** | `POST/PUT/DELETE /api/profiles/me/certificates` | Manage certificates (`multipart/form-data`, optional `Image`) |
+| **Profiles** | `POST/PUT/DELETE /api/profiles/me/qualifications` | Manage structured qualifications (JSON) |
 | **Doctor** | `GET /api/doctors/me` | My profile |
 | **Schedule** | `GET /api/doctors/{doctorId}/schedule` | Weekly schedule |
+
+#### Profile visibility and contact details
+
+- `GET /api/profiles/{id}` is the only anonymous profile endpoint. It returns `404` for private profiles unless the caller is the owner or an admin.
+- Doctor profiles are public by default; patient/user profiles are private until their owner enables visibility.
+- Public contact details (`contactEmail`, `contactPhone`, `contactAddress`) are optional, explicitly separate from the private account email and phone number, and are only returned through the profile endpoints.
+- Run the profile migrations before deploying: `dotnet ef database update --project Infrastructure --startup-project API`.
 
 ### Authentication
 
