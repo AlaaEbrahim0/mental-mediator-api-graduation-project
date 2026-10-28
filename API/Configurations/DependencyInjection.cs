@@ -41,7 +41,12 @@ public static class DependencyInjection
 			{
 				policy.WithOrigins(
                 // Your Vercel Deployments (Production & Previews)
-                "https://mental-health-ochre.vercel.app",         // patient portal (legacy alias)
+                // The next origin is NOT owned by this project: the name resolves to a
+                // different Vercel account and 302s to their login page. It is listed only so
+                // any stale bookmarked deployment keeps working. Sessions travel as a Bearer
+                // token held in the portal's own localStorage, not as cookies, so a foreign
+                // origin on this list cannot read them — safe to delete once unused.
+                "https://mental-health-ochre.vercel.app",         // patient portal (foreign account)
                 "https://mental-health-ochre-xi.vercel.app",      // patient portal (current production)
                 "https://mental-mediator-doctor-ui-graduation-project.vercel.app",
                 "https://mental-mediator-doctor-ui-graduation-project-lms6panp1.vercel.app",

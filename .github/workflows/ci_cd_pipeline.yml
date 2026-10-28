@@ -180,8 +180,12 @@ jobs:
               Port = 587
               Username = $env:MAIL_USERNAME
               Password = $env:MAIL_PASSWORD
+              SenderName = "Mental Mediator"
             }
-            ClientUI = "https://mental-health-ochre.vercel.app"
+            # Portal origins used for outbound links and redirects. The patient
+            # portal's production alias is mental-health-ochre-xi.vercel.app; the
+            # un-suffixed name belongs to a different Vercel account.
+            ClientUI = "https://mental-health-ochre-xi.vercel.app"
             DoctorUI = "https://mental-mediator-doctor-ui-graduation-project.vercel.app"
             MLServerAddress = "https://sentiment-nja5.onrender.com/"
             NewsApi = @{

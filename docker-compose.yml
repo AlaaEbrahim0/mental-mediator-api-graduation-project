@@ -38,6 +38,19 @@ services:
       - GoogleAuthentication__Id=
       - GoogleAuthentication__Secret=
       - NewsApi__ApiKey=
+      # Image uploads. CloudinaryStorageService reads CLOUDINARY_URL from the
+      # process environment only (there is no appsettings fallback), so without
+      # this every upload in the Docker stack returns a controlled 503.
+      # Same-name passthrough: set CLOUDINARY_URL in .env.
+      - CLOUDINARY_URL=${CLOUDINARY_URL:-}
+      # SMTP. Compose interpolates the .env keys of the same name, so the API and
+      # the container agree on one spelling. A literal empty value here would
+      # silently disable every email flow in the stack.
+      - MailSettings__Host=${MailSettings__Host:-smtp.gmail.com}
+      - MailSettings__Port=${MailSettings__Port:-587}
+      - MailSettings__Username=${MailSettings__Username:-}
+      - MailSettings__Password=${MailSettings__Password:-}
+      - MailSettings__SenderName=${MailSettings__SenderName:-Mental Mediator}
     ports:
       - "5184:5184"
     extra_hosts:
