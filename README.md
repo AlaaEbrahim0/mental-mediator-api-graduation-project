@@ -455,6 +455,22 @@ Comment 1───── N Reply
 | Secure HTTP client usage | ✅ `IHttpClientFactory` with `using` disposal |
 | Email service | ✅ MailKit with structured logging |
 
+### Known integration limitations
+
+- **Google sign-in is not reachable from either portal today.** The API implements
+  `GET /api/auth/external-login` and `GET /api/auth/external-login-callback`, and the callback
+  redirects the browser to the `ClientUI` configuration value with a one-time `temporaryToken`.
+  `ClientUI` still points at `https://mental-health-ochre.vercel.app`, which is **not** the active
+  patient deployment (`https://mental-health-ochre-xi.vercel.app`), and neither portal calls the
+  endpoint. Re-enabling Google sign-in needs both: set `ClientUI` to the live patient origin and add
+  the client-side flow that exchanges `temporaryToken` via `GET /api/auth/exchange-token`.
+- **`JwtSettings:Audience` is intentionally unchanged.** It still reads
+  `https://mental-health-ochre.vercel.app`. `ValidateAudience = true` with
+  `ValidAudience = JwtSettings:Audience`, and tokens are issued with the same value, so sessions
+  work today — but rewriting it would invalidate every already-issued token and log everyone out.
+  Change it only together with a deliberate sign-out of all users.
+- **`DoctorUI` is configured but never read** by any controller or service — dead configuration.
+
 ---
 
 ## 📫 Contact
