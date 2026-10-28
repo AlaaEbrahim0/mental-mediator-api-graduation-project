@@ -64,8 +64,15 @@ namespace Application.Services
 
 			if (postRequest.PhotoPost is not null)
 			{
-				var photoUrl = await _storageService.UploadPhoto(postRequest.PhotoPost);
-				post.PostPhotoUrl = photoUrl.Value;
+				// An unchecked upload result wrote null over the photo URL, so the
+				// post was saved as "successful" with the image silently dropped.
+				var uploadResult = await _storageService.UploadPhoto(postRequest.PhotoPost);
+				if (uploadResult.IsFailure)
+				{
+					return uploadResult.Error;
+				}
+
+				post.PostPhotoUrl = uploadResult.Value;
 			}
 
 			var userId = _userClaimsService.GetUserId();
@@ -139,8 +146,15 @@ namespace Application.Services
 
 			if (updatePostRequest.PhotoPost is not null)
 			{
-				var photoUrl = await _storageService.UploadPhoto(updatePostRequest.PhotoPost);
-				post.PostPhotoUrl = photoUrl.Value;
+				// Fail before touching the entity: a failed upload used to null out
+				// the photo URL of an existing post, destroying a valid reference.
+				var uploadResult = await _storageService.UploadPhoto(updatePostRequest.PhotoPost);
+				if (uploadResult.IsFailure)
+				{
+					return uploadResult.Error;
+				}
+
+				post.PostPhotoUrl = uploadResult.Value;
 			}
 
 			var existingCategory = post.Category;
