@@ -13,7 +13,7 @@
 | Frontend | URL | Repository |
 |----------|-----|-----------|
 | Doctor portal | https://mental-mediator-doctor-ui-graduation-project.vercel.app | [mental_mediator_doctor_ui_graduation_project](https://github.com/AlaaEbrahim0/mental_mediator_doctor_ui_graduation_project) |
-| Patient portal | https://mental-health-ochre.vercel.app | [mental_mediator_patient_ui_graduation_project-](https://github.com/AlaaEbrahim0/mental_mediator_patient_ui_graduation_project-) |
+| Patient portal | https://mental-health-ochre-xi.vercel.app | [mental_mediator_patient_ui_graduation_project-](https://github.com/AlaaEbrahim0/mental_mediator_patient_ui_graduation_project-) |
 | Shared UI | — | [nexus-shared-ui](https://github.com/AlaaEbrahim0/nexus-shared-ui) |
 
 ---

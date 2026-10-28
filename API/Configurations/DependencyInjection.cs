@@ -41,9 +41,10 @@ public static class DependencyInjection
 			{
 				policy.WithOrigins(
                 // Your Vercel Deployments (Production & Previews)
-                "https://mental-health-ochre.vercel.app",
+                "https://mental-health-ochre.vercel.app",         // patient portal (legacy alias)
+                "https://mental-health-ochre-xi.vercel.app",      // patient portal (current production)
                 "https://mental-mediator-doctor-ui-graduation-project.vercel.app",
-                "https://mental-mediator-doctor-ui-graduation-project-lms6panp1.vercel.app", // <--- Added your active URL
+                "https://mental-mediator-doctor-ui-graduation-project-lms6panp1.vercel.app",
                 "https://mental-health-b2uehhu7l-rana-tareks-projects.vercel.app",
                 "https://nexus-admin-panel.vercel.app",
                 "https://mental-health-drab.vercel.app",
