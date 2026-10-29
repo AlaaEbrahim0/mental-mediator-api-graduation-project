@@ -356,6 +356,10 @@ namespace Infrastructure.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
+                    b.Property<string>("CoverImageUrl")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
                     b.Property<DateTime>("CreatedAtUtc")
                         .HasColumnType("datetime2");
 
@@ -372,6 +376,11 @@ namespace Infrastructure.Migrations
                     b.Property<bool>("IsArchived")
                         .HasColumnType("bit");
 
+                    b.Property<bool>("IsLocked")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(false);
+
                     b.Property<DateTime?>("LastMessageAtUtc")
                         .HasColumnType("datetime2");
 
@@ -380,12 +389,24 @@ namespace Infrastructure.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
 
+                    b.Property<string>("PasswordHash")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<DateTime?>("ScheduledStartAtUtc")
+                        .HasColumnType("datetime2");
+
                     b.Property<int>("Visibility")
                         .HasColumnType("int");
 
                     b.HasKey("Id");
 
                     b.HasIndex("CreatedById");
+
+                    b.HasIndex("ScheduledStartAtUtc")
+                        .HasFilter("[ScheduledStartAtUtc] IS NOT NULL");
+
+                    b.HasIndex("IsArchived", "IsLocked", "LastMessageAtUtc");
 
                     b.HasIndex("Visibility", "IsArchived", "LastMessageAtUtc");
 
@@ -582,6 +603,55 @@ namespace Infrastructure.Migrations
                     b.ToTable("DoctorTimeOff", (string)null);
                 });
 
+            modelBuilder.Entity("Domain.Entities.FollowUp", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int?>("AppointmentId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("DoctorId")
+                        .IsRequired()
+                        .HasMaxLength(450)
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<DateTime?>("DueAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("PatientId")
+                        .IsRequired()
+                        .HasMaxLength(450)
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<string>("Reason")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<DateTime?>("ResolvedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AppointmentId");
+
+                    b.HasIndex("PatientId", "Status");
+
+                    b.HasIndex("DoctorId", "Status", "DueAtUtc");
+
+                    b.ToTable("FollowUps");
+                });
+
             modelBuilder.Entity("Domain.Entities.Notification", b =>
                 {
                     b.Property<int>("Id")
@@ -643,6 +713,54 @@ namespace Infrastructure.Migrations
                     b.HasIndex("AppUserId", "IsRead");
 
                     b.ToTable("Notifications");
+                });
+
+            modelBuilder.Entity("Domain.Entities.PatientNote", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int?>("AppointmentId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Body")
+                        .IsRequired()
+                        .HasMaxLength(4000)
+                        .HasColumnType("nvarchar(4000)");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("DoctorId")
+                        .IsRequired()
+                        .HasMaxLength(450)
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<string>("PatientId")
+                        .IsRequired()
+                        .HasMaxLength(450)
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("nvarchar(120)");
+
+                    b.Property<DateTime?>("UpdatedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AppointmentId");
+
+                    b.HasIndex("DoctorId", "CreatedAtUtc");
+
+                    b.HasIndex("PatientId", "CreatedAtUtc");
+
+                    b.ToTable("PatientNotes");
                 });
 
             modelBuilder.Entity("Domain.Entities.Post", b =>
@@ -1191,6 +1309,26 @@ namespace Infrastructure.Migrations
                     b.Navigation("Doctor");
                 });
 
+            modelBuilder.Entity("Domain.Entities.FollowUp", b =>
+                {
+                    b.HasOne("Domain.Entities.Appointment", null)
+                        .WithMany()
+                        .HasForeignKey("AppointmentId")
+                        .OnDelete(DeleteBehavior.NoAction);
+
+                    b.HasOne("Domain.Entities.BaseUser", null)
+                        .WithMany()
+                        .HasForeignKey("DoctorId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+
+                    b.HasOne("Domain.Entities.BaseUser", null)
+                        .WithMany()
+                        .HasForeignKey("PatientId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("Domain.Entities.Notification", b =>
                 {
                     b.HasOne("Domain.Entities.BaseUser", "AppUser")
@@ -1200,6 +1338,26 @@ namespace Infrastructure.Migrations
                         .IsRequired();
 
                     b.Navigation("AppUser");
+                });
+
+            modelBuilder.Entity("Domain.Entities.PatientNote", b =>
+                {
+                    b.HasOne("Domain.Entities.Appointment", null)
+                        .WithMany()
+                        .HasForeignKey("AppointmentId")
+                        .OnDelete(DeleteBehavior.NoAction);
+
+                    b.HasOne("Domain.Entities.BaseUser", null)
+                        .WithMany()
+                        .HasForeignKey("DoctorId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+
+                    b.HasOne("Domain.Entities.BaseUser", null)
+                        .WithMany()
+                        .HasForeignKey("PatientId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("Domain.Entities.Post", b =>
