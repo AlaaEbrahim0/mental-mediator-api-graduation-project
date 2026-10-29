@@ -12,5 +12,7 @@ public interface IChatClient
 
 	Task MemberLeft(int memberId);
 
+	Task RoomUpdated(ChatRoomResponse room);
+
 	Task RoomArchived(ChatRoomResponse room);
 }

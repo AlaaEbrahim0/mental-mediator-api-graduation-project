@@ -3,6 +3,7 @@ using Application.Contracts;
 using Application.Dtos.ChatDtos;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.ModelBinding;
 using Microsoft.AspNetCore.RateLimiting;
 
 namespace API.Controllers;
@@ -31,6 +32,18 @@ public class ChatRoomsController : ControllerBase
 		return Ok(result.Value);
 	}
 
+	[HttpGet("browse")]
+	public async Task<IActionResult> BrowseRooms([FromQuery] RoomBrowseParameters parameters)
+	{
+		var result = await _chatService.BrowseRoomsAsync(parameters);
+		if (result.IsFailure)
+		{
+			return result.ToProblemDetails();
+		}
+
+		return Ok(result.Value);
+	}
+
 	[HttpGet("{roomId:int}")]
 	public async Task<IActionResult> GetRoom(int roomId)
 	{
@@ -44,7 +57,6 @@ public class ChatRoomsController : ControllerBase
 	}
 
 	[HttpPost]
-	[Authorize(Roles = "Doctor,Admin")]
 	[EnableRateLimiting(RateLimitPolicies.ChatRoomCreation)]
 	public async Task<IActionResult> CreateRoom([FromBody] CreateChatRoomRequest request)
 	{
@@ -61,9 +73,12 @@ public class ChatRoomsController : ControllerBase
 	}
 
 	[HttpPost("{roomId:int}/join")]
-	public async Task<IActionResult> JoinRoom(int roomId)
+	[EnableRateLimiting(RateLimitPolicies.ChatRoomJoin)]
+	public async Task<IActionResult> JoinRoom(
+		int roomId,
+		[FromBody(EmptyBodyBehavior = EmptyBodyBehavior.Allow)] JoinChatRoomRequest? request)
 	{
-		var result = await _chatService.JoinRoomAsync(roomId);
+		var result = await _chatService.JoinRoomAsync(roomId, request);
 		if (result.IsFailure)
 		{
 			return result.ToProblemDetails();
@@ -173,6 +188,125 @@ public class ChatRoomsController : ControllerBase
 	public async Task<IActionResult> ArchiveRoom(int roomId)
 	{
 		var result = await _chatService.ArchiveRoomAsync(roomId);
+		if (result.IsFailure)
+		{
+			return result.ToProblemDetails();
+		}
+
+		return Ok(result.Value);
+	}
+
+	[HttpPatch("{roomId:int}")]
+	public async Task<IActionResult> UpdateRoom(
+		int roomId,
+		[FromBody] UpdateChatRoomRequest request)
+	{
+		var result = await _chatService.UpdateRoomAsync(roomId, request);
+		if (result.IsFailure)
+		{
+			return result.ToProblemDetails();
+		}
+
+		return Ok(result.Value);
+	}
+
+	[HttpPost("{roomId:int}/lock")]
+	public async Task<IActionResult> LockRoom(int roomId)
+	{
+		var result = await _chatService.LockRoomAsync(roomId);
+		if (result.IsFailure)
+		{
+			return result.ToProblemDetails();
+		}
+
+		return Ok(result.Value);
+	}
+
+	[HttpPost("{roomId:int}/unlock")]
+	public async Task<IActionResult> UnlockRoom(int roomId)
+	{
+		var result = await _chatService.UnlockRoomAsync(roomId);
+		if (result.IsFailure)
+		{
+			return result.ToProblemDetails();
+		}
+
+		return Ok(result.Value);
+	}
+
+	[HttpPut("{roomId:int}/privacy")]
+	public async Task<IActionResult> UpdatePrivacy(
+		int roomId,
+		[FromBody] UpdateRoomPrivacyRequest request)
+	{
+		var result = await _chatService.UpdatePrivacyAsync(roomId, request);
+		if (result.IsFailure)
+		{
+			return result.ToProblemDetails();
+		}
+
+		return Ok(result.Value);
+	}
+
+	[HttpPut("{roomId:int}/passphrase")]
+	public async Task<IActionResult> SetPassphrase(
+		int roomId,
+		[FromBody] SetRoomPassphraseRequest request)
+	{
+		var result = await _chatService.SetPassphraseAsync(roomId, request);
+		if (result.IsFailure)
+		{
+			return result.ToProblemDetails();
+		}
+
+		return Ok(result.Value);
+	}
+
+	[HttpDelete("{roomId:int}/passphrase")]
+	public async Task<IActionResult> ClearPassphrase(int roomId)
+	{
+		var result = await _chatService.ClearPassphraseAsync(roomId);
+		if (result.IsFailure)
+		{
+			return result.ToProblemDetails();
+		}
+
+		return NoContent();
+	}
+
+	[HttpPut("{roomId:int}/scheduled")]
+	public async Task<IActionResult> UpdateSchedule(
+		int roomId,
+		[FromBody] UpdateRoomScheduleRequest request)
+	{
+		var result = await _chatService.UpdateScheduleAsync(roomId, request);
+		if (result.IsFailure)
+		{
+			return result.ToProblemDetails();
+		}
+
+		return Ok(result.Value);
+	}
+
+	[HttpPut("{roomId:int}/cover")]
+	[Consumes("multipart/form-data")]
+	public async Task<IActionResult> UploadCover(
+		int roomId,
+		[FromForm] UpdateRoomCoverRequest request)
+	{
+		var result = await _chatService.UploadCoverAsync(roomId, request.Image);
+		if (result.IsFailure)
+		{
+			return result.ToProblemDetails();
+		}
+
+		return Ok(result.Value);
+	}
+
+	[HttpDelete("{roomId:int}/cover")]
+	public async Task<IActionResult> RemoveCover(int roomId)
+	{
+		var result = await _chatService.RemoveCoverAsync(roomId);
 		if (result.IsFailure)
 		{
 			return result.ToProblemDetails();

@@ -208,6 +208,11 @@ public static class DependencyInjection
 			.AddScoped<IDoctorService, DoctorService>()
 			.AddScoped<IProfileService, ProfileService>()
 			.AddScoped<IStorageService, CloudinaryStorageService>()
+			// Room passphrases are a separate credential class from account
+			// passwords: a room secret must never be able to authenticate a
+			// user, so it gets its own hasher rather than IPasswordHasher.
+			.AddSingleton<IRoomPassphraseHasher, RoomPassphraseHasher>()
+			.AddSingleton<IRoomJoinThrottle, RoomJoinThrottle>()
 			.AddScoped<IWebRootFileProvider, WebRootFileProvider>()
 			// Resend is the preferred transactional email provider. MailService
 			// (MailKit SMTP) is the fallback ResendMailService delegates to when
@@ -225,6 +230,8 @@ public static class DependencyInjection
 			.AddScoped<IDepressionTestService, DepressionTestService>()
 			.AddScoped<IAdminService, AdminService>()
 			.AddScoped<IChatService, ChatService>()
+			.AddScoped<IDoctorWorkspaceService, DoctorWorkspaceService>()
+			.AddScoped<IPatientDirectoryLookup, PatientDirectoryLookup>()
 			.AddSingleton<IChatConnectionRegistry, ChatConnectionRegistry>()
 			.AddSingleton<IChatRealtimeNotifier, ChatRealtimeNotifier>()
 			.AddSignalR()
@@ -285,13 +292,34 @@ public static class DependencyInjection
 						AutoReplenishment = true
 					}));
 
+			// Rooms used to be doctor-only. They are not, so the staff budget is
+			// kept and patients get a much smaller one: the moderation queue is
+			// human, and two rooms an hour is plenty for a consultation request
+			// or a follow-up room without letting one account fill the listing.
+			// The partition is keyed on the role claim, so a token minted before a
+			// role change is budgeted under the old role until it is refreshed.
 			options.AddPolicy(RateLimitPolicies.ChatRoomCreation, context =>
+			{
+				var isPatient = GetRoomCreationTier(context) == PatientCreationTier;
+
+				return RateLimitPartition.GetFixedWindowLimiter(
+					$"chat-room-creation:{GetRateLimitPartitionKey(context)}",
+					_ => new FixedWindowRateLimiterOptions
+					{
+						PermitLimit = isPatient ? 2 : 5,
+						Window = TimeSpan.FromHours(1),
+						QueueLimit = 0,
+						AutoReplenishment = true
+					});
+			});
+
+			options.AddPolicy(RateLimitPolicies.ChatRoomJoin, context =>
 				RateLimitPartition.GetFixedWindowLimiter(
 					GetRateLimitPartitionKey(context),
 					_ => new FixedWindowRateLimiterOptions
 					{
-						PermitLimit = 5,
-						Window = TimeSpan.FromHours(1),
+						PermitLimit = 10,
+						Window = TimeSpan.FromMinutes(5),
 						QueueLimit = 0,
 						AutoReplenishment = true
 					}));
@@ -372,6 +400,19 @@ public static class DependencyInjection
 			? context.Connection.RemoteIpAddress?.ToString() ?? "anonymous"
 			: userId;
 	}
+
+	private const string PatientCreationTier = "patient";
+
+	/// <summary>
+	/// Splits the room-creation budget so opening rooms to patients does not give
+	/// one account an unlimited supply of them. Anyone who is not staff is held to
+	/// the patient budget, including an unauthenticated partition, because that is
+	/// the conservative reading of the claim set.
+	/// </summary>
+	private static string GetRoomCreationTier(HttpContext context) =>
+		context.User.IsInRole("Doctor") || context.User.IsInRole("Admin")
+			? "staff"
+			: PatientCreationTier;
 
 	public static IServiceCollection ConfigureCaching(this IServiceCollection services)
 	{

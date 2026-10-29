@@ -40,6 +40,12 @@ public class ChatRealtimeNotifier : IChatRealtimeNotifier
 			"MemberUpdated",
 			client => client.MemberUpdated(member));
 
+	public Task RoomUpdatedAsync(int roomId, ChatRoomResponse room) =>
+		SendToRoomAsync(
+			roomId,
+			"RoomUpdated",
+			client => client.RoomUpdated(room));
+
 	public Task RoomArchivedAsync(int roomId, ChatRoomResponse room) =>
 		SendToRoomAsync(
 			roomId,

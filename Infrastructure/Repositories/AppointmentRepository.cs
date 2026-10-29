@@ -382,5 +382,54 @@ public class AppointmentRepository : RepositoryBase<Appointment>, IAppointmentRe
 	{
 		return await FindAll(false).CountAsync();
 	}
+
+	public Task<int> CountDoctorAppointmentsAsync(
+		string doctorId,
+		AppointmentStatus status,
+		DateTime? startFrom,
+		DateTime? startBefore)
+	{
+		var query = FindByCondition(
+			appointment => appointment.DoctorId == doctorId && appointment.Status == status,
+			false);
+
+		if (startFrom.HasValue)
+		{
+			query = query.Where(appointment => appointment.StartTime >= startFrom.Value);
+		}
+
+		if (startBefore.HasValue)
+		{
+			query = query.Where(appointment => appointment.StartTime < startBefore.Value);
+		}
+
+		return query.CountAsync();
+	}
+
+	public Task<int> CountDistinctPatientsSinceAsync(string doctorId, DateTime since)
+	{
+		// Cancelled and rejected requests never represented care, so they do not
+		// make a patient "active" on the dashboard.
+		return FindByCondition(
+			appointment => appointment.DoctorId == doctorId &&
+				appointment.StartTime >= since &&
+				appointment.Status != AppointmentStatus.Cancelled &&
+				appointment.Status != AppointmentStatus.Rejected,
+			false)
+			.Select(appointment => appointment.UserId)
+			.Distinct()
+			.CountAsync();
+	}
+
+	public async Task<IReadOnlyList<TimeSpan>> GetCompletedDurationsSinceAsync(string doctorId, DateTime since)
+	{
+		return await FindByCondition(
+			appointment => appointment.DoctorId == doctorId &&
+				appointment.Status == AppointmentStatus.Completed &&
+				appointment.StartTime >= since,
+			false)
+			.Select(appointment => appointment.Duration)
+			.ToListAsync();
+	}
 }
 

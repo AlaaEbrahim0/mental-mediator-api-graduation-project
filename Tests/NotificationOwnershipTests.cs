@@ -136,6 +136,7 @@ public class NotificationOwnershipTests
 		public IProfileRepository Profiles => throw new NotImplementedException();
 		public IAppointmentRepository Appointments => throw new NotImplementedException();
 		public IDoctorSchedulingRepository DoctorScheduling => throw new NotImplementedException();
+		public IDoctorWorkspaceRepository DoctorWorkspace => throw new NotImplementedException();
 		public IDepressionTestResultRepository DepressionTestResults => throw new NotImplementedException();
 	}
 

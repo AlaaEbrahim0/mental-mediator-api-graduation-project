@@ -1,4 +1,5 @@
 using Application.Dtos.ChatDtos;
+using Microsoft.AspNetCore.Http;
 using Shared;
 
 namespace Application.Contracts;
@@ -6,6 +7,8 @@ namespace Application.Contracts;
 public interface IChatService
 {
 	Task<Result<ChatRoomPageResponse>> GetRoomsAsync(ChatRoomRequestParameters parameters);
+
+	Task<Result<ChatRoomBrowseResponse>> BrowseRoomsAsync(RoomBrowseParameters parameters);
 
 	Task<Result<ChatRoomResponse>> GetRoomAsync(int roomId);
 
@@ -19,7 +22,12 @@ public interface IChatService
 
 	Task<Result<ChatRoomResponse>> CreateRoomAsync(CreateChatRoomRequest request);
 
-	Task<Result<ChatRoomMemberResponse>> JoinRoomAsync(int roomId);
+	/// <summary>
+	/// Joins (or idempotently re-activates membership in) a room. The passphrase is
+	/// only consulted for a room that requires one and only for a caller who is not
+	/// already a member.
+	/// </summary>
+	Task<Result<ChatRoomMemberResponse>> JoinRoomAsync(int roomId, JoinChatRoomRequest? request);
 
 	Task<Result> LeaveRoomAsync(int roomId);
 
@@ -40,4 +48,22 @@ public interface IChatService
 	Task<Result<ChatRoomMemberResponse>> UpdateMemberRoleAsync(int roomId, int memberId, UpdateChatRoomMemberRoleRequest request);
 
 	Task<Result<ChatRoomResponse>> ArchiveRoomAsync(int roomId);
+
+	Task<Result<ChatRoomResponse>> LockRoomAsync(int roomId);
+
+	Task<Result<ChatRoomResponse>> UnlockRoomAsync(int roomId);
+
+	Task<Result<ChatRoomResponse>> UpdateRoomAsync(int roomId, UpdateChatRoomRequest request);
+
+	Task<Result<ChatRoomResponse>> UpdatePrivacyAsync(int roomId, UpdateRoomPrivacyRequest request);
+
+	Task<Result<ChatRoomResponse>> SetPassphraseAsync(int roomId, SetRoomPassphraseRequest request);
+
+	Task<Result> ClearPassphraseAsync(int roomId);
+
+	Task<Result<ChatRoomResponse>> UpdateScheduleAsync(int roomId, UpdateRoomScheduleRequest request);
+
+	Task<Result<ChatRoomResponse>> UploadCoverAsync(int roomId, IFormFile? image);
+
+	Task<Result<ChatRoomResponse>> RemoveCoverAsync(int roomId);
 }

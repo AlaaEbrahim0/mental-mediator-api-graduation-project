@@ -8,7 +8,7 @@ public static class ChatErrors
 		"Chat.UserNotAvailable", "The current account is not available.");
 
 	public static Error CreateRoomForbidden() => Error.Forbidden(
-		"Chat.CreateRoomForbidden", "Only doctors and administrators can create chat rooms.");
+		"Chat.CreateRoomForbidden", "This account cannot create chat rooms.");
 
 	public static Error InvalidRoomName() => Error.Validation(
 		"Chat.InvalidRoomName", "Room name must be between 1 and 100 characters and cannot contain control characters.");
@@ -21,6 +21,32 @@ public static class ChatErrors
 
 	public static Error RoomArchived() => Error.Conflict(
 		"Chat.RoomArchived", "This chat room has been archived and no longer accepts new activity.");
+
+	/// <summary>
+	/// A reversible pause, unlike <see cref="RoomArchived"/>: members can still
+	/// read the conversation, nobody can post and new members cannot join.
+	/// </summary>
+	public static Error RoomLocked() => Error.Conflict(
+		"Chat.RoomLocked", "This room is paused and is not accepting messages right now.");
+
+	public static Error RoomPassphraseRequired() => Error.Failure(
+		"Chat.RoomPassphraseRequired", "This room needs a passphrase to join.");
+
+	/// <summary>
+	/// Returned for a wrong passphrase and for a throttled caller alike, so a
+	/// failed join cannot be used to tell "wrong guess" from "guess too often".
+	/// </summary>
+	public static Error RoomPassphraseIncorrect() => Error.Failure(
+		"Chat.RoomPassphraseIncorrect", "The passphrase for this room is not correct.");
+
+	public static Error InvalidRoomPassphrase() => Error.Validation(
+		"Chat.InvalidRoomPassphrase", "A room passphrase must be between 8 and 128 characters and cannot contain control characters.");
+
+	public static Error InvalidScheduledStart() => Error.Validation(
+		"Chat.InvalidScheduledStart", "A scheduled start must be in the future and no more than 90 days ahead.");
+
+	public static Error InvalidRoomCover() => Error.Validation(
+		"Chat.InvalidRoomCover", "Select an image file to use as the room cover.");
 
 	public static Error InvalidMessagePagination() => Error.Validation(
 		"Chat.InvalidMessagePagination", "Use either beforeId or afterId, not both.");

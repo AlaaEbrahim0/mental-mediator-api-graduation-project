@@ -20,6 +20,7 @@ public class RepositoryManager : IRepositoryManager
 	private readonly Lazy<IChatMessageReportRepository> chatMessageReportRepository;
 	private readonly Lazy<IDoctorSchedulingRepository> doctorSchedulingRepository;
 	private readonly Lazy<IProfileRepository> profileRepository;
+	private readonly Lazy<IDoctorWorkspaceRepository> doctorWorkspaceRepository;
 
 	public RepositoryManager(AppDbContext dbContext)
 	{
@@ -37,6 +38,7 @@ public class RepositoryManager : IRepositoryManager
 		chatMessageReportRepository = new(() => new ChatMessageReportRepository(dbContext));
 		doctorSchedulingRepository = new(() => new DoctorSchedulingRepository(dbContext));
 		profileRepository = new(() => new ProfileRepository(dbContext));
+		doctorWorkspaceRepository = new(() => new DoctorWorkspaceRepository(dbContext));
 	}
 
 	public IPostRepository Posts => postRepository.Value;
@@ -51,6 +53,7 @@ public class RepositoryManager : IRepositoryManager
 	public IAppointmentRepository Appointments => appointementRepository.Value;
 	public IDoctorSchedulingRepository DoctorScheduling => doctorSchedulingRepository.Value;
 	public IProfileRepository Profiles => profileRepository.Value;
+	public IDoctorWorkspaceRepository DoctorWorkspace => doctorWorkspaceRepository.Value;
 	public IDepressionTestResultRepository DepressionTestResults => depressionTestResultRepository.Value;
 
 	public async Task SaveAsync() => await _dbContext.SaveChangesAsync();

@@ -211,6 +211,12 @@ https://<your-deploy-url>/swagger
 | **Profiles** | `POST/PUT/DELETE /api/profiles/me/qualifications` | Manage structured qualifications (JSON) |
 | **Doctor** | `GET /api/doctors/me` | My profile |
 | **Schedule** | `GET /api/doctors/{doctorId}/schedule` | Weekly schedule |
+| **Chat** | `GET /api/chat/rooms/browse` | Search, filter and sort listable rooms |
+| **Chat** | `POST /api/chat/rooms` | Create a room (patients and staff; public or private, optional passphrase) |
+| **Chat** | `POST /api/chat/rooms/{id}/join` | Join a room (`{"passphrase": "..."}` only when required) |
+| **Chat** | `POST /api/chat/rooms/{id}/lock` / `unlock` | Pause or resume posting (owner or doctor moderator) |
+| **Chat** | `PUT /api/chat/rooms/{id}/privacy` / `passphrase` / `scheduled` | Manage room access and scheduling |
+| **Chat** | `PUT/DELETE /api/chat/rooms/{id}/cover` | Upload or clear the room cover (`multipart/form-data`, field `Image`) |
 
 #### Profile visibility and contact details
 
@@ -537,6 +543,14 @@ keypress. See `Tests/ModerationClientTests.cs` for the behaviours covered.
 
 ### Known integration limitations
 
+- **Room passphrases are hashed with PBKDF2-SHA256 (150k iterations, per-room salt) and never leave
+  the server.** `ChatRoomResponse` exposes `requiresPassword` as a boolean and nothing else; a
+  reflection test (`ChatRoomPrivacyTests`) fails the build if a response property could carry a hash.
+  Five wrong attempts per account and room block further guesses for 15 minutes and return the same
+  `Chat.RoomPassphraseIncorrect` error as a wrong guess, so a caller cannot distinguish "wrong" from
+  "throttled". Private rooms are deliberately listable — name, cover, member count and owner badge
+  are public, the description and conversation are member-only. The seeded `Visibility=1` room in
+  `scripts/seed.sql` therefore becomes visible at deploy time.
 - **Google sign-in is wired end to end on the patient portal; the doctor portal is password-only by
   design.** The flow is `GET /api/auth/external-login` → Google → the OAuth handler's own
   `GET /signin-google` → `GET /api/auth/external-login-callback` → `GET /api/auth/exchange-token`.

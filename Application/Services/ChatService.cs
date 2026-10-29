@@ -4,6 +4,8 @@ using Application.Dtos.ChatDtos;
 using Domain.Entities;
 using Domain.Enums;
 using Domain.Errors;
+using Domain.Repositories;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Shared;
 
@@ -13,24 +15,43 @@ public class ChatService : IChatService
 {
 	private const int MaxPreviewLength = 120;
 
+	/// <summary>
+	/// The display role a doctor takes when entering a room a patient owns. Kept
+	/// as one constant so the join path and the role change path agree.
+	/// </summary>
+	private const string DoctorRole = "Doctor";
+
+	private const string AdminRole = "Admin";
+
+	private const string PatientRole = "User";
+
 	private readonly IRepositoryManager _repos;
 	private readonly IUserClaimsService _userClaimsService;
 	private readonly UserManager<BaseUser> _userManager;
 	private readonly IChatContentModerator _contentModerator;
 	private readonly IChatRealtimeNotifier _realtimeNotifier;
+	private readonly IRoomPassphraseHasher _passphraseHasher;
+	private readonly IRoomJoinThrottle _joinThrottle;
+	private readonly IStorageService _storageService;
 
 	public ChatService(
 		IRepositoryManager repos,
 		IUserClaimsService userClaimsService,
 		UserManager<BaseUser> userManager,
 		IChatContentModerator contentModerator,
-		IChatRealtimeNotifier realtimeNotifier)
+		IChatRealtimeNotifier realtimeNotifier,
+		IRoomPassphraseHasher passphraseHasher,
+		IRoomJoinThrottle joinThrottle,
+		IStorageService storageService)
 	{
 		_repos = repos;
 		_userClaimsService = userClaimsService;
 		_userManager = userManager;
 		_contentModerator = contentModerator;
 		_realtimeNotifier = realtimeNotifier;
+		_passphraseHasher = passphraseHasher;
+		_joinThrottle = joinThrottle;
+		_storageService = storageService;
 	}
 
 	public async Task<Result<ChatRoomPageResponse>> GetRoomsAsync(ChatRoomRequestParameters parameters)
@@ -41,7 +62,7 @@ public class ChatService : IChatService
 			return currentUser.Error;
 		}
 
-		var rooms = await _repos.ChatRooms.GetPublicRoomsAsync(
+		var rooms = await _repos.ChatRooms.GetListableRoomsAsync(
 			parameters.BeforeRoomId,
 			parameters.Limit + 1,
 			false);
@@ -53,6 +74,7 @@ public class ChatService : IChatService
 		var memberships = await _repos.ChatRooms.GetMembershipsAsync(currentUser.Value.Id, roomIds, false);
 		var membershipByRoom = memberships.ToDictionary(x => x.RoomId);
 		var memberCounts = await _repos.ChatRooms.GetActiveMemberCountsAsync(roomIds);
+		var ownersByRoom = await _repos.ChatRooms.GetOwnersByRoomIdsAsync(roomIds);
 
 		// Only load conversation content for rooms the user is actually in.
 		var memberRoomIds = memberships
@@ -68,14 +90,66 @@ public class ChatService : IChatService
 				membershipByRoom.TryGetValue(room.Id, out var membership);
 				memberCounts.TryGetValue(room.Id, out var memberCount);
 				latestMessages.TryGetValue(room.Id, out var latestMessage);
+				ownersByRoom.TryGetValue(room.Id, out var owner);
 
-				return MapRoom(room, membership, memberCount, latestMessage);
+				return MapRoom(room, membership, memberCount, latestMessage, owner);
 			}).ToList(),
 			HasMore = hasMore,
 			NextBeforeRoomId = hasMore && page.Count > 0 ? page[^1].Id : null
 		};
 
 		return response;
+	}
+
+	public async Task<Result<ChatRoomBrowseResponse>> BrowseRoomsAsync(RoomBrowseParameters parameters)
+	{
+		var currentUser = await GetCurrentUserAsync();
+		if (currentUser.IsFailure)
+		{
+			return currentUser.Error;
+		}
+
+		// RequestParameters clamps only the upper bound; a negative page size would
+		// reach SQL Server as FETCH NEXT (-1).
+		var pageSize = Math.Clamp(parameters.PageSize, 1, 50);
+		var pageNumber = parameters.PageNumber < 1 ? 1 : parameters.PageNumber;
+
+		var (rooms, totalCount) = await _repos.ChatRooms.BrowseRoomsAsync(new RoomBrowseQuery(
+			parameters.Search,
+			parameters.Tab,
+			parameters.Sort,
+			DateTime.UtcNow,
+			(pageNumber - 1) * pageSize,
+			pageSize));
+
+		var roomIds = rooms.Select(x => x.Id).ToList();
+		var memberships = await _repos.ChatRooms.GetMembershipsAsync(currentUser.Value.Id, roomIds, false);
+		var membershipByRoom = memberships.ToDictionary(x => x.RoomId);
+		var memberCounts = await _repos.ChatRooms.GetActiveMemberCountsAsync(roomIds);
+		var ownersByRoom = await _repos.ChatRooms.GetOwnersByRoomIdsAsync(roomIds);
+
+		var memberRoomIds = memberships
+			.Where(x => x.LeftAtUtc is null)
+			.Select(x => x.RoomId)
+			.ToList();
+		var latestMessages = await _repos.ChatMessages.GetLatestMessagesAsync(memberRoomIds, false);
+
+		return new ChatRoomBrowseResponse
+		{
+			Rooms = rooms.Select(room =>
+			{
+				membershipByRoom.TryGetValue(room.Id, out var membership);
+				memberCounts.TryGetValue(room.Id, out var memberCount);
+				latestMessages.TryGetValue(room.Id, out var latestMessage);
+				ownersByRoom.TryGetValue(room.Id, out var owner);
+
+				return MapRoom(room, membership, memberCount, latestMessage, owner);
+			}).ToList(),
+			TotalCount = totalCount,
+			PageNumber = pageNumber,
+			PageSize = pageSize,
+			HasMore = pageNumber * pageSize < totalCount
+		};
 	}
 
 	public async Task<Result<ChatRoomResponse>> GetRoomAsync(int roomId)
@@ -87,7 +161,7 @@ public class ChatService : IChatService
 		}
 
 		var room = await _repos.ChatRooms.GetRoomByIdAsync(roomId, false);
-		if (room is null || room.Visibility != ChatRoomVisibility.Public)
+		if (room is null)
 		{
 			return ChatErrors.RoomNotFound();
 		}
@@ -101,11 +175,15 @@ public class ChatService : IChatService
 		}
 
 		var memberCount = await _repos.ChatRooms.GetActiveMemberCountAsync(roomId);
+		var owner = await _repos.ChatRooms.GetOwnerAsync(roomId, false);
 		var latestMessage = isActiveMember
 			? await _repos.ChatMessages.GetLatestMessageAsync(roomId, false)
 			: null;
 
-		return MapRoom(room, membership, memberCount, latestMessage);
+		// A private room is reachable by non-members on purpose: this is the
+		// response that tells the client to ask for the passphrase. The
+		// description and preview are redacted inside MapRoom.
+		return MapRoom(room, membership, memberCount, latestMessage, owner);
 	}
 
 	public async Task<Result<ChatRoomResponse>> EnsureActiveMemberAsync(int roomId)
@@ -117,7 +195,7 @@ public class ChatService : IChatService
 		}
 
 		var room = await _repos.ChatRooms.GetRoomByIdAsync(roomId, false);
-		if (room is null || room.Visibility != ChatRoomVisibility.Public)
+		if (room is null)
 		{
 			return ChatErrors.RoomNotFound();
 		}
@@ -133,9 +211,10 @@ public class ChatService : IChatService
 		}
 
 		var memberCount = await _repos.ChatRooms.GetActiveMemberCountAsync(roomId);
+		var owner = await _repos.ChatRooms.GetOwnerAsync(roomId, false);
 		var latestMessage = await _repos.ChatMessages.GetLatestMessageAsync(roomId, false);
 
-		return MapRoom(room, membership, memberCount, latestMessage);
+		return MapRoom(room, membership, memberCount, latestMessage, owner);
 	}
 
 	public async Task<Result<ChatRoomResponse>> CreateRoomAsync(CreateChatRoomRequest request)
@@ -147,7 +226,11 @@ public class ChatService : IChatService
 		}
 
 		var chatUser = chatUserResult.Value;
-		if (!chatUser.IsDoctor && !chatUser.IsAdmin)
+
+		// Patients may open their own consultation and follow-up rooms. The account
+		// still has to hold one of the portal roles, so a role-less row left behind
+		// by a half-finished sign-up cannot.
+		if (!chatUser.IsDoctor && !chatUser.IsAdmin && !await _userManager.IsInRoleAsync(chatUser.User, PatientRole))
 		{
 			return ChatErrors.CreateRoomForbidden();
 		}
@@ -166,16 +249,37 @@ public class ChatService : IChatService
 			return ChatErrors.InvalidRoomDescription();
 		}
 
+		var passphrase = request.Passphrase?.Trim() ?? string.Empty;
+		var hasPassphrase = passphrase.Length > 0;
+		if (hasPassphrase && !RoomAccessPolicy.IsValidPassphrase(passphrase))
+		{
+			return ChatErrors.InvalidRoomPassphrase();
+		}
+
 		var now = DateTime.UtcNow;
+		var scheduleCheck = RoomAccessPolicy.ValidateScheduledStart(request.ScheduledStartAtUtc, now);
+		if (scheduleCheck.IsFailure)
+		{
+			return scheduleCheck.Error;
+		}
+
 		var room = new ChatRoom
 		{
 			Name = name,
 			Description = description,
-			Visibility = ChatRoomVisibility.Public,
+			Visibility = request.Visibility,
 			CreatedById = chatUser.User.Id,
 			CreatedAtUtc = now,
-			IsArchived = false
+			IsArchived = false,
+			ScheduledStartAtUtc = request.ScheduledStartAtUtc
 		};
+
+		// A passphrase always makes the room private; the policy object owns that
+		// rule so create and update cannot drift apart.
+		RoomAccessPolicy.ApplyPrivacy(
+			room,
+			request.Visibility,
+			hasPassphrase ? _passphraseHasher.Hash(passphrase) : null);
 
 		var owner = new ChatRoomMember
 		{
@@ -191,10 +295,10 @@ public class ChatService : IChatService
 		_repos.ChatRooms.CreateMembership(owner);
 		await _repos.SaveAsync();
 
-		return MapRoom(room, owner, 1, null);
+		return MapRoom(room, owner, 1, null, owner);
 	}
 
-	public async Task<Result<ChatRoomMemberResponse>> JoinRoomAsync(int roomId)
+	public async Task<Result<ChatRoomMemberResponse>> JoinRoomAsync(int roomId, JoinChatRoomRequest? request)
 	{
 		var chatUserResult = await GetCurrentChatUserAsync();
 		if (chatUserResult.IsFailure)
@@ -204,22 +308,56 @@ public class ChatService : IChatService
 
 		var chatUser = chatUserResult.Value;
 		var room = await _repos.ChatRooms.GetRoomByIdAsync(roomId, false);
-		if (room is null || room.Visibility != ChatRoomVisibility.Public)
+		if (room is null)
 		{
 			return ChatErrors.RoomNotFound();
 		}
 
-		if (room.IsArchived)
+		var passphrase = request?.Passphrase;
+		var supplied = !string.IsNullOrWhiteSpace(passphrase);
+		var requiresPassphrase = room.PasswordHash is not null;
+		var matches = supplied &&
+			requiresPassphrase &&
+			_passphraseHasher.Verify(passphrase!, room.PasswordHash!);
+
+		var userId = chatUser.User.Id;
+		var blocked = _joinThrottle.IsBlocked(userId, roomId);
+
+		if (!blocked && supplied && requiresPassphrase && !matches)
 		{
-			return ChatErrors.RoomArchived();
+			// Only a genuine wrong guess counts. Counting blocked attempts would let
+			// a determined caller hold the block open forever.
+			_joinThrottle.RegisterFailure(userId, roomId);
 		}
 
-		var membership = await _repos.ChatRooms.GetMembershipAsync(roomId, chatUser.User.Id, true);
+		var membership = await _repos.ChatRooms.GetMembershipAsync(roomId, userId, true);
+		var isActiveMember = IsActiveMember(membership);
+
+		var decision = RoomAccessPolicy.EvaluateJoin(room, new RoomAccessPolicy.JoinAttempt(
+			isActiveMember,
+			supplied,
+			matches,
+			blocked));
+
+		if (decision.IsFailure)
+		{
+			return decision.Error;
+		}
+
+		if (requiresPassphrase)
+		{
+			_joinThrottle.Reset(userId, roomId);
+		}
+
+		// A room a patient owns has no moderator until a doctor arrives, and the
+		// portal's only safeguard for patient-created rooms is a doctor being able
+		// to pause or close them, so the promotion happens on join.
+		var roomOwner = await _repos.ChatRooms.GetOwnerAsync(roomId, false);
 
 		if (membership is not null)
 		{
 			var displayName = ResolveDisplayName(chatUser, membership);
-			var role = ResolveRole(chatUser, membership);
+			var role = ResolveRole(chatUser, membership, roomOwner?.IsDoctor ?? true);
 			var changed = membership.LeftAtUtc is not null ||
 				membership.DisplayName != displayName ||
 				membership.IsDoctor != chatUser.IsDoctor ||
@@ -243,8 +381,10 @@ public class ChatService : IChatService
 		membership = new ChatRoomMember
 		{
 			RoomId = roomId,
-			UserId = chatUser.User.Id,
-			Role = ChatRoomRole.Member,
+			UserId = userId,
+			Role = chatUser.IsDoctor && roomOwner is not null && !roomOwner.IsDoctor
+				? ChatRoomRole.Moderator
+				: ChatRoomRole.Member,
 			DisplayName = GetNewMemberDisplayName(chatUser),
 			IsDoctor = chatUser.IsDoctor,
 			JoinedAtUtc = DateTime.UtcNow
@@ -271,7 +411,7 @@ public class ChatService : IChatService
 		}
 
 		var room = await _repos.ChatRooms.GetRoomByIdAsync(roomId, false);
-		if (room is null || room.Visibility != ChatRoomVisibility.Public)
+		if (room is null)
 		{
 			return ChatErrors.RoomNotFound();
 		}
@@ -308,7 +448,7 @@ public class ChatService : IChatService
 		}
 
 		var room = await _repos.ChatRooms.GetRoomByIdAsync(roomId, false);
-		if (room is null || room.Visibility != ChatRoomVisibility.Public)
+		if (room is null)
 		{
 			return ChatErrors.RoomNotFound();
 		}
@@ -338,7 +478,7 @@ public class ChatService : IChatService
 		}
 
 		var room = await _repos.ChatRooms.GetRoomByIdAsync(roomId, false);
-		if (room is null || room.Visibility != ChatRoomVisibility.Public)
+		if (room is null)
 		{
 			return ChatErrors.RoomNotFound();
 		}
@@ -398,7 +538,7 @@ public class ChatService : IChatService
 		}
 
 		var room = await _repos.ChatRooms.GetRoomByIdAsync(roomId, false);
-		if (room is null || room.Visibility != ChatRoomVisibility.Public)
+		if (room is null)
 		{
 			return ChatErrors.RoomNotFound();
 		}
@@ -406,6 +546,12 @@ public class ChatService : IChatService
 		if (room.IsArchived)
 		{
 			return ChatErrors.RoomArchived();
+		}
+
+		// A paused room is still readable, but it accepts nothing new.
+		if (room.IsLocked)
+		{
+			return ChatErrors.RoomLocked();
 		}
 
 		var membership = await _repos.ChatRooms.GetMembershipAsync(roomId, currentUser.Value.Id, false);
@@ -440,7 +586,8 @@ public class ChatService : IChatService
 		}
 
 		// Moderation can take up to a few seconds. Recheck the room state before
-		// persisting so an archive that happened during moderation is respected.
+		// persisting so an archive or a pause that happened during moderation is
+		// respected.
 		var currentRoom = await _repos.ChatRooms.GetRoomByIdAsync(roomId, false);
 		if (currentRoom is null)
 		{
@@ -450,6 +597,11 @@ public class ChatService : IChatService
 		if (currentRoom.IsArchived)
 		{
 			return ChatErrors.RoomArchived();
+		}
+
+		if (currentRoom.IsLocked)
+		{
+			return ChatErrors.RoomLocked();
 		}
 
 		var message = new ChatMessage
@@ -505,7 +657,7 @@ public class ChatService : IChatService
 		}
 
 		var room = await _repos.ChatRooms.GetRoomByIdAsync(message.RoomId, false);
-		if (room is null || room.Visibility != ChatRoomVisibility.Public)
+		if (room is null)
 		{
 			return ChatErrors.MessageNotFound();
 		}
@@ -557,7 +709,7 @@ public class ChatService : IChatService
 		}
 
 		var room = await _repos.ChatRooms.GetRoomByIdAsync(message.RoomId, false);
-		if (room is null || room.Visibility != ChatRoomVisibility.Public)
+		if (room is null)
 		{
 			return ChatErrors.MessageNotFound();
 		}
@@ -626,7 +778,7 @@ public class ChatService : IChatService
 
 		var currentUser = currentUserResult.Value;
 		var room = await _repos.ChatRooms.GetRoomByIdAsync(roomId, false);
-		if (room is null || room.Visibility != ChatRoomVisibility.Public)
+		if (room is null)
 		{
 			return ChatErrors.RoomNotFound();
 		}
@@ -676,7 +828,7 @@ public class ChatService : IChatService
 
 		var currentUser = currentUserResult.Value;
 		var room = await _repos.ChatRooms.GetRoomByIdAsync(roomId, false);
-		if (room is null || room.Visibility != ChatRoomVisibility.Public)
+		if (room is null)
 		{
 			return ChatErrors.RoomNotFound();
 		}
@@ -729,7 +881,7 @@ public class ChatService : IChatService
 		}
 
 		var room = await _repos.ChatRooms.GetRoomByIdAsync(roomId, false);
-		if (room is null || room.Visibility != ChatRoomVisibility.Public)
+		if (room is null)
 		{
 			return ChatErrors.RoomNotFound();
 		}
@@ -797,28 +949,13 @@ public class ChatService : IChatService
 
 	public async Task<Result<ChatRoomResponse>> ArchiveRoomAsync(int roomId)
 	{
-		var currentUser = await GetCurrentUserAsync();
-		if (currentUser.IsFailure)
+		var context = await GetModeratorContextAsync(roomId);
+		if (context.IsFailure)
 		{
-			return currentUser.Error;
+			return context.Error;
 		}
 
-		var room = await _repos.ChatRooms.GetRoomByIdAsync(roomId, true);
-		if (room is null || room.Visibility != ChatRoomVisibility.Public)
-		{
-			return ChatErrors.RoomNotFound();
-		}
-
-		var membership = await _repos.ChatRooms.GetMembershipAsync(roomId, currentUser.Value.Id, false);
-		if (!IsActiveMember(membership))
-		{
-			return ChatErrors.RoomNotFound();
-		}
-
-		if (membership!.Role != ChatRoomRole.Owner)
-		{
-			return ChatErrors.OwnerRequired();
-		}
+		var (room, membership) = context.Value;
 
 		var changed = !room.IsArchived;
 
@@ -829,13 +966,277 @@ public class ChatService : IChatService
 			await _repos.SaveAsync();
 		}
 
-		var memberCount = await _repos.ChatRooms.GetActiveMemberCountAsync(roomId);
-		var latestMessage = await _repos.ChatMessages.GetLatestMessageAsync(roomId, false);
-		var response = MapRoom(room, membership, memberCount, latestMessage);
+		var response = await BuildRoomAsync(room, membership);
 
 		if (changed)
 		{
 			await _realtimeNotifier.RoomArchivedAsync(roomId, response);
+		}
+
+		return response;
+	}
+
+	public async Task<Result<ChatRoomResponse>> LockRoomAsync(int roomId) =>
+		await SetLockStateAsync(roomId, locked: true);
+
+	public async Task<Result<ChatRoomResponse>> UnlockRoomAsync(int roomId) =>
+		await SetLockStateAsync(roomId, locked: false);
+
+	private async Task<Result<ChatRoomResponse>> SetLockStateAsync(int roomId, bool locked)
+	{
+		var context = await GetModeratorContextAsync(roomId);
+		if (context.IsFailure)
+		{
+			return context.Error;
+		}
+
+		var (room, membership) = context.Value;
+		var changed = room.IsLocked != locked;
+
+		if (changed)
+		{
+			room.IsLocked = locked;
+			_repos.ChatRooms.UpdateRoom(room);
+			await _repos.SaveAsync();
+		}
+
+		var response = await BuildRoomAsync(room, membership);
+
+		if (changed)
+		{
+			await _realtimeNotifier.RoomUpdatedAsync(roomId, response);
+		}
+
+		return response;
+	}
+
+	public async Task<Result<ChatRoomResponse>> UpdateRoomAsync(int roomId, UpdateChatRoomRequest request)
+	{
+		var context = await GetModeratorContextAsync(roomId);
+		if (context.IsFailure)
+		{
+			return context.Error;
+		}
+
+		var (room, membership) = context.Value;
+
+		// Absent means "leave it alone", so only the supplied field is validated
+		// and written. An empty name is still rejected: a nameless room is
+		// unreadable in every list.
+		var name = room.Name;
+		if (request.Name is not null)
+		{
+			name = request.Name.Trim();
+			if (name.Length == 0 || name.Length > 100 || name.Any(char.IsControl))
+			{
+				return ChatErrors.InvalidRoomName();
+			}
+		}
+
+		var description = room.Description;
+		if (request.Description is not null)
+		{
+			description = request.Description.Trim();
+			if (description.Length > 500 ||
+				description.Any(character =>
+					char.IsControl(character) && character is not '\n' and not '\r' and not '\t'))
+			{
+				return ChatErrors.InvalidRoomDescription();
+			}
+		}
+
+		var changed = room.Name != name || room.Description != description;
+
+		if (changed)
+		{
+			room.Name = name;
+			room.Description = description;
+			_repos.ChatRooms.UpdateRoom(room);
+			await _repos.SaveAsync();
+		}
+
+		var response = await BuildRoomAsync(room, membership);
+
+		if (changed)
+		{
+			await _realtimeNotifier.RoomUpdatedAsync(roomId, response);
+		}
+
+		return response;
+	}
+
+	public async Task<Result<ChatRoomResponse>> UpdatePrivacyAsync(int roomId, UpdateRoomPrivacyRequest request)
+	{
+		var context = await GetModeratorContextAsync(roomId);
+		if (context.IsFailure)
+		{
+			return context.Error;
+		}
+
+		var (room, membership) = context.Value;
+		var previousVisibility = room.Visibility;
+		var previousHash = room.PasswordHash;
+
+		// Going public drops the stored passphrase: an open room that still asks
+		// for one is a state no client can represent.
+		RoomAccessPolicy.ApplyPrivacy(room, request.Visibility, hashedPassphrase: null);
+
+		var changed = previousVisibility != room.Visibility || !string.Equals(previousHash, room.PasswordHash, StringComparison.Ordinal);
+
+		if (changed)
+		{
+			_repos.ChatRooms.UpdateRoom(room);
+			await _repos.SaveAsync();
+		}
+
+		var response = await BuildRoomAsync(room, membership);
+
+		if (changed)
+		{
+			await _realtimeNotifier.RoomUpdatedAsync(roomId, response);
+		}
+
+		return response;
+	}
+
+	public async Task<Result<ChatRoomResponse>> SetPassphraseAsync(int roomId, SetRoomPassphraseRequest request)
+	{
+		var context = await GetModeratorContextAsync(roomId);
+		if (context.IsFailure)
+		{
+			return context.Error;
+		}
+
+		var passphrase = request.Passphrase?.Trim() ?? string.Empty;
+		if (!RoomAccessPolicy.IsValidPassphrase(passphrase))
+		{
+			return ChatErrors.InvalidRoomPassphrase();
+		}
+
+		var (room, membership) = context.Value;
+		RoomAccessPolicy.ApplyPrivacy(room, visibility: null, _passphraseHasher.Hash(passphrase));
+
+		_repos.ChatRooms.UpdateRoom(room);
+		await _repos.SaveAsync();
+
+		var response = await BuildRoomAsync(room, membership);
+		await _realtimeNotifier.RoomUpdatedAsync(roomId, response);
+
+		return response;
+	}
+
+	public async Task<Result> ClearPassphraseAsync(int roomId)
+	{
+		var context = await GetModeratorContextAsync(roomId);
+		if (context.IsFailure)
+		{
+			return context.Error;
+		}
+
+		var (room, membership) = context.Value;
+
+		if (room.PasswordHash is null)
+		{
+			return Result.Success();
+		}
+
+		RoomAccessPolicy.ClearPassphrase(room);
+		_repos.ChatRooms.UpdateRoom(room);
+		await _repos.SaveAsync();
+
+		var response = await BuildRoomAsync(room, membership);
+		await _realtimeNotifier.RoomUpdatedAsync(roomId, response);
+
+		return Result.Success();
+	}
+
+	public async Task<Result<ChatRoomResponse>> UpdateScheduleAsync(int roomId, UpdateRoomScheduleRequest request)
+	{
+		var context = await GetModeratorContextAsync(roomId);
+		if (context.IsFailure)
+		{
+			return context.Error;
+		}
+
+		var scheduleCheck = RoomAccessPolicy.ValidateScheduledStart(request.ScheduledStartAtUtc, DateTime.UtcNow);
+		if (scheduleCheck.IsFailure)
+		{
+			return scheduleCheck.Error;
+		}
+
+		var (room, membership) = context.Value;
+		var changed = room.ScheduledStartAtUtc != request.ScheduledStartAtUtc;
+
+		if (changed)
+		{
+			room.ScheduledStartAtUtc = request.ScheduledStartAtUtc;
+			_repos.ChatRooms.UpdateRoom(room);
+			await _repos.SaveAsync();
+		}
+
+		var response = await BuildRoomAsync(room, membership);
+
+		if (changed)
+		{
+			await _realtimeNotifier.RoomUpdatedAsync(roomId, response);
+		}
+
+		return response;
+	}
+
+	public async Task<Result<ChatRoomResponse>> UploadCoverAsync(int roomId, IFormFile? image)
+	{
+		var context = await GetModeratorContextAsync(roomId);
+		if (context.IsFailure)
+		{
+			return context.Error;
+		}
+
+		if (image is null || image.Length == 0)
+		{
+			return ChatErrors.InvalidRoomCover();
+		}
+
+		var uploaded = await _storageService.UploadPhoto(image);
+		if (uploaded.IsFailure)
+		{
+			return uploaded.Error;
+		}
+
+		var (room, membership) = context.Value;
+		room.CoverImageUrl = uploaded.Value;
+		_repos.ChatRooms.UpdateRoom(room);
+		await _repos.SaveAsync();
+
+		var response = await BuildRoomAsync(room, membership);
+		await _realtimeNotifier.RoomUpdatedAsync(roomId, response);
+
+		return response;
+	}
+
+	public async Task<Result<ChatRoomResponse>> RemoveCoverAsync(int roomId)
+	{
+		var context = await GetModeratorContextAsync(roomId);
+		if (context.IsFailure)
+		{
+			return context.Error;
+		}
+
+		var (room, membership) = context.Value;
+		var changed = room.CoverImageUrl is not null;
+
+		if (changed)
+		{
+			room.CoverImageUrl = null;
+			_repos.ChatRooms.UpdateRoom(room);
+			await _repos.SaveAsync();
+		}
+
+		var response = await BuildRoomAsync(room, membership);
+
+		if (changed)
+		{
+			await _realtimeNotifier.RoomUpdatedAsync(roomId, response);
 		}
 
 		return response;
@@ -867,8 +1268,8 @@ public class ChatService : IChatService
 		}
 
 		var roles = await _userManager.GetRolesAsync(userResult.Value);
-		var isDoctor = roles.Any(role => string.Equals(role, "Doctor", StringComparison.OrdinalIgnoreCase));
-		var isAdmin = roles.Any(role => string.Equals(role, "Admin", StringComparison.OrdinalIgnoreCase));
+		var isDoctor = roles.Any(role => string.Equals(role, DoctorRole, StringComparison.OrdinalIgnoreCase));
+		var isAdmin = roles.Any(role => string.Equals(role, AdminRole, StringComparison.OrdinalIgnoreCase));
 
 		return new ChatUser(userResult.Value, isDoctor, isAdmin);
 	}
@@ -907,7 +1308,58 @@ public class ChatService : IChatService
 			return false;
 		}
 
-		return await _userManager.IsInRoleAsync(currentUser, "Doctor");
+		return await _userManager.IsInRoleAsync(currentUser, DoctorRole);
+	}
+
+	/// <summary>
+	/// Loads the room for a change that only a moderator may make: the caller has
+	/// to be an active member and either the owner or a doctor moderator. The room
+	/// is tracked so the caller's assignment is what gets saved.
+	/// </summary>
+	private async Task<Result<(ChatRoom Room, ChatRoomMember Membership)>> GetModeratorContextAsync(int roomId)
+	{
+		var chatUserResult = await GetCurrentChatUserAsync();
+		if (chatUserResult.IsFailure)
+		{
+			return chatUserResult.Error;
+		}
+
+		var chatUser = chatUserResult.Value;
+		var room = await _repos.ChatRooms.GetRoomByIdAsync(roomId, true);
+		if (room is null)
+		{
+			return ChatErrors.RoomNotFound();
+		}
+
+		var membership = await _repos.ChatRooms.GetMembershipAsync(roomId, chatUser.User.Id, false);
+		if (!IsActiveMember(membership))
+		{
+			return ChatErrors.RoomNotFound();
+		}
+
+		if (!await CanModerateAsync(membership, chatUser.User))
+		{
+			return ChatErrors.ModeratorRequired();
+		}
+
+		return (room, membership!);
+	}
+
+	/// <summary>
+	/// Builds the response for a room the caller has just read or changed. Counts
+	/// and the latest message are read here so every command returns the same
+	/// snapshot shape as the list and detail endpoints.
+	/// </summary>
+	private async Task<ChatRoomResponse> BuildRoomAsync(ChatRoom room, ChatRoomMember? membership)
+	{
+		var memberCount = await _repos.ChatRooms.GetActiveMemberCountAsync(room.Id);
+		var owner = await _repos.ChatRooms.GetOwnerAsync(room.Id, false);
+		var isActiveMember = IsActiveMember(membership);
+		var latestMessage = isActiveMember
+			? await _repos.ChatMessages.GetLatestMessageAsync(room.Id, false)
+			: null;
+
+		return MapRoom(room, membership, memberCount, latestMessage, owner);
 	}
 
 	private static string GetNewMemberDisplayName(ChatUser user)
@@ -949,11 +1401,19 @@ public class ChatService : IChatService
 		return CreatePatientAlias();
 	}
 
-	private static ChatRoomRole ResolveRole(ChatUser user, ChatRoomMember membership)
+	private static ChatRoomRole ResolveRole(
+		ChatUser user,
+		ChatRoomMember membership,
+		bool ownerIsDoctor)
 	{
 		if (membership.Role == ChatRoomRole.Owner)
 		{
 			return ChatRoomRole.Owner;
+		}
+
+		if (user.IsDoctor && !ownerIsDoctor)
+		{
+			return ChatRoomRole.Moderator;
 		}
 
 		if (membership.Role == ChatRoomRole.Moderator && user.IsDoctor)
@@ -998,27 +1458,36 @@ public class ChatService : IChatService
 	private static string Truncate(string value, int maxLength) =>
 		value.Length <= maxLength ? value : value[..maxLength];
 
-	private static ChatRoomResponse MapRoom(
+	internal static ChatRoomResponse MapRoom(
 		ChatRoom room,
 		ChatRoomMember? membership,
 		int memberCount,
-		ChatMessage? latestMessage)
+		ChatMessage? latestMessage,
+		ChatRoomMember? owner = null)
 	{
 		var activeMembership = IsActiveMember(membership) ? membership : null;
+		var canSeeContent = RoomAccessPolicy.CanSeeContent(room, activeMembership is not null);
 
 		return new ChatRoomResponse
 		{
 			Id = room.Id,
 			Name = room.Name,
-			Description = room.Description,
+			Description = RoomAccessPolicy.RedactDescription(room, canSeeContent),
 			Visibility = room.Visibility,
 			CreatedAtUtc = room.CreatedAtUtc,
 			LastMessageAtUtc = room.LastMessageAtUtc,
 			IsArchived = room.IsArchived,
+			IsPrivate = room.Visibility == ChatRoomVisibility.Private,
+			RequiresPassword = room.PasswordHash is not null,
+			IsLocked = room.IsLocked,
+			CoverImageUrl = room.CoverImageUrl,
+			ScheduledStartAtUtc = room.ScheduledStartAtUtc,
 			MemberCount = memberCount,
 			IsMember = activeMembership is not null,
 			MyRole = activeMembership?.Role,
 			MyMemberId = activeMembership?.Id,
+			OwnerDisplayName = owner?.DisplayName,
+			OwnerIsDoctor = owner?.IsDoctor ?? false,
 			// A preview is conversation content, so it is only shown to active
 			// members. Non-members can still see the room metadata and join.
 			LastMessagePreview = activeMembership is not null && latestMessage is not null && !latestMessage.IsDeleted

@@ -8,7 +8,10 @@ part of M3/M4.
 > initializer applies pending migrations when the database is reachable. Use a
 > disposable, non-production database for every check below.
 
-The migration `20261024001703_AddChatRooms` is additive and remains **unapplied**.
+The migrations `20261024001703_AddChatRooms`, `20261029201638_AddChatRoomPrivacyAndScheduling`
+and `20261029201956_AddPatientNotesAndFollowUps` are additive. The first was
+applied when chat shipped; the other two are new and are applied automatically on
+the next API start against a reachable database.
 
 ---
 
@@ -30,9 +33,10 @@ AutoMapper `NU1903` (twice), MailKit `NU1902`, and `CS8604` in
 | Rule | Enforcement |
 | --- | --- |
 | Only authenticated, non-deleted users can use chat | `[Authorize]` plus `UserManager.FindByIdAsync` in `ChatService` |
-| Only Doctor or Admin accounts create rooms | Controller role filter plus DB-role check in `ChatService` |
-| Patients cannot create rooms | Both checks above |
-| Public rooms only in v1 | Repository filters `Visibility == Public`; private rooms return 404 |
+| Doctors, admins and patients create rooms | Live DB-role check in `ChatService`; patients are limited to 2 rooms/hour, staff to 5 |
+| Patient-created rooms are moderated by the first doctor who joins | Doctor joins a room whose owner is not a doctor and is stored as `Moderator` |
+| Public and private rooms are both listable | Repository only filters `IsArchived`; a private room's description is empty for non-members |
+| A passphrase-protected room prompts for it on join | `RoomAccessPolicy`; the stored PBKDF2 hash never leaves the server |
 | Any active member can read messages and member lists | Membership check; non-members get 404 |
 | Patients see a stable random per-room alias | Stored on `ChatRoomMember.DisplayName`; never derived from user id |
 | Doctors see real name plus Doctor badge | `ChatRoomMember.DisplayName` + `IsDoctor` |
@@ -40,6 +44,8 @@ AutoMapper `NU1903` (twice), MailKit `NU1902`, and `CS8604` in
 | Patients can report messages, not moderate them | Report endpoint is member-only; moderator endpoints require Owner/Doctor |
 | Owner cannot leave; archive instead | `LeaveRoomAsync` returns 409 |
 | Messages are immutable and only soft-deleted | No edit endpoint; delete sets `IsDeleted`, `DeletedAtUtc`, `DeletedById` |
+| A locked room accepts reads but no posts and no new members | `ChatService.SendMessageAsync` and `RoomAccessPolicy.EvaluateJoin` |
+| Only the owner or a doctor moderator manages a room | Lock, privacy, passphrase, cover, schedule, rename, archive |
 
 The database role is authoritative. A room membership's `IsDoctor` is a display
 snapshot; moderator authorization re-checks the account's current `Doctor` role.
@@ -58,29 +64,43 @@ All routes require a bearer token.
 | Method | Route | Who | Success |
 | --- | --- | --- | --- |
 | `GET` | `/api/chat/rooms?beforeRoomId=&limit=` | Any authenticated user | 200 `ChatRoomPageResponse` |
-| `POST` | `/api/chat/rooms` | Doctor/Admin | 201 `ChatRoomResponse` |
+| `GET` | `/api/chat/rooms/browse?search=&tab=&sort=&pageNumber=&pageSize=` | Any authenticated user | 200 `ChatRoomBrowseResponse` |
+| `POST` | `/api/chat/rooms` | Doctor, Admin or patient | 201 `ChatRoomResponse` |
 | `GET` | `/api/chat/rooms/{roomId}` | Any authenticated user (archived rooms: active members only) | 200 `ChatRoomResponse` |
-| `POST` | `/api/chat/rooms/{roomId}/join` | Any authenticated user | 200 `ChatRoomMemberResponse` |
+| `POST` | `/api/chat/rooms/{roomId}/join` | Any authenticated user; body `{ "passphrase": "..." }` optional | 200 `ChatRoomMemberResponse` |
 | `POST` | `/api/chat/rooms/{roomId}/leave` | Active member (owner blocked) | 204 |
 | `GET` | `/api/chat/rooms/{roomId}/members` | Active member | 200 `ChatRoomMemberResponse[]` |
 | `GET` | `/api/chat/rooms/{roomId}/messages?beforeId=&afterId=&limit=` | Active member | 200 `ChatMessagePageResponse` |
-| `POST` | `/api/chat/rooms/{roomId}/messages` | Active member | 200 `ChatMessageResponse` (idempotent) |
+| `POST` | `/api/chat/rooms/{roomId}/messages` | Active member in an unlocked room | 200 `ChatMessageResponse` (idempotent) |
 | `DELETE` | `/api/chat/messages/{messageId}` | Sender, owner, or Doctor moderator | 200 `ChatMessageResponse` |
 | `POST` | `/api/chat/messages/{messageId}/reports` | Active member, not the sender | 200 `ChatMessageReportResponse` |
 | `GET` | `/api/chat/rooms/{roomId}/reports?status=&limit=` | Owner or Doctor moderator | 200 `ChatMessageReportResponse[]` |
 | `PATCH` | `/api/chat/rooms/{roomId}/reports/{reportId}` | Owner or Doctor moderator | 200 `ChatMessageReportResponse` |
 | `PATCH` | `/api/chat/rooms/{roomId}/members/{memberId}/role` | Owner | 200 `ChatRoomMemberResponse` |
-| `POST` | `/api/chat/rooms/{roomId}/archive` | Owner | 200 `ChatRoomResponse` |
+| `POST` | `/api/chat/rooms/{roomId}/archive` | Owner or Doctor moderator | 200 `ChatRoomResponse` |
+| `PATCH` | `/api/chat/rooms/{roomId}` | Owner or Doctor moderator | 200 `ChatRoomResponse` |
+| `POST` | `/api/chat/rooms/{roomId}/lock` | Owner or Doctor moderator | 200 `ChatRoomResponse` |
+| `POST` | `/api/chat/rooms/{roomId}/unlock` | Owner or Doctor moderator | 200 `ChatRoomResponse` |
+| `PUT` | `/api/chat/rooms/{roomId}/privacy` | Owner or Doctor moderator | 200 `ChatRoomResponse` |
+| `PUT` | `/api/chat/rooms/{roomId}/passphrase` | Owner or Doctor moderator | 200 `ChatRoomResponse` |
+| `DELETE` | `/api/chat/rooms/{roomId}/passphrase` | Owner or Doctor moderator | 204 |
+| `PUT` | `/api/chat/rooms/{roomId}/scheduled` | Owner or Doctor moderator | 200 `ChatRoomResponse` |
+| `PUT` | `/api/chat/rooms/{roomId}/cover` (`multipart/form-data`, field `Image`) | Owner or Doctor moderator | 200 `ChatRoomResponse` |
+| `DELETE` | `/api/chat/rooms/{roomId}/cover` | Owner or Doctor moderator | 200 `ChatRoomResponse` |
 
 Rate limits, partitioned by authenticated user id:
 
 | Policy | Endpoint | Limit |
 | --- | --- | --- |
 | `chat-messages` | `POST /rooms/{roomId}/messages` | 30 per minute |
-| `chat-room-creation` | `POST /rooms` | 5 per hour |
+| `chat-room-creation` | `POST /rooms` | 5 per hour for Doctor/Admin, 2 per hour for patients |
+| `chat-room-join` | `POST /rooms/{roomId}/join` | 10 per 5 minutes |
 | `chat-reports` | `POST /messages/{messageId}/reports` | 10 per hour |
 
 A rejected request returns `429` with `Retry-After` and a `ProblemDetails` body.
+Passphrase guessing is additionally throttled to 5 failures per account and room
+in a sliding 15 minutes; a throttled attempt returns the same
+`Chat.RoomPassphraseIncorrect` error as a wrong guess.
 
 ---
 
@@ -467,7 +487,7 @@ cannot be exercised against an unreachable database.
 | M4-6 | Connect with a valid token that has no `uid` claim | Connection is aborted |
 | M4-7 | `SubscribeToRoom` as an active member | Success; room snapshot; connection receives room events |
 | M4-8 | `SubscribeToRoom` as a non-member | `Chat.RoomNotFound`; no events |
-| M4-9 | `SubscribeToRoom` for a private or nonexistent room | `Chat.RoomNotFound` |
+| M4-9 | `SubscribeToRoom` for a nonexistent room | `Chat.RoomNotFound` |
 | M4-10 | `SubscribeToRoom` for an archived room as an active member | Success; `isArchived=true`; no new messages accepted |
 | M4-11 | `patientA` sends via REST while `patientB` is subscribed | `patientB` receives `MessageCreated` once with the persisted id |
 | M4-12 | Sender receives the REST response and the hub event | One message after deduplication by `id`/`clientMessageId` |
@@ -483,6 +503,31 @@ cannot be exercised against an unreachable database.
 | M4-22 | `UnsubscribeFromRoom` | No further events on that connection; membership remains |
 | M4-23 | `/notification-hub` negotiate with a valid token | Still 200 (regression) |
 | M4-24 | Force a broadcast failure, then send via REST | REST still succeeds; message is in history; error is logged without content |
+
+### 5.12 Privacy, patient creation, locking and covers
+
+| # | Action | Expected |
+| --- | --- | --- |
+| R-1 | `GET /api/chat/rooms` as a non-member | A private room appears with `isPrivate=true`, `requiresPassword` accurate, and `description=""` |
+| R-2 | `GET /api/chat/rooms/{id}` as a non-member of a private room | 200 with the description redacted and no `lastMessagePreview` |
+| R-3 | `GET /api/chat/rooms/browse?search=<private room description word>` | The private room does not match on its description; public rooms still do |
+| R-4 | `POST /join` to a passphrase room with no body | `Chat.RoomPassphraseRequired` |
+| R-5 | `POST /join` with a wrong passphrase | `Chat.RoomPassphraseIncorrect` |
+| R-6 | Six wrong passphrases, then the right one | The sixth and the correct attempt both return `Chat.RoomPassphraseIncorrect` until 15 minutes pass |
+| R-7 | Existing member re-joins a passphrase room with no body | 200; membership reactivated/unchanged; never prompted |
+| R-8 | `POST /lock` as owner, then `POST /messages` as a member | 409 `Chat.RoomLocked`; reads still work; a non-member join gets `Chat.RoomLocked` |
+| R-9 | `POST /unlock` | Posting works again |
+| R-10 | `PUT /privacy` to Public on a passphrase room | `passwordHash` is cleared in the same save; `requiresPassword=false` |
+| R-11 | `PUT /passphrase` with 7 characters | 400 `Chat.InvalidRoomPassphrase` |
+| R-12 | `PUT /scheduled` in the past or 91 days out | 400 `Chat.InvalidScheduledStart` |
+| R-13 | `PUT /cover` as a non-moderator | 403 `Chat.ModeratorRequired` |
+| R-14 | `PUT /cover` with a multipart body that has no file part | 400; no URL is stored |
+| R-15 | `PUT /cover` with a valid image | 200; `coverImageUrl` set; `RoomUpdated` broadcast |
+| R-16 | Patient creates a room; a doctor joins | The doctor's membership is stored as `Moderator` |
+| R-17 | A non-owner Doctor archives a patient-created room | 200; `RoomArchived` broadcast |
+| R-18 | A plain member archives | 403 `Chat.ModeratorRequired` |
+| R-19 | A patient's third room within an hour | 429 from `chat-room-creation` |
+| R-20 | Staff create a sixth room within an hour | 429; staff and patient budgets are independent |
 
 ---
 
@@ -502,9 +547,20 @@ cannot be exercised against an unreachable database.
 - Room ownership is room-scoped. Removing the owner's global Doctor/Admin role
   does not transfer or revoke ownership; only doctor-moderator privileges follow
   the current database role. An ownership-transfer/admin tool is a future item.
-- Room metadata is restricted to doctor/admin creation and is length and
-  control-character validated, but it is not sent through the hate-speech model.
-  Only message content is moderated in M3/M4.
+- Rooms can be created by patients as well as staff. Room metadata (name,
+  description, cover) is length and control-character validated but is not sent
+  through the hate-speech model; only message content is moderated. A
+  patient-created public room is visible to every authenticated user until a
+  doctor locks or archives it.
+- Private rooms are listable on purpose: their name, cover, member count and
+  owner badge are public, and only the description and conversation content are
+  restricted to active members. A passphrase gates joining, not reading.
+- A passphrase is checked only when a caller joins and is not already a member;
+  changing or clearing it does not remove existing members, who can rejoin
+  without it.
+- Removing a room cover clears `CoverImageUrl` but does not delete the asset
+  from Cloudinary. The stored URLs are absolute; rotating them is an operational
+  task, not an API one.
 - The report list returns the newest `limit` reports (maximum 100) for the
   requested status and has no cursor pagination yet. Extend it before report
   volume can exceed one page.
