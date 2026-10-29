@@ -26,6 +26,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 
@@ -149,22 +150,11 @@ public static class DependencyInjection
 		return services;
 	}
 
-	public static IServiceCollection ConfigureHttpClients(this IServiceCollection services, ConfigurationManager configuration, bool envIsDev)
+	public static IServiceCollection ConfigureHttpClients(this IServiceCollection services, ConfigurationManager configuration)
 	{
 		services.AddScoped<IHateSpeechDetector, HateSpeechDetectorClient>();
 		services.AddScoped<IDepressionDetector, DepressionDetectorClient>();
 		services.AddScoped<INewsService, NewsApiClient>();
-
-		//if (!envIsDev)
-		//{
-		//	services.AddHostedService<HostingRefresher>();
-		//}
-
-		//services.AddHttpClient<HostingRefresher>("self", config =>
-		//{
-		//	var baseAddress = configuration["BaseAddress"];
-		//	config.BaseAddress = new Uri(baseAddress!);
-		//});
 
 		services.AddHttpClient<NewsApiClient>("news-api-client", config =>
 		{
@@ -174,31 +164,26 @@ public static class DependencyInjection
 			config.DefaultRequestHeaders.UserAgent.ParseAdd("Nexus");
 		});
 
-		services.AddHttpClient<DepressionDetectorClient>("ml-client", config =>
+		var mlServerAddress = configuration["MLServerAddress"];
+		if (string.IsNullOrWhiteSpace(mlServerAddress))
 		{
-			var baseAddress = configuration["MLServerAddress"];
-			config.BaseAddress = new Uri(baseAddress!);
+			throw new InvalidOperationException("MLServerAddress must be configured for content moderation.");
+		}
+
+		// One client for the hosted model. The budget in MLServiceProbe decides
+		// how long a whole attempt sequence may take; this bounds a single
+		// hung request so no caller can wait longer than the cold-start window.
+		services.AddHttpClient("ml-client", config =>
+		{
+			config.BaseAddress = new Uri(mlServerAddress);
+			config.Timeout = TimeSpan.FromSeconds(Math.Max(1, configuration.GetValue("MLServer:TimeoutSeconds", 45)));
 		});
 
-		services.AddHttpClient<HateSpeechDetectorClient>("ml-client", config =>
-		{
-			var baseAddress = configuration["MLServerAddress"];
-			config.BaseAddress = new Uri(baseAddress!);
-		});
-
-		// Chat moderation is deliberately isolated from the existing ML client:
-		// it gets its own short timeout and is called on the chat path only.
-		services.AddHttpClient("chat-ml-client", config =>
-		{
-			var baseAddress = configuration["MLServerAddress"];
-			if (string.IsNullOrWhiteSpace(baseAddress))
-			{
-				throw new InvalidOperationException("MLServerAddress must be configured for chat moderation.");
-			}
-
-			config.BaseAddress = new Uri(baseAddress);
-			config.Timeout = TimeSpan.FromSeconds(3);
-		});
+		services.AddSingleton<MLServiceProbe>();
+		// No polling keep-alive is registered for the model service (the
+		// dormant Infrastructure/BackgroundJobs/HostingRefresher.cs): a request
+		// that arrives asleep is served by waiting inside the probe budget,
+		// not by a timer that spends resources whether or not anyone is typing.
 		services.AddScoped<IChatContentModerator, ChatContentModerator>();
 
 		return services;
@@ -223,7 +208,19 @@ public static class DependencyInjection
 			.AddScoped<IProfileService, ProfileService>()
 			.AddScoped<IStorageService, CloudinaryStorageService>()
 			.AddScoped<IWebRootFileProvider, WebRootFileProvider>()
-			.AddTransient<IMailService, MailService>()
+			// Resend is the preferred transactional email provider. MailService
+			// (MailKit SMTP) is the fallback ResendMailService delegates to when
+			// Resend is unconfigured. It is wired by hand rather than by the
+			// generic overload because ResendMailService itself implements
+			// IMailService: letting the container inject that parameter resolves
+			// IMailService -> ResendMailService -> IMailService and every consumer
+			// of IMailService (booking, auth) fails at activation.
+			.AddTransient<MailService>()
+			.AddScoped<IMailService>(services => new ResendMailService(
+				services.GetRequiredService<IResendClient>(),
+				services.GetRequiredService<IOptions<ResendSettings>>(),
+				services.GetRequiredService<MailService>(),
+				services.GetRequiredService<ILogger<ResendMailService>>()))
 			.AddScoped<IDepressionTestService, DepressionTestService>()
 			.AddScoped<IAdminService, AdminService>()
 			.AddScoped<IChatService, ChatService>()
@@ -299,12 +296,28 @@ public static class DependencyInjection
 					}));
 
 			options.AddPolicy(RateLimitPolicies.ChatReports, context =>
+					RateLimitPartition.GetFixedWindowLimiter(
+						GetRateLimitPartitionKey(context),
+						_ => new FixedWindowRateLimiterOptions
+						{
+							PermitLimit = 10,
+							Window = TimeSpan.FromHours(1),
+							QueueLimit = 0,
+							AutoReplenishment = true
+						}));
+
+			// Authentication endpoints: per-IP limit to blunt brute-force and
+			// account-enumeration probing. 10 per minute is generous for a human
+			// retrying credentials or requesting a reset link, but blocks rapid
+			// automation. Uses a IP-only partition key (auth flows may run before
+			// a user is identified).
+			options.AddPolicy(RateLimitPolicies.Auth, context =>
 				RateLimitPartition.GetFixedWindowLimiter(
-					GetRateLimitPartitionKey(context),
+					context.Connection.RemoteIpAddress?.ToString() ?? "anonymous",
 					_ => new FixedWindowRateLimiterOptions
 					{
 						PermitLimit = 10,
-						Window = TimeSpan.FromHours(1),
+						Window = TimeSpan.FromMinutes(1),
 						QueueLimit = 0,
 						AutoReplenishment = true
 					}));
@@ -477,6 +490,28 @@ public static class DependencyInjection
 		services.Configure<GoogleAuthenticationOptions>(configuration.GetSection("GoogleAuthentication"));
 		services.Configure<MailSettings>(configuration.GetSection("MailSettings"));
 
+		var resendSection = configuration.GetSection("Resend");
+		// Allow RESEND_API_KEY (the canonical env var name) to override the
+		// appsettings "Resend:ApiKey" value. If both are empty, Resend is
+		// simply disabled and MailKit SMTP is used as the fallback.
+		var envApiKey = Environment.GetEnvironmentVariable("RESEND_API_KEY");
+		if (!string.IsNullOrWhiteSpace(envApiKey))
+		{
+			configuration[$"Resend:ApiKey"] = envApiKey;
+		}
+		services.Configure<ResendSettings>(resendSection);
+
+		return services;
+	}
+
+	public static IServiceCollection ConfigureResend(this IServiceCollection services)
+	{
+		// Register the Resend HTTP client with a named client so the API key
+		// (set up in the ResendClient constructor) is never serialized into a
+		// generic HttpClient. The base address and timeout are configured in
+		// the client itself, but RegisterHttpClient here keeps the DI chain
+		// explicit and testable.
+		services.AddHttpClient<IResendClient, ResendClient>();
 		return services;
 	}
 

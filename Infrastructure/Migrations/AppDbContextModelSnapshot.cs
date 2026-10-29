@@ -597,6 +597,10 @@ namespace Infrastructure.Migrations
                     b.Property<DateTime>("DateCreated")
                         .HasColumnType("datetime2");
 
+                    b.Property<string>("DeduplicationKey")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
                     b.Property<bool>("IsRead")
                         .HasColumnType("bit");
 
@@ -611,9 +615,19 @@ namespace Infrastructure.Migrations
                     b.Property<string>("NotifierUserName")
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<DateTimeOffset?>("ReadAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<int?>("RelatedResourceId")
+                        .HasColumnType("int");
+
                     b.Property<string>("Resources")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Title")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
 
                     b.Property<string>("Type")
                         .HasColumnType("nvarchar(max)");
@@ -621,6 +635,8 @@ namespace Infrastructure.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("AppUserId");
+
+                    b.HasIndex("DeduplicationKey");
 
                     b.HasIndex("IsRead");
 

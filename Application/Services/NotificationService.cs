@@ -31,12 +31,23 @@ public class NotificationService : INotificationService
 		{
 			return NotificationErrors.NotFound(id);
 		}
+
+		var currentUserId = _userClaimsService.GetUserId();
+		if (notification.AppUserId != currentUserId)
+		{
+			return NotificationErrors.Forbidden();
+		}
+
 		var notificationReponse = _mapper.Map<NotificationResponse>(notification);
 		return notificationReponse;
 	}
 
 	public async Task SendNotificationAsync(Notification notification)
 	{
+		// Persist the notification in the database first, then deliver it
+		// via SignalR. This way the notification record is the source of
+		// truth — even if real-time delivery fails or the client is
+		// disconnected, the notification is recoverable via the API.
 		await _notificationSender.SendNotificationAsync(notification);
 	}
 
@@ -67,6 +78,7 @@ public class NotificationService : INotificationService
 		await _repos.SaveAsync();
 		return true;
 	}
+
 	public async Task<Result<bool>> MarkAsReadAsync(int id)
 	{
 		string currentUserId = _userClaimsService.GetUserId();
@@ -75,10 +87,32 @@ public class NotificationService : INotificationService
 		{
 			return NotificationErrors.NotFound(id);
 		}
+
+		if (notification.AppUserId != currentUserId)
+		{
+			return NotificationErrors.Forbidden();
+		}
+
 		notification.IsRead = true;
+		notification.ReadAt = DateTimeOffset.UtcNow;
 		_repos.Notifications.UpdateNotification(notification);
 		await _repos.SaveAsync();
 		return true;
+	}
+
+	public async Task<Result<int>> GetUnreadCountAsync()
+	{
+		var currentUserId = _userClaimsService.GetUserId();
+		var count = await _repos.Notifications.GetUnreadCountAsync(currentUserId);
+		return count;
+	}
+
+	public async Task<Result<bool>> MarkMultipleAsReadAsync(IEnumerable<int> ids)
+	{
+		var currentUserId = _userClaimsService.GetUserId();
+		var result = await _repos.Notifications.MarkMultipleAsReadAsync(ids, currentUserId);
+		await _repos.SaveAsync();
+		return result;
 	}
 
 }

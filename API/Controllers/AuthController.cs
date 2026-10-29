@@ -1,8 +1,12 @@
-﻿using Application.Contracts;
+﻿using API.Configurations;
+using Application.Contracts;
 using Application.Dtos.AuthDtos;
 using Domain.Entities;
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.Extensions.Caching.Memory;
 
 namespace API.Controllers;
@@ -25,6 +29,7 @@ public class AuthController : ControllerBase
 	}
 
 	[HttpPost("register")]
+	[EnableRateLimiting(RateLimitPolicies.Auth)]
 	public async Task<IActionResult> Register([FromBody] RegisterationRequest model)
 	{
 		if (model is null)
@@ -41,6 +46,7 @@ public class AuthController : ControllerBase
 	}
 
 	[HttpPost("signin")]
+	[EnableRateLimiting(RateLimitPolicies.Auth)]
 	public async Task<IActionResult> SignIn([FromBody] SignInRequest model)
 	{
 		if (model is null)
@@ -56,6 +62,7 @@ public class AuthController : ControllerBase
 	}
 
 	[HttpGet("external-login")]
+	[EnableRateLimiting(RateLimitPolicies.Auth)]
 	public IActionResult ExternalLogin()
 	{
 		var provider = "Google";
@@ -68,8 +75,8 @@ public class AuthController : ControllerBase
 		return Challenge(properties, provider);
 	}
 
-
 	[HttpGet("external-login-callback")]
+	[EnableRateLimiting(RateLimitPolicies.Auth)]
 	public async Task<IActionResult> ExternalLoginCallback()
 	{
 		var result = await _authService.ExternalLoginAsync();
@@ -81,17 +88,15 @@ public class AuthController : ControllerBase
 		var authResponse = result.Value;
 
 		var temporaryToken = Guid.NewGuid().ToString();
-
 		_cache.Set(temporaryToken, authResponse, TimeSpan.FromMinutes(10));
 
 		var callerUrl = _configuration["ClientUI"];
-
 		var redirectUrl = $"{callerUrl}?temporaryToken={temporaryToken}";
-
 		return Redirect(redirectUrl);
 	}
 
 	[HttpGet("exchange-token")]
+	[EnableRateLimiting(RateLimitPolicies.Auth)]
 	public IActionResult ExchangeToken([FromQuery] string temporaryToken)
 	{
 		if (_cache.TryGetValue(temporaryToken, out AuthResponse? authResponse))
@@ -103,21 +108,20 @@ public class AuthController : ControllerBase
 		return Unauthorized("Invalid or expired token.");
 	}
 
-
 	[HttpPost("send-email-confirmation-link")]
+	[EnableRateLimiting(RateLimitPolicies.Auth)]
 	public async Task<IActionResult> SendEmailConfirmationLink([FromQuery] string email)
 	{
 		var result = await _authService.SendEmailConfirmationLink(email);
-
 		if (result.IsFailure)
 		{
 			return result.ToProblemDetails();
 		}
-
 		return Ok(result.Value);
 	}
 
 	[HttpPost("send-reset-password-link")]
+	[EnableRateLimiting(RateLimitPolicies.Auth)]
 	public async Task<IActionResult> SendResetPasswordLink([FromQuery] string email)
 	{
 		var result = await _authService.SendResetPasswordLink(email);
@@ -129,6 +133,7 @@ public class AuthController : ControllerBase
 	}
 
 	[HttpPost("reset-password")]
+	[EnableRateLimiting(RateLimitPolicies.Auth)]
 	public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordRequest request)
 	{
 		var result = await _authService.ResetPassword(request);
@@ -140,6 +145,7 @@ public class AuthController : ControllerBase
 	}
 
 	[HttpGet("confirm-email")]
+	[EnableRateLimiting(RateLimitPolicies.Auth)]
 	public async Task<IActionResult> ConfirmEmail(string id, string token)
 	{
 		if (string.IsNullOrEmpty(id) || string.IsNullOrEmpty(token))
@@ -153,5 +159,4 @@ public class AuthController : ControllerBase
 		}
 		return Redirect($"{Request.Scheme}://{Request.Host}/successfulEmailConfirmation.html");
 	}
-
 }

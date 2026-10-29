@@ -1,5 +1,4 @@
-﻿using System.Net.Http.Json;
-using Application.Contracts;
+﻿using Application.Contracts;
 using Application.Dtos.DepressionTestDtos;
 using Microsoft.Extensions.Logging;
 using Shared;
@@ -8,30 +7,42 @@ namespace Infrastructure.Clients;
 
 public class HateSpeechDetectorClient : IHateSpeechDetector
 {
-    private readonly IHttpClientFactory _httpClientFactory;
+    private const string HttpClientName = "ml-client";
+    private const string PredictPath = "/predict_HS";
+
+    private readonly MLServiceProbe _probe;
     private readonly ILogger<HateSpeechDetectorClient> _logger;
 
-    public HateSpeechDetectorClient(IHttpClientFactory httpClientFactory, ILogger<HateSpeechDetectorClient> logger)
+    public HateSpeechDetectorClient(MLServiceProbe probe, ILogger<HateSpeechDetectorClient> logger)
     {
-        _httpClientFactory = httpClientFactory;
+        _probe = probe;
         _logger = logger;
     }
 
     public async Task<Result<bool>> IsHateSpeech(string content)
     {
-        using var httpClient = _httpClientFactory.CreateClient("ml-client");
-        var response = await httpClient.PostAsJsonAsync("/predict_HS", new { text = content });
-        if (response.IsSuccessStatusCode)
+        var probe = await _probe.PredictAsync<HateSpeechDetectionResult>(
+            HttpClientName, PredictPath, new { text = content });
+
+        if (probe.Status == MLProbeStatus.Completed)
         {
-            var data = await response.Content.ReadFromJsonAsync<HateSpeechDetectionResult>();
-            if (data!.Prediction.Equals("normal", StringComparison.InvariantCultureIgnoreCase))
+            // Only an explicit "normal" clears content. An absent or blank
+            // prediction is not evidence of safety.
+            if (string.IsNullOrWhiteSpace(probe.Value!.Prediction))
             {
-                return false;
+                _logger.LogWarning("Hate speech detection returned no prediction.");
+                return Unavailable();
             }
-            return true;
+
+            return probe.Value.Prediction.Equals("normal", StringComparison.InvariantCultureIgnoreCase)
+                ? false
+                : true;
         }
 
-        _logger.LogWarning("HateSpeech detection request failed with status code: {StatusCode}", (int)response.StatusCode);
-        return Error.ServiceUnavailable("ExternalServices.HateSpeechDetectionServiceUnavailable", "failed to fetch data from ml server");
+        return Unavailable();
     }
+
+    private static Error Unavailable() => Error.ServiceUnavailable(
+        "ExternalServices.HateSpeechDetectionServiceUnavailable",
+        "The content safety check could not be completed, so your content was not published. Please try again.");
 }

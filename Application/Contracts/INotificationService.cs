@@ -12,4 +12,6 @@ public interface INotificationService
 	Task<Result<IEnumerable<NotificationResponse>>> GetCurrentUserNotifications(RequestParameters request);
 	Task<Result<bool>> MarkAllAsReadAsync();
 	Task<Result<bool>> MarkAsReadAsync(int id);
+	Task<Result<int>> GetUnreadCountAsync();
+	Task<Result<bool>> MarkMultipleAsReadAsync(IEnumerable<int> ids);
 }

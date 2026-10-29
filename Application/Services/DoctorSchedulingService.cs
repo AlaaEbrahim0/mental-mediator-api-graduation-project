@@ -370,9 +370,20 @@ public class DoctorSchedulingService : IDoctorSchedulingService
 		DateTime startUtc,
 		TimeSpan? requestedDuration)
 	{
-		if (!await DoctorExistsAsync(doctorId))
+		var doctor = await _repoManager.Doctors.GetById(doctorId, false);
+		if (doctor is null)
 		{
 			return DoctorNotFound(doctorId);
+		}
+
+		// IsAvailable is the doctor's own "not taking new requests" switch. A slot
+		// grid can still be published while it is off, so the rule belongs on the
+		// booking path rather than being left to the client to hide.
+		if (!doctor.IsAvailable)
+		{
+			return Error.Conflict(
+				"Scheduling.DoctorUnavailable",
+				"This doctor is not accepting new appointment requests at the moment. Please try another doctor or check back later.");
 		}
 
 		var settings = await _repoManager.DoctorScheduling.GetSettings(doctorId, false)

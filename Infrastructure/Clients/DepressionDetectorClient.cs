@@ -1,5 +1,4 @@
-﻿using System.Net.Http.Json;
-using Application.Contracts;
+﻿using Application.Contracts;
 using Application.Dtos.DepressionTestDtos;
 using Microsoft.Extensions.Logging;
 using Shared;
@@ -8,34 +7,42 @@ namespace Infrastructure.Clients;
 
 public class DepressionDetectorClient : IDepressionDetector
 {
-    private readonly IHttpClientFactory _httpClientFactory;
+    private const string HttpClientName = "ml-client";
+    private const string PredictPath = "/predict_DP";
+
+    private readonly MLServiceProbe _probe;
     private readonly ILogger<DepressionDetectorClient> _logger;
 
-    public DepressionDetectorClient(IHttpClientFactory httpClientFactory, ILogger<DepressionDetectorClient> logger)
+    public DepressionDetectorClient(MLServiceProbe probe, ILogger<DepressionDetectorClient> logger)
     {
-        _httpClientFactory = httpClientFactory;
+        _probe = probe;
         _logger = logger;
     }
 
     public async Task<Result<string>> IsDepressed(DepressionTestRequest request)
     {
-        using var httpClient = _httpClientFactory.CreateClient("ml-client");
-        var response = await httpClient.PostAsJsonAsync("/predict_DP", request);
-        if (response.IsSuccessStatusCode)
+        var probe = await _probe.PredictAsync<DepressionTestResponse>(
+            HttpClientName, PredictPath, request);
+
+        if (probe.Status != MLProbeStatus.Completed || string.IsNullOrWhiteSpace(probe.Value?.Prediction))
         {
-            var data = await response.Content.ReadFromJsonAsync<DepressionTestResponse>();
-            if (data!.Prediction!.Equals("normal", StringComparison.InvariantCultureIgnoreCase))
+            if (probe.Status == MLProbeStatus.Completed)
             {
-                return "Normal";
+                _logger.LogWarning("Depression detection returned no prediction.");
             }
-            if (data.Prediction.Equals("negative", StringComparison.InvariantCultureIgnoreCase))
-            {
-                return "Negative";
-            }
-            return "Depressed";
+
+            return Error.ServiceUnavailable(
+                "ExternalServices.DepressionTestServiceUnavailable",
+                "The check could not be completed right now. Please try again in a moment.");
         }
 
-        _logger.LogWarning("Depression detection request failed with status code: {StatusCode}", (int)response.StatusCode);
-        return Error.ServiceUnavailable("ExternalServices.DepressionTestServiceUnavailable", "failed to fetch data from ml server");
+        if (probe.Value.Prediction.Equals("normal", StringComparison.InvariantCultureIgnoreCase))
+        {
+            return "Normal";
+        }
+
+        return probe.Value.Prediction.Equals("negative", StringComparison.InvariantCultureIgnoreCase)
+            ? "Negative"
+            : "Depressed";
     }
 }

@@ -110,16 +110,15 @@ public class CommentService : ICommentService
 
 			var notification = Notification.CreateNotification(
 				post.AppUserId!,
-			$"{userName} has commented on your post",
+				"New Comment",
+				$"{userName} has commented on your post",
 				notificationResources,
 				userName,
 				userPhotoUrl,
-				NotificationType.Comment
-			);
-
-
-			_repos.Notifications.CreateNotification(notification);
-			await _repos.SaveAsync();
+				NotificationType.Comment,
+				relatedResourceId: comment.Id,
+				deduplicationKey: $"comment:{comment.Id}"
+				);
 
 			await _notificationService.SendNotificationAsync(notification);
 		}

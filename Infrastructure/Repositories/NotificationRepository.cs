@@ -17,6 +17,7 @@ public class NotificationRepository : RepositoryBase<Notification>, INotificatio
 	{
 		Create(notification);
 	}
+
 	public void UpdateNotification(Notification notification)
 	{
 		Update(notification);
@@ -38,7 +39,28 @@ public class NotificationRepository : RepositoryBase<Notification>, INotificatio
 
 	public async Task MarkAllAsRead(string userId)
 	{
-		var x = await FindByCondition(n => n.AppUserId == userId && !n.IsRead, true)
-			.ExecuteUpdateAsync(n => n.SetProperty(n => n.IsRead, true));
+		await FindByCondition(n => n.AppUserId == userId && !n.IsRead, true)
+			.ExecuteUpdateAsync(n => n
+				.SetProperty(n => n.IsRead, true)
+				.SetProperty(n => n.ReadAt, DateTimeOffset.UtcNow));
+	}
+
+	public async Task<int> GetUnreadCountAsync(string userId)
+	{
+		return await FindByCondition(n => n.AppUserId == userId && !n.IsRead, false)
+			.CountAsync();
+	}
+
+	public async Task<bool> MarkMultipleAsReadAsync(IEnumerable<int> ids, string userId)
+	{
+		var idList = ids.ToList();
+		if (!idList.Any()) return true;
+
+		await FindByCondition(n => idList.Contains(n.Id) && n.AppUserId == userId && !n.IsRead, true)
+			.ExecuteUpdateAsync(n => n
+				.SetProperty(n => n.IsRead, true)
+				.SetProperty(n => n.ReadAt, DateTimeOffset.UtcNow));
+
+		return true;
 	}
 }

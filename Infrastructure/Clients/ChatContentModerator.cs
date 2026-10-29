@@ -1,5 +1,3 @@
-using System.Net.Http.Json;
-using System.Text.Json;
 using Application.Contracts;
 using Application.Dtos.DepressionTestDtos;
 using Domain.Errors;
@@ -10,83 +8,39 @@ namespace Infrastructure.Clients;
 
 public class ChatContentModerator : IChatContentModerator
 {
-	private const string HttpClientName = "chat-ml-client";
+	private const string HttpClientName = "ml-client";
+	private const string PredictPath = "/predict_HS";
 
-	private readonly IHttpClientFactory _httpClientFactory;
+	private readonly MLServiceProbe _probe;
 	private readonly ILogger<ChatContentModerator> _logger;
 
-	public ChatContentModerator(IHttpClientFactory httpClientFactory, ILogger<ChatContentModerator> logger)
+	public ChatContentModerator(MLServiceProbe probe, ILogger<ChatContentModerator> logger)
 	{
-		_httpClientFactory = httpClientFactory;
+		_probe = probe;
 		_logger = logger;
 	}
 
 	public async Task<Result> EnsureAllowedAsync(string content)
 	{
-		try
-		{
-			using var httpClient = _httpClientFactory.CreateClient(HttpClientName);
-			using var response = await httpClient.PostAsJsonAsync("/predict_HS", new { text = content });
+		var probe = await _probe.PredictAsync<HateSpeechDetectionResult>(
+			HttpClientName, PredictPath, new { text = content });
 
-			if (!response.IsSuccessStatusCode)
-			{
-				_logger.LogWarning(
-					"Chat moderation request failed with status code {StatusCode}.",
-					(int)response.StatusCode);
+		if (probe.Status != MLProbeStatus.Completed)
+		{
+			// A slow, unreachable, or unreadable model is not a clean bill of
+			// health: the message stays unsent rather than going out unmoderated.
+			_logger.LogWarning("Chat moderation did not produce a decision ({Status}).", probe.Status);
+			return ChatErrors.ModerationUnavailable();
+		}
 
-				return ChatErrors.ModerationUnavailable();
-			}
+		if (string.IsNullOrWhiteSpace(probe.Value!.Prediction))
+		{
+			_logger.LogWarning("Chat moderation returned an empty response.");
+			return ChatErrors.ModerationUnavailable();
+		}
 
-			var result = await response.Content.ReadFromJsonAsync<HateSpeechDetectionResult>();
-			if (result is null || string.IsNullOrWhiteSpace(result.Prediction))
-			{
-				_logger.LogWarning("Chat moderation returned an empty response.");
-				return ChatErrors.ModerationUnavailable();
-			}
-
-			if (result.Prediction.Equals("normal", StringComparison.OrdinalIgnoreCase))
-			{
-				return Result.Success();
-			}
-
-			return ChatErrors.ContentRejected();
-		}
-		catch (OperationCanceledException)
-		{
-			// The named client has a short timeout. A slow or unavailable model
-			// must fail closed rather than let unmoderated content through.
-			_logger.LogWarning("Chat moderation timed out.");
-			return ChatErrors.ModerationUnavailable();
-		}
-		catch (HttpRequestException)
-		{
-			_logger.LogWarning("Chat moderation is unreachable.");
-			return ChatErrors.ModerationUnavailable();
-		}
-		catch (JsonException)
-		{
-			_logger.LogWarning("Chat moderation returned an unreadable response.");
-			return ChatErrors.ModerationUnavailable();
-		}
-		catch (InvalidOperationException)
-		{
-			_logger.LogWarning("Chat moderation is not configured correctly.");
-			return ChatErrors.ModerationUnavailable();
-		}
-		catch (UriFormatException)
-		{
-			_logger.LogWarning("Chat moderation is not configured correctly.");
-			return ChatErrors.ModerationUnavailable();
-		}
-		catch (NotSupportedException)
-		{
-			_logger.LogWarning("Chat moderation returned an unsupported response.");
-			return ChatErrors.ModerationUnavailable();
-		}
-		catch (IOException)
-		{
-			_logger.LogWarning("Chat moderation response could not be read.");
-			return ChatErrors.ModerationUnavailable();
-		}
+		return probe.Value.Prediction.Equals("normal", StringComparison.OrdinalIgnoreCase)
+			? Result.Success()
+			: ChatErrors.ContentRejected();
 	}
 }

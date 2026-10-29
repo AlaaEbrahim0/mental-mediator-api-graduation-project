@@ -82,15 +82,14 @@ public class AppointmentService : IAppointmentService
 
 		var notification = Notification.CreateNotification(
 			appointment.DoctorId,
+			"Appointment Cancelled",
 			$"{_userClaimsService.GetUserName()} cancelled the appointment",
 			new Dictionary<string, int> { { "appointmentId", appointment.Id } },
 			_userClaimsService.GetUserName(),
 			_userClaimsService.GetPhotoUrl(),
-			NotificationType.AppointmentCancellation
+			NotificationType.AppointmentCancellation,
+			relatedResourceId: appointment.Id
 			);
-
-		_repos.Notifications.CreateNotification(notification);
-		await _repos.SaveAsync();
 
 		await _notificationService.SendNotificationAsync(notification);
 
@@ -129,14 +128,15 @@ public class AppointmentService : IAppointmentService
 
 		var notification = Notification.CreateNotification(
 			appointment.UserId,
+			"Appointment Confirmed",
 			$"{_userClaimsService.GetUserName()} confirmed the appointment",
 			new Dictionary<string, int> { { "appointmentId", appointment.Id } },
 			_userClaimsService.GetUserName(),
 			_userClaimsService.GetPhotoUrl(),
-			NotificationType.AppointmentConfirmation
+			NotificationType.AppointmentConfirmation,
+			relatedResourceId: appointment.Id
 			);
-		_repos.Notifications.CreateNotification(notification);
-		await _repos.SaveAsync();
+
 		await _notificationService.SendNotificationAsync(notification);
 
 		var mailRequest = new MailRequest
@@ -214,14 +214,15 @@ public class AppointmentService : IAppointmentService
 
 		var notification = Notification.CreateNotification(
 			doctorId,
+			"New Appointment Request",
 			$"{userName} requested an appointment with you",
 			new Dictionary<string, int> { { "appointmentId", appointment.Id } },
 			userName,
 			photoUrl,
-			NotificationType.AppointmentRequest
+			NotificationType.AppointmentRequest,
+			relatedResourceId: appointment.Id
 			);
-		_repos.Notifications.CreateNotification(notification);
-		await _repos.SaveAsync();
+
 		await _notificationService.SendNotificationAsync(notification);
 
 		var mailRequest = new MailRequest
@@ -270,14 +271,15 @@ public class AppointmentService : IAppointmentService
 
 		var notification = Notification.CreateNotification(
 			appointment.UserId,
+			"Appointment Rejected",
 			$"{_userClaimsService.GetUserName()} rejected the appointment",
 			new Dictionary<string, int> { { "appointmentId", appointment.Id } },
 			_userClaimsService.GetUserName(),
 			_userClaimsService.GetPhotoUrl(),
-			NotificationType.AppointmentRejection
+			NotificationType.AppointmentRejection,
+			relatedResourceId: appointment.Id
 			);
-		_repos.Notifications.CreateNotification(notification);
-		await _repos.SaveAsync();
+
 		await _notificationService.SendNotificationAsync(notification);
 
 		var mailRequest = new MailRequest

@@ -183,6 +183,60 @@ public class BookingValidationTests
 	}
 
 	[Fact]
+	public async Task rejects_a_booking_for_a_doctor_that_is_not_accepting_requests()
+	{
+		using var store = MondayStore();
+		store.Doctor.IsAvailable = false;
+		store.Context.SaveChanges();
+
+		var result = await store.Service.ValidateBookingTimeAsync(
+			store.Doctor.Id,
+			SchedulingTestStore.Utc(Monday, 9),
+			null);
+
+		result.IsFailure.Should().BeTrue();
+		result.Error.Code.Should().Be("Scheduling.DoctorUnavailable");
+	}
+
+	[Fact]
+	public async Task accepts_a_booking_again_once_the_doctor_is_available()
+	{
+		using var store = MondayStore();
+		store.Doctor.IsAvailable = false;
+		store.Context.SaveChanges();
+
+		var unavailable = await store.Service.ValidateBookingTimeAsync(
+			store.Doctor.Id,
+			SchedulingTestStore.Utc(Monday, 9),
+			null);
+		unavailable.IsFailure.Should().BeTrue();
+
+		store.Doctor.IsAvailable = true;
+		store.Context.SaveChanges();
+
+		var result = await store.Service.ValidateBookingTimeAsync(
+			store.Doctor.Id,
+			SchedulingTestStore.Utc(Monday, 9),
+			null);
+
+		result.IsFailure.Should().BeFalse(result.Error?.Description ?? "accepted");
+	}
+
+	[Fact]
+	public async Task rejects_a_missing_doctor_before_applying_the_availability_rule()
+	{
+		using var store = MondayStore();
+
+		var result = await store.Service.ValidateBookingTimeAsync(
+			"doctor-does-not-exist",
+			SchedulingTestStore.Utc(Monday, 9),
+			null);
+
+		result.IsFailure.Should().BeTrue();
+		result.Error.Code.Should().Be("Doctors.NotFound");
+	}
+
+	[Fact]
 	public async Task validates_in_the_doctor_time_zone()
 	{
 		using var store = MondayStore();

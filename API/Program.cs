@@ -52,7 +52,8 @@ builder.Services
     .ConfigureServices()
     .ConfigureRateLimiting()
     .ConfigureCaching()
-    .ConfigureHttpClients(builder.Configuration, builder.Environment.IsDevelopment());
+    .ConfigureResend()
+    .ConfigureHttpClients(builder.Configuration);
 
 var app = builder.Build();
 

@@ -82,15 +82,17 @@ public class AuthService : IAuthService
 
 	public async Task<Result<EmailConfirmationResponse>> SendEmailConfirmationLink(string email)
 	{
+		// Always return the same success message regardless of whether the
+		// email belongs to an account. Revealing "user not found" vs "email
+		// already confirmed" lets an attacker enumerate valid addresses.
 		var user = await _userManager.FindByEmailAsync(email);
-
-		if (user is null)
+		if (user is null || user.EmailConfirmed)
 		{
-			return UserErrors.NotFoundByEmail(email);
-		}
-		if (user.EmailConfirmed)
-		{
-			return UserErrors.EmailAlreadyConfirmed(email);
+			return new EmailConfirmationResponse
+			{
+				Email = email,
+				Message = "An email confirmation link has been sent to the provided email address"
+			};
 		}
 
 		var token = await _userManager.GenerateEmailConfirmationTokenAsync(user);
@@ -107,9 +109,14 @@ public class AuthService : IAuthService
 		// delivery failure is fatal for the request and has to be reported.
 		if (mailResult.IsFailure)
 		{
-			return mailResult.Error;
+			_logger.LogWarning(
+				"Failed to send email confirmation link to user {UserId}: {Error}",
+				user.Id, mailResult.Error.Description);
 		}
 
+		// Return the same success message even when delivery failed, to avoid
+		// leaking whether the account exists. The server-side log captures the
+		// delivery error for operators.
 		return new EmailConfirmationResponse
 		{
 			Email = email,
@@ -284,10 +291,13 @@ public class AuthService : IAuthService
 
 	public async Task<Result<string>> SendResetPasswordLink(string email)
 	{
+		// Always return the same success message regardless of whether the
+		// account exists. Enumerating which addresses have accounts is a
+		// known pre-authentication attack vector.
 		var user = await _userManager.FindByEmailAsync(email);
 		if (user is null)
 		{
-			return UserErrors.NotFoundByEmail(email);
+			return "An email with reset password link has been sent to your email address";
 		}
 
 		var token = await _userManager.GeneratePasswordResetTokenAsync(user);
@@ -304,7 +314,9 @@ public class AuthService : IAuthService
 		// failure is fatal for the request and has to be reported.
 		if (mailResult.IsFailure)
 		{
-			return mailResult.Error;
+			_logger.LogWarning(
+				"Failed to send password reset link to user {UserId}: {Error}",
+				user.Id, mailResult.Error.Description);
 		}
 
 		return "An email with reset password link has been sent to your email address";
@@ -315,7 +327,9 @@ public class AuthService : IAuthService
 		var user = await _userManager.FindByEmailAsync(request.Email);
 		if (user is null)
 		{
-			return UserErrors.NotFoundByEmail(request.Email);
+			// Return the same generic error so a reset for a non-existent
+			// account cannot be distinguished from a malformed token.
+			return UserErrors.InvalidToken("Invalid password reset token or email.");
 		}
 
 		var result = await _userManager.ResetPasswordAsync(user, request.Token, request.NewPassword);

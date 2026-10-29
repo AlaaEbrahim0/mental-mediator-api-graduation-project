@@ -72,15 +72,15 @@ public class ReplyService : IReplyService
 
 			var notification = Notification.CreateNotification(
 				comment.AppUserId!,
+				"New Reply",
 				$"{userName} has replied to your comment",
 				replyResources,
 				userName,
 				userPhotoUrl,
-				NotificationType.Reply
+				NotificationType.Reply,
+				relatedResourceId: reply.Id,
+				deduplicationKey: $"reply:{reply.Id}"
 				);
-
-			_repos.Notifications.CreateNotification(notification);
-			await _repos.SaveAsync();
 
 			await _notificationService.SendNotificationAsync(notification);
 		}

@@ -1,13 +1,16 @@
 ﻿using Domain.Entities;
 using Shared.RequestParameters;
 
-namespace Domain.Repositories;
-
-public interface INotificationRepository
+namespace Domain.Repositories
 {
-	Task<Notification?> GetById(int notificationId, bool trackChanges);
-	Task<IEnumerable<Notification>> GetByUserId(string userId, RequestParameters request, bool trackChanges);
-	void CreateNotification(Notification notification);
-	Task MarkAllAsRead(string userId);
-	void UpdateNotification(Notification notification);
+	public interface INotificationRepository
+	{
+		Task<Notification?> GetById(int notificationId, bool trackChanges);
+		Task<IEnumerable<Notification>> GetByUserId(string userId, RequestParameters request, bool trackChanges);
+		void CreateNotification(Notification notification);
+		Task MarkAllAsRead(string userId);
+		void UpdateNotification(Notification notification);
+		Task<int> GetUnreadCountAsync(string userId);
+		Task<bool> MarkMultipleAsReadAsync(IEnumerable<int> ids, string userId);
+	}
 }

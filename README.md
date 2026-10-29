@@ -426,6 +426,30 @@ running.
 - **Reverse engineering** available via `dotnet ef dbcontext scaffold`
 - **Seeding** runs through `scripts/seed.sql` (run manually from WebMSSQL / SSMS — the application only applies migrations at startup, and only when the database exists)
 
+### Demo dataset (`scripts/seed.sql`)
+
+A curated, fictional dataset for demos and portfolio review: five doctors with
+distinct specialties, fees, consultation lengths and weekly availability (one of
+them deliberately closed to new patients), five patients, appointments covering
+every `AppointmentStatus`, certificates and qualifications, community posts with
+comments, replies and likes, four chat rooms (public, private and archived) with
+members, messages and one open report, and notifications in both read and unread
+states.
+
+- **It refuses to run against production.** The first statement aborts if `AspNetUsers`
+  already holds any account outside the reserved `@example.com` domain. Run it only
+  against a fresh or dedicated demo database.
+- **It is idempotent.** Every insert is guarded with `NOT EXISTS` on a natural key, so
+  running it twice never duplicates anything, and it only ever updates rows belonging
+  to the demo accounts.
+- **It does not go stale.** Appointments are anchored to the weekday the script is run
+  in and every relative timestamp is re-derived, so upcoming sessions always sit in the
+  coming week. Slot times are placed on each doctor's real availability grid
+  (period start + *n* × consultation length), so the booking screens agree with the data.
+- Demo logins and the shared demo password are listed in the header of the script.
+  They are for demo databases only and must never be reused for a real deployment.
+- The script is not executed by CI and is never run automatically by the application.
+
 ### Key Entity Relationships
 
 ```
@@ -433,9 +457,12 @@ User 1─────── N Appointment 1───── 1 Doctor
 User 1───── N Post 1───── N Comment 1───── N Reply
 User 1───── N Notification
 Doctor 1───── N Appointment
-Doctor 1───── N DoctorScheduleWeekDay
+Doctor 1───── N DoctorAvailabilityPeriod   (weekly working windows)
+Doctor 1───── N DoctorTimeOff              (UTC ranges that block slots)
+Doctor 1───── 1 DoctorSchedulingSettings   (time zone + consultation length)
 Post 1───── N Comment
 Comment 1───── N Reply
+ChatRoom 1───── N ChatRoomMember 1───── N ChatMessage
 ```
 
 ### Indexes Added for Performance
@@ -448,6 +475,47 @@ Comment 1───── N Reply
 | `Replies` | `CommentId`, `AppUserId` |
 | `Notifications` | `AppUserId`, `IsRead`, Composite `(AppUserId, IsRead)` |
 | `Doctors` | `Specialization`, `City` |
+
+---
+
+## 🧠 Content moderation and cold starts
+
+Every post, comment, reply and chat message is checked by the hate-speech model
+hosted at `MLServerAddress` **before** it is saved. That service sleeps when idle, so
+its first request after a quiet period can take tens of seconds — measured at ~32 s on
+the deployed instance, versus ~0.5 s once warm.
+
+`Infrastructure/Clients/MLServiceProbe.cs` owns that behaviour for all three callers
+(`HateSpeechDetectorClient`, `ChatContentModerator`, `DepressionDetectorClient`):
+
+| Setting | Default | Meaning |
+|---------|---------|---------|
+| `MLServer__TimeoutSeconds` | 45 | Total budget for one moderation attempt sequence, also applied as the per-request `HttpClient.Timeout`. Wide enough to absorb a cold start. |
+| `MLServer__MaxRetries` | 2 | Extra attempts, spent only on failures that answer quickly — a transport error or 502/503/504, which is what the host returns while a container is starting. A timed-out attempt is never retried because the budget is already spent. |
+| `MLServer__RetryBackoffSeconds` | 1 | Base backoff, doubling per attempt, and skipped when it would push past the deadline. |
+
+The rules that follow from this:
+
+- **No answer is never treated as a safe answer.** Timeout, unreachable, non-2xx, an
+  unreadable body or a blank prediction all return a controlled
+  `ServiceUnavailable` result, the content stays unpublished, and the caller retries.
+  Before this, the community path let `TaskCanceledException` escape and the browser
+  received an HTTP 500 with a real stack trace.
+- **Deterministic rejections are not retried.** A validation error returns
+  `Content.Forbidden` once, as before.
+- The probe logs the failure type and status, never the submitted text.
+- There is deliberately **no keep-alive poller** for the model service
+  (`Infrastructure/BackgroundJobs/HostingRefresher.cs` is dormant). Waking it on a timer
+  spends resources whether or not anyone is typing; the budget above absorbs the wake.
+- The model exposes no health or readiness endpoint (`/health`, `/ping` and `/` all
+  return 404 or an error), so there is nothing cheaper to probe than the prediction
+  itself.
+
+The portals pair with this: the request timeout for a moderation-checked submission is
+raised above the server budget, the composer shows the elapsed stage of the check
+(`src/utils/moderationState.js`), a failed check is worded as "we could not finish the
+safety check" rather than as a policy violation, and the draft survives so retry is one
+keypress. See `Tests/ModerationClientTests.cs` for the behaviours covered.
 
 ---
 
