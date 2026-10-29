@@ -361,10 +361,24 @@ MigrationBackup/
 
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
-/API/appsettings.Development.json
+# Configuration: what is tracked and what is not.
+#
+# TRACKED, secret-free (safe to commit, required by CI and other clones):
+#   API/appsettings.json            - base config; every credential field is empty
+#   API/appsettings.Example.json    - template with obvious placeholders
+#   API/appsettings.Development.json- local machine only: localhost/docker hosts
+#                                     and a dev- JWT key, no live value
+# NEVER TRACKED (live secrets belong here, or in real environment variables):
+#   API/appsettings.Production.json - deployed connection strings and keys
+#   API/.env, /.env                 - dotenv, read only under Development
+#   API/google_secret.json          - Google client secret
+#
+# The three tracked files above were previously listed here anyway, which git
+# silently ignores for already-tracked paths. That made the file look protected
+# while it was still being committed - the exact situation in which a real key
+# gets pushed by someone trusting this list.
 /API/.config
 /API/appsettings.Production.json
-/API/appsettings.json
 /API/google_secret.json
 /API/.env
 /.env
