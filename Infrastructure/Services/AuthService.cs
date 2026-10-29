@@ -19,7 +19,11 @@ using Shared;
 namespace Infrastructure.Services;
 public class AuthService : IAuthService
 {
+	/// <summary>The only role this portal's Google sign-up is allowed to mint.</summary>
+	private const string PatientRole = "User";
+
 	private readonly UserManager<BaseUser> _userManager;
+	private readonly RoleManager<IdentityRole> _roleManager;
 
 	private readonly SignInManager<BaseUser> _signInManager;
 	private readonly JwtTokenGenerator _jwtTokenGenerator;
@@ -31,6 +35,7 @@ public class AuthService : IAuthService
 
 	public AuthService(
 		UserManager<BaseUser> userManager,
+		RoleManager<IdentityRole> roleManager,
 		SignInManager<BaseUser> signInManager,
 		JwtTokenGenerator jwtTokenGenerator,
 		IMailService mailService,
@@ -40,6 +45,7 @@ public class AuthService : IAuthService
 		ILogger<AuthService> logger)
 	{
 		_userManager = userManager;
+		_roleManager = roleManager;
 		_mapper = mapper;
 		_signInManager = signInManager;
 		_jwtTokenGenerator = jwtTokenGenerator;
@@ -144,21 +150,11 @@ public class AuthService : IAuthService
 	private async Task<string> GenerateResetPasswordLinkAsync(BaseUser user, string token)
 	{
 		var roles = await _userManager.GetRolesAsync(user);
-		var onDoctorPortal = roles.Contains("Doctor", StringComparer.OrdinalIgnoreCase);
-		var settingName = onDoctorPortal ? "DoctorUI" : "ClientUI";
-		var configured = _configuration[settingName];
-
-		var baseUrl = string.IsNullOrWhiteSpace(configured)
-			? $"{_signInManager.Context.Request.Scheme}://{_signInManager.Context.Request.Host}"
-			: configured.TrimEnd('/');
-
-		if (string.IsNullOrWhiteSpace(configured))
-		{
-			_logger.LogWarning(
-				"{Setting} is not configured; the password reset link falls back to the request origin {Origin}",
-				settingName,
-				baseUrl);
-		}
+		var baseUrl = AuthHandoff.ResolveBaseUrl(
+			_configuration,
+			_signInManager.Context.Request,
+			AuthHandoff.SettingForRoles(roles),
+			_logger);
 
 		return
 			$"{baseUrl}/forgetpassword/resetpassword?" +
@@ -205,51 +201,217 @@ public class AuthService : IAuthService
 
 	public async Task<Result<AuthResponse>> ExternalLoginAsync()
 	{
-		var authModel = new AuthResponse();
-
 		var externalUserInfo = await _signInManager.GetExternalLoginInfoAsync();
 		if (externalUserInfo is null)
 		{
-			return Error.Validation(
-			"ExternalAuthentication.RemoteError",
-			  "Error loading external login information"
-			 );
+			return ExternalAuthenticationErrors.RemoteError();
 		}
 
-		var localUserAccount = await _userManager.FindByEmailAsync(externalUserInfo.Principal.FindFirstValue(ClaimTypes.Email)!);
-
-		if (localUserAccount is null)
+		var profile = ExternalLoginProfileReader.TryRead(externalUserInfo.Principal);
+		if (profile is null)
 		{
-			var externalUserEmail = externalUserInfo.Principal.FindFirstValue(ClaimTypes.Email);
+			// The claim list goes to the log, never to the client: a Google claim
+			// mapping change otherwise shows up as an unexplained "try again".
+			_logger.LogWarning(
+				"Google principal carried no usable email address. Claim types: {Claims}",
+				ExternalLoginProfileReader.DescribeClaims(externalUserInfo.Principal));
 
-			var username = externalUserEmail!.Split('@')[0];
-			var name = externalUserInfo.Principal.Identity!.Name;
-
-			localUserAccount = new User()
-			{
-				Email = externalUserEmail,
-				UserName = username,
-				FirstName = name!,
-			};
-
-			await _userManager.CreateAsync(localUserAccount);
-			await _userManager.AddToRoleAsync(localUserAccount, "User");
-			localUserAccount.EmailConfirmed = true;
+			return ExternalAuthenticationErrors.ProfileUnavailable();
 		}
-		var token = await _jwtTokenGenerator.CreateJwtToken(localUserAccount);
 
-		var roles = await _userManager.GetRolesAsync(localUserAccount);
+		// The linked login wins over the address: a Google account's email can be
+		// changed by its owner, its subject cannot.
+		var user = await _userManager.FindByLoginAsync(
+				externalUserInfo.LoginProvider,
+				externalUserInfo.ProviderKey)
+			?? await _userManager.FindByEmailAsync(profile.Email);
 
-		authModel.Email = localUserAccount.Email;
-		authModel.UserId = localUserAccount.Id;
-		authModel.UserName = localUserAccount.FullName;
-		authModel.Token = new JwtSecurityTokenHandler().WriteToken(token);
-		authModel.ExpiresOn = token.ValidTo;
-		authModel.Roles = roles.ToList();
-		authModel.Message = $"User: [{localUserAccount.Email}] has been created and confirmed successfully";
+		if (user is null)
+		{
+			return await CreateExternalUserAsync(profile, externalUserInfo);
+		}
 
-		return authModel;
+		// Refuse a clinician before any token is minted. This path provisions
+		// patients; a Doctor token handed to the patient portal would let
+		// /api/notifications and the notification hub stream clinical data into
+		// the wrong UI, and no Doctor row would exist if we created one here.
+		var roles = await _userManager.GetRolesAsync(user);
+		if (roles.Count == 0)
+		{
+			return ExternalAuthenticationErrors.AccountIncomplete();
+		}
+
+		if (!roles.Contains(PatientRole, StringComparer.OrdinalIgnoreCase))
+		{
+			return ExternalAuthenticationErrors.RoleUnsupported();
+		}
+
+		await EnsureExternalLinkAsync(user, externalUserInfo);
+
+		// Google asserted ownership of this address, which is also what unlocks an
+		// account that registered but never clicked the confirmation link.
+		if (!user.EmailConfirmed && profile.EmailVerified)
+		{
+			user.EmailConfirmed = true;
+			var confirmed = await _userManager.UpdateAsync(user);
+			if (!confirmed.Succeeded)
+			{
+				LogIdentityFailure("confirming email for an existing Google sign-in", confirmed);
+			}
+		}
+
+		return await BuildAuthResponseAsync(user, signedIn: true);
 	}
+
+	/// <summary>
+	/// Creates the patient account a first-time Google sign-in implies, and only
+	/// reports success once the account is complete: persisted, role-bearing and
+	/// linked to the external identity.
+	/// </summary>
+	private async Task<Result<AuthResponse>> CreateExternalUserAsync(
+		ExternalLoginProfile profile,
+		ExternalLoginInfo externalUserInfo)
+	{
+		// Creating is the one place an unverified address matters: it would hand
+		// whoever controls this Google account a new identity at that address.
+		if (!profile.EmailVerified)
+		{
+			_logger.LogWarning(
+				"Google sign-in refused because email_verified was not true for a new account");
+			return ExternalAuthenticationErrors.EmailUnverified();
+		}
+
+		var candidate = new User
+		{
+			Email = profile.Email,
+			// UserName is overridden as a getter derived from Email, but the base
+			// setter still has to be filled: NormalizedUserName reads it, and it
+			// null-forgives, so leaving it unset throws inside CreateAsync.
+			UserName = profile.Email.Split('@')[0],
+			FirstName = profile.FirstName,
+			LastName = profile.LastName ?? string.Empty,
+			PhotoUrl = profile.PhotoUrl,
+			// Set before CreateAsync so it lands in the same write. The old code
+			// assigned it afterwards without an Update call, so it never persisted
+			// and the account could never use password sign-in.
+			EmailConfirmed = true,
+		};
+
+		var created = await _userManager.CreateAsync(candidate);
+		if (!created.Succeeded)
+		{
+			LogIdentityFailure("creating the account for a Google sign-in", created);
+			return MapCreationFailure(created);
+		}
+
+		// Identity throws InvalidOperationException for an unknown role name rather
+		// than returning a failed result, and these roles only exist because
+		// scripts/seed.sql inserted them. Checking first keeps a database that never
+		// ran the seed on the owned failure path instead of 500-ing in the middle of
+		// a browser redirect and leaving a role-less account behind.
+		if (!await _roleManager.RoleExistsAsync(PatientRole))
+		{
+			_logger.LogWarning(
+				"Cannot complete a Google sign-up: the {Role} role does not exist in this database, " +
+				"so scripts/seed.sql has not been run",
+				PatientRole);
+
+			await AbandonNewAccount(candidate, "a database without the patient role");
+			return ExternalAuthenticationErrors.AccountIncomplete();
+		}
+
+		var roleAdded = await _userManager.AddToRoleAsync(candidate, PatientRole);
+		if (!roleAdded.Succeeded)
+		{
+			LogIdentityFailure("assigning the patient role to a Google sign-up", roleAdded);
+			await AbandonNewAccount(candidate, "a failed role assignment");
+			return ExternalAuthenticationErrors.AccountIncomplete();
+		}
+
+		await EnsureExternalLinkAsync(candidate, externalUserInfo);
+
+		return await BuildAuthResponseAsync(candidate, signedIn: false);
+	}
+
+	/// <summary>
+	/// Removes an account that was created but could not be completed, so a
+	/// refused sign-up never leaves a user that no portal will accept.
+	/// </summary>
+	private async Task AbandonNewAccount(BaseUser user, string reason)
+	{
+		var deleted = await _userManager.DeleteAsync(user);
+		if (!deleted.Succeeded)
+		{
+			// The row is still there and needs manual cleanup; say so with the id.
+			_logger.LogError(
+				"Could not remove the half-built account {UserId} after {Reason}: {Errors}",
+				user.Id,
+				reason,
+				string.Join("; ", deleted.Errors.Select(error => $"{error.Code}:{error.Description}")));
+		}
+	}
+
+	/// <summary>
+	/// Records the external identity so the next sign-in resolves by subject.
+	/// A failure here is not fatal: address matching still works.
+	/// </summary>
+	private async Task EnsureExternalLinkAsync(BaseUser user, ExternalLoginInfo externalUserInfo)
+	{
+		var existing = await _userManager.FindByLoginAsync(
+			externalUserInfo.LoginProvider,
+			externalUserInfo.ProviderKey);
+
+		if (existing is not null)
+		{
+			return;
+		}
+
+		var linked = await _userManager.AddLoginAsync(user, externalUserInfo);
+		if (!linked.Succeeded)
+		{
+			LogIdentityFailure("linking the Google identity to an account", linked);
+		}
+	}
+
+	private static Error MapCreationFailure(IdentityResult result)
+	{
+		var codes = result.Errors.Select(error => error.Code).ToHashSet(StringComparer.Ordinal);
+
+		// DuplicateUserName is reachable: UserName is the email's local part, and
+		// john@gmail.com after john@outlook.com collides on "john".
+		return codes.Contains("DuplicateUserName") || codes.Contains("DuplicateEmail")
+			? ExternalAuthenticationErrors.IdentityTaken()
+			: ExternalAuthenticationErrors.AccountIncomplete();
+	}
+
+	private async Task<AuthResponse> BuildAuthResponseAsync(BaseUser user, bool signedIn)
+	{
+		var token = await _jwtTokenGenerator.CreateJwtToken(user);
+		var roles = await _userManager.GetRolesAsync(user);
+
+		return new AuthResponse
+		{
+			Email = user.Email,
+			UserId = user.Id,
+			UserName = user.FullName,
+			PhotoUrl = user.PhotoUrl,
+			Token = new JwtSecurityTokenHandler().WriteToken(token),
+			ExpiresOn = token.ValidTo,
+			Roles = roles.ToList(),
+			Message = signedIn
+				? "Signed in with Google"
+				: "Account created with Google",
+		};
+	}
+
+	private void LogIdentityFailure(string action, IdentityResult result)
+	{
+		_logger.LogWarning(
+			"Identity operation failed while {Action}: {Errors}",
+			action,
+			string.Join("; ", result.Errors.Select(error => $"{error.Code}:{error.Description}")));
+	}
+
 
 	public AuthenticationProperties GetExternalAuthenticationProperties(string provider, string? redirectUrl)
 	{

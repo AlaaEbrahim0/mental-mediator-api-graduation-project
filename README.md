@@ -189,7 +189,9 @@ https://<your-deploy-url>/swagger
 |----------|----------|-------------|
 | **Auth** | `POST /api/auth/register` | Register new user |
 | **Auth** | `POST /api/auth/signin` | Authenticate & receive JWT |
-| **Auth** | `GET /api/auth/external-login` | Start Google OAuth |
+| **Auth** | `GET /api/auth/external-login` | Start Google OAuth (patient accounts only) |
+| **Auth** | `GET /signin-google` | OAuth handler callback (validates `state`/PKCE, then continues to `external-login-callback`) |
+| **Auth** | `GET /api/auth/exchange-token` | Turn a one-time Google handoff token into a JWT |
 | **Posts** | `GET /api/posts` | List posts (paginated, filterable) |
 | **Posts** | `POST /api/posts` | Create post (with optional photo) |
 | **Comments** | `GET /api/posts/{postId}/comments` | Get post comments |
@@ -535,18 +537,48 @@ keypress. See `Tests/ModerationClientTests.cs` for the behaviours covered.
 
 ### Known integration limitations
 
-- **Google sign-in is configured on the API but has no entry point in either portal.** The API
-  implements `GET /api/auth/external-login` and `GET /api/auth/external-login-callback`; the callback
-  redirects the browser to `ClientUI` with a one-time `temporaryToken`, which the client exchanges at
-  `GET /api/auth/exchange-token`. The `state` parameter is generated and validated by ASP.NET
-  Identity's OAuth handler, so the flow is not open to CSRF. `ClientUI` now points at the live
-  patient portal (`https://mental-health-ochre-xi.vercel.app`) in `appsettings.json`,
-  `appsettings.Development.json`, and the pipeline's generated production settings. Still required
-  before this works end to end:
-  1. an authorized redirect URI for `https://nexus-api.runasp.net/api/auth/external-login-callback`
-     in Google Cloud Console (not verifiable from this repository), and
-  2. a portal screen that starts the challenge and consumes `?temporaryToken=`. Neither portal has
-     one today, so no user-facing path reaches the endpoint.
+- **Google sign-in is wired end to end on the patient portal; the doctor portal is password-only by
+  design.** The flow is `GET /api/auth/external-login` → Google → the OAuth handler's own
+  `GET /signin-google` → `GET /api/auth/external-login-callback` → `GET /api/auth/exchange-token`.
+  `patient-ui` starts it from its sign-in screen and consumes `?temporaryToken=` in
+  `src/auth/ExternalLoginGate.js`, which writes the session
+  before the router's first render. Every account created through Google gets the `User` role, so a
+  clinician or administrator is refused with `?authError=role_unsupported` before any token is
+  minted: the patient shell mounts the notifications provider (and a SignalR connection) for
+  whatever token it holds, and `NotificationController` has no role filter. Two operator-side
+  requirements:
+  1. The authorized redirect URI in Google Cloud Console must be
+     `https://nexus-api.runasp.net/signin-google`. Earlier text here said
+     `/api/auth/external-login-callback`; registering that guarantees `redirect_uri_mismatch`,
+     because `redirect_uri` is built from the handler's `CallbackPath`, not from our controller
+     route. Add the same path per environment (locally `http://localhost:5184/signin-google`, and
+     `https://<origin>/signin-google` for any other host that starts the flow).
+  2. The consent screen must stay **Published**. In "Testing" Google only signs in allow-listed test
+     users; the `email` scope is also sensitive, so an unverified app shows its "Google hasn't
+     verified this app" interstitial.
+  Two limits of the current account model, both measured rather than assumed:
+  * A database that has never run `scripts/seed.sql` has no `User` role. Identity *throws* for an
+    unknown role name, so sign-up checks for the role first and answers
+    `?authError=account_incomplete` while deleting the half-created account — no 500 in the middle
+    of the redirect, no role-less user left behind.
+  * `BaseUser` derives `UserName` from the email's local part and `NormalizedUserName` is unique, so
+    `ali@gmail.com` cannot be created by Google once `ali@outlook.com` exists: the sign-up answers
+    `?authError=identity_taken` instead of silently reusing the other person's account. Making the
+    external identity the key (or storing the full address in `UserName`) is the real fix and is not
+    part of this flow.
+  Two things this rules out. A Vercel **preview** deployment cannot finish the flow: its random
+  preview origin is not in `ConfigureCors`, so the exchange call is blocked by the browser — verify
+  against the fixed production alias (or add the preview origin temporarily). And locally, the
+  correlation cookie is issued `secure; samesite=none` even over plain HTTP, so the callback rejects
+  it and the browser sees "Correlation failed"; run the API under its https profile
+  (`https://localhost:7235`) when testing sign-in.
+- **The Google handoff requires a single API instance.** The one-time `temporaryToken` lives in
+  `IMemoryCache`, which is process-local: with more than one instance the browser can be routed to a
+  second one that has never heard of the token, and every sign-in fails at the exchange. The
+  WebDeploy's `-enableRule:AppOffline` also drops the cache on each release, so a handoff in flight
+  across a deploy is dead and the user gets `?authError=expired` — rare, and recoverable by pressing
+  the button again. Moving the handoff to `IDistributedCache` (Redis) is the fix if the app ever
+  scales out.
 - **`JwtSettings:Audience` differs per environment and must not be "corrected".** Production issues
   and validates tokens with `https://mental-mediator-doctor-ui-graduation-project.vercel.app` (the
   pipeline's generated settings); the committed `appsettings.json` now carries the patient portal
