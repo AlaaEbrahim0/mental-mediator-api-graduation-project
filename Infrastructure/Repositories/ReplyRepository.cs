@@ -41,26 +41,42 @@ public class ReplyRepository : RepositoryBase<Reply>, IReplyRepository
 
 	public async Task<Reply?> GetById(int postId, int commentId, int replyId, bool trackChanges)
 	{
-		return await
-			FindByCondition(
-				r => r.Id == replyId &&
+		var query = FindByCondition(
+			r => r.Id == replyId &&
 				r.CommentId == commentId &&
 				r.Comment!.PostId == postId,
-				trackChanges)
+			trackChanges);
+
+		if (!trackChanges)
+		{
+			return await query
+				.Include(r => r.Comment)
+				.Include(r => r.AppUser)
+				.Select(r => new Reply
+				{
+					Id = r.Id,
+					AppUserId = r.AppUserId,
+					CommentId = r.CommentId,
+					Content = r.Content,
+					RepliedAt = r.RepliedAt,
+					PhotoUrl = r.AppUser!.PhotoUrl,
+					Username = r.AppUser!.FullName
+				})
+				.SingleOrDefaultAsync();
+		}
+
+		var reply = await query
 			.Include(r => r.Comment)
 			.Include(r => r.AppUser)
-			.Select(r => new Reply
-			{
-				Id = r.Id,
-				AppUserId = r.AppUserId,
-				CommentId = r.CommentId,
-				Content = r.Content,
-				RepliedAt = r.RepliedAt,
-				PhotoUrl = r.AppUser!.PhotoUrl,
-				Username = r.AppUser!.FullName
-			})
 			.SingleOrDefaultAsync();
 
+		if (reply is not null)
+		{
+			reply.Username = reply.AppUser?.FullName ?? string.Empty;
+			reply.PhotoUrl = reply.AppUser?.PhotoUrl;
+		}
+
+		return reply;
 	}
 
 	public void UpdateReply(Reply reply)

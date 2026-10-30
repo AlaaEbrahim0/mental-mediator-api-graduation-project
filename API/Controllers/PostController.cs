@@ -13,12 +13,10 @@ namespace API.Controllers;
 public class PostController : ControllerBase
 {
 	private readonly IPostService _postService;
-	private readonly IStorageService _storageService;
 
-	public PostController(IPostService postService, IStorageService storageService)
+	public PostController(IPostService postService)
 	{
 		_postService = postService;
-		_storageService = storageService;
 	}
 
 	[HttpGet]
@@ -33,6 +31,18 @@ public class PostController : ControllerBase
 		return Ok(result.Value);
 	}
 
+
+	[HttpGet("drafts/latest")]
+	[Authorize]
+	public async Task<IActionResult> GetLatestDraft()
+	{
+		var result = await _postService.GetLatestDraft();
+		if (result.IsFailure)
+		{
+			return result.ToProblemDetails();
+		}
+		return result.Value is null ? NoContent() : Ok(result.Value);
+	}
 
 	[HttpGet("{id:int}")]
 	public async Task<IActionResult> GetPostById(int id)
@@ -106,13 +116,25 @@ public class PostController : ControllerBase
 			return Result.Failure(Error.Validation("Posts.MediaRequired", "Choose a file to upload.")).ToProblemDetails();
 		}
 
-		var result = await _storageService.UploadMedia(request.File);
+		var result = await _postService.UploadMediaAsync(request.File);
 		if (result.IsFailure)
 		{
 			return result.ToProblemDetails();
 		}
 
 		return Ok(new { url = result.Value.Url, type = result.Value.Type });
+	}
+
+	/// <summary>
+	/// Removes an uploaded asset that was never attached to a post. The call is
+	/// a no-op for media owned by somebody else or already published.
+	/// </summary>
+	[HttpDelete("media")]
+	[Authorize]
+	public async Task<IActionResult> DeleteMedia([FromQuery] string url)
+	{
+		var result = await _postService.DeleteUnattachedMediaAsync(url);
+		return result.IsFailure ? result.ToProblemDetails() : NoContent();
 	}
 
 	[HttpPut("{id:int}")]

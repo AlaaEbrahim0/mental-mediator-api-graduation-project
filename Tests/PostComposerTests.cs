@@ -173,12 +173,49 @@ public class PostComposerTests : IDisposable
 	}
 
 	[Fact]
-	public async Task The_specific_group_audience_is_rejected_until_groups_exist()
+	public async Task The_specific_group_audience_requires_a_target_group()
 	{
 		var result = await CreateService(DoctorId, "Doctor")
 			.CreatePostAsync(NewRequest(PostVisibility.SpecificGroup));
 
-		result.Error.Code.Should().Be("Posts.VisibilityUnsupported");
+		result.Error.Code.Should().Be("Posts.SpecificGroupRequired");
+	}
+
+	[Fact]
+	public async Task A_group_post_is_readable_only_by_active_members()
+	{
+		var room = AddRoom(DoctorId);
+		var request = NewRequest(PostVisibility.SpecificGroup);
+		request.TargetGroupId = room.Id;
+
+		var created = await CreateService(DoctorId, "Doctor").CreatePostAsync(request);
+
+		created.IsSuccess.Should().BeTrue();
+		created.Value.TargetGroupId.Should().Be(room.Id);
+
+		var memberFeed = await CreateService(DoctorId, "Doctor")
+			.GetPosts(new PostRequestParameters());
+		memberFeed.Value.Should().ContainSingle();
+
+		var patientFeed = await CreateService(PatientId, "Client")
+			.GetPosts(new PostRequestParameters());
+		patientFeed.Value.Should().BeEmpty();
+
+		var patientRead = await CreateService(PatientId, "Client")
+			.GetPostById(created.Value.Id);
+		patientRead.Error.Should().Be(PostErrors.NotFound(created.Value.Id));
+	}
+
+	[Fact]
+	public async Task A_user_cannot_publish_to_a_group_they_do_not_belong_to()
+	{
+		var room = AddRoom(DoctorId);
+		var request = NewRequest(PostVisibility.SpecificGroup);
+		request.TargetGroupId = room.Id;
+
+		var result = await CreateService(PatientId, "Client").CreatePostAsync(request);
+
+		result.Error.Code.Should().Be("Posts.SpecificGroupForbidden");
 	}
 
 	[Fact]
@@ -253,7 +290,7 @@ public class PostComposerTests : IDisposable
 	[Theory]
 	[InlineData("Update", "Free text category", null, null)]
 	[InlineData("Update", "General Discussion", "NotARealTag", null)]
-	[InlineData("Update", "General Discussion", null, "[{\"url\":\"http://res.cloudinary.com/demo/a.jpg\",\"type\":\"image\"}]")]
+	[InlineData("Update", "General Discussion", null, "[{\"url\":\"http://insecure.example/a.jpg\",\"type\":\"image\"}]")]
 	public void The_validator_rejects_payloads_outside_the_taxonomy(
 		string? title,
 		string category,
@@ -273,7 +310,7 @@ public class PostComposerTests : IDisposable
 	}
 
 	[Fact]
-	public void The_validator_rejects_the_specific_group_audience()
+	public void The_validator_requires_a_target_group_for_the_specific_group_audience()
 	{
 		var validation = new CreatePostRequestValidator().Validate(new CreatePostRequest
 		{
@@ -283,7 +320,7 @@ public class PostComposerTests : IDisposable
 		});
 
 		validation.IsValid.Should().BeFalse();
-		validation.Errors.Should().Contain(error => error.ErrorMessage.Contains("specific group"));
+		validation.Errors.Should().Contain(error => error.ErrorMessage.Contains("Choose a group"));
 	}
 
 	[Fact]
@@ -311,6 +348,165 @@ public class PostComposerTests : IDisposable
 			});
 		PostMediaCodec.TryParse(PostMediaCodec.Serialize(fiveImages), out _, out error).Should().BeFalse();
 		error.Should().Contain("at most 4 images");
+	}
+
+	[Fact]
+	public async Task Drafts_are_owner_only_and_excluded_from_the_public_feed()
+	{
+		var request = new CreatePostRequest
+		{
+			Title = "Work in progress",
+			Content = "",
+			IsDraft = true,
+			Visibility = PostVisibility.Public,
+		};
+
+		var created = await CreateService(PatientId, "Client").CreatePostAsync(request);
+
+		created.IsSuccess.Should().BeTrue();
+		created.Value.IsDraft.Should().BeTrue();
+
+		var feed = await CreateService(PatientId, "Client").GetPosts(new PostRequestParameters());
+		feed.Value.Should().BeEmpty();
+
+		var latest = await CreateService(PatientId, "Client").GetLatestDraft();
+		latest.Value.Should().NotBeNull();
+		latest.Value!.Id.Should().Be(created.Value.Id);
+
+		var otherRead = await CreateService(DoctorId, "Doctor").GetPostById(created.Value.Id);
+		otherRead.Error.Should().Be(PostErrors.NotFound(created.Value.Id));
+	}
+
+	[Fact]
+	public async Task Publishing_a_draft_requires_content_and_a_category()
+	{
+		var draft = await CreateService(PatientId, "Client").CreatePostAsync(new CreatePostRequest
+		{
+			Title = "Draft",
+			Content = "",
+			IsDraft = true,
+			Visibility = PostVisibility.Public,
+		});
+
+		var incomplete = await CreateService(PatientId, "Client").UpdatePost(
+			draft.Value.Id,
+			new UpdatePostRequest { Title = "Draft", Content = "", Category = null, IsDraft = false });
+
+		incomplete.Error.Code.Should().Be("Posts.ContentRequired");
+
+		var published = await CreateService(PatientId, "Client").UpdatePost(
+			draft.Value.Id,
+			new UpdatePostRequest
+			{
+				Title = "Draft",
+				Content = "Now ready",
+				Category = "General Discussion",
+				IsDraft = false,
+			});
+
+		published.IsSuccess.Should().BeTrue();
+		published.Value.IsDraft.Should().BeFalse();
+
+		var feed = await CreateService(PatientId, "Client").GetPosts(new PostRequestParameters());
+		feed.Value.Should().ContainSingle(post => post.Id == draft.Value.Id);
+
+		var latest = await CreateService(PatientId, "Client").GetLatestDraft();
+		latest.Value.Should().BeNull();
+	}
+
+	[Fact]
+	public async Task Restricted_post_content_cannot_be_read_through_comment_or_reply_endpoints()
+	{
+		var post = AddPost(DoctorId, PostVisibility.DoctorsOnly);
+		var comment = new Comment
+		{
+			PostId = post.Id,
+			AppUserId = PatientId,
+			Content = "Restricted discussion",
+			CommentedAt = DateTime.UtcNow,
+		};
+		_context.Comments.Add(comment);
+		_context.SaveChanges();
+
+		var reply = new Reply
+		{
+			CommentId = comment.Id,
+			AppUserId = PatientId,
+			Content = "Restricted reply",
+			RepliedAt = DateTime.UtcNow,
+		};
+		_context.Replies.Add(reply);
+		_context.SaveChanges();
+
+		var comments = new CommentService(
+			new RepositoryManager(_context),
+			_mapper,
+			new FakeClaims(PatientId, "Client"),
+			null!,
+			null!,
+			new FakeHateSpeechDetector(),
+			new FakeCacheService());
+
+		(await comments.GetCommentById(post.Id, comment.Id))
+			.Error.Should().Be(CommentErrors.NotFound(comment.Id));
+
+		var replies = new ReplyService(
+			new RepositoryManager(_context),
+			_mapper,
+			new FakeClaims(PatientId, "Client"),
+			null!,
+			new FakeHateSpeechDetector(),
+			new FakeCacheService());
+
+		(await replies.GetRepliesForComment(post.Id, comment.Id))
+			.Error.Should().Be(CommentErrors.NotFound(comment.Id));
+		(await replies.GetReplyById(post.Id, comment.Id, reply.Id))
+			.Error.Should().Be(ReplyErrors.NotFound(reply.Id));
+	}
+
+	[Fact]
+	public async Task Uploaded_media_is_tracked_attached_and_removed_with_the_post()
+	{
+		var service = CreateService(DoctorId, "Doctor");
+		var file = new FormFile(new MemoryStream(new byte[] { 1, 2, 3 }), 0, 3, "file", "a.jpg")
+		{
+			Headers = new HeaderDictionary(),
+			ContentType = "image/jpeg",
+		};
+
+		var upload = await service.UploadMediaAsync(file);
+		upload.IsSuccess.Should().BeTrue();
+
+		var asset = await _context.PostMediaAssets.SingleAsync();
+		asset.PostId.Should().BeNull();
+
+		var request = NewRequest();
+		request.Media = PostMediaCodec.Serialize(new[]
+		{
+			new PostMediaRequest { Url = upload.Value.Url, Type = "image" },
+		});
+
+		var created = await service.CreatePostAsync(request);
+		created.IsSuccess.Should().BeTrue();
+
+		asset = await _context.PostMediaAssets.SingleAsync();
+		asset.PostId.Should().Be(created.Value.Id);
+
+		var deleted = await service.DeletePost(created.Value.Id);
+		deleted.IsSuccess.Should().BeTrue();
+
+		_context.PostMediaAssets.Should().BeEmpty();
+		_storage.DeletedPublicIds.Should().Contain("posts/file");
+	}
+
+	[Fact]
+	public void Cloudinary_http_urls_are_normalized_to_https_at_the_response_boundary()
+	{
+		var response = PostMediaCodec.ToResponse(
+			"[{\"url\":\"http://res.cloudinary.com/demo/image/upload/a.jpg\",\"type\":\"image\"}]");
+
+		response.Single().Url.Should().Be(
+			"https://res.cloudinary.com/demo/image/upload/a.jpg");
 	}
 
 	[Fact]
@@ -351,6 +547,30 @@ public class PostComposerTests : IDisposable
 			Category = "General Discussion",
 			Visibility = visibility,
 		};
+
+	private ChatRoom AddRoom(string ownerId)
+	{
+		var room = new ChatRoom
+		{
+			Name = "Support room",
+			Description = "A room for the group audience test.",
+			CreatedById = ownerId,
+			CreatedAtUtc = DateTime.UtcNow,
+		};
+		_context.ChatRooms.Add(room);
+		_context.SaveChanges();
+
+		_context.ChatRoomMembers.Add(new ChatRoomMember
+		{
+			RoomId = room.Id,
+			UserId = ownerId,
+			DisplayName = "Owner",
+			IsDoctor = true,
+			JoinedAtUtc = DateTime.UtcNow,
+		});
+		_context.SaveChanges();
+		return room;
+	}
 
 	private Post AddPost(
 		string authorId,
@@ -413,9 +633,19 @@ public class PostComposerTests : IDisposable
 
 		public Task<Result<StoredMedia>> UploadMedia(IFormFile file) =>
 			Task.FromResult<Result<StoredMedia>>(new StoredMedia(
-				"https://res.cloudinary.com/demo/posts/file.jpg", "image"));
+				"https://res.cloudinary.com/demo/posts/file.jpg",
+				"image",
+				"posts/file"));
 
 		public bool IsManagedMediaUrl(string url) =>
 			AcceptManagedUrls && url.StartsWith("https://res.cloudinary.com/", StringComparison.Ordinal);
+
+		public List<string> DeletedPublicIds { get; } = new();
+
+		public Task<Result> DeleteMediaAsync(string publicId, string mediaType)
+		{
+			DeletedPublicIds.Add(publicId);
+			return Task.FromResult(Result.Success());
+		}
 	}
 }

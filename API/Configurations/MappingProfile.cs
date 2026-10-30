@@ -17,7 +17,8 @@ public class MappingProfile : Profile
 	public MappingProfile()
 	{
 		CreateMap<Post, PostResponse>()
-			.ForMember(dest => dest.Media, src => src.MapFrom(post => PostMediaCodec.ToResponse(post.MediaJson)));
+			.ForMember(dest => dest.Media, src => src.MapFrom(post => PostMediaCodec.ToResponse(post.MediaJson)))
+			.ForMember(dest => dest.TargetGroupId, src => src.MapFrom(post => post.TargetChatRoomId));
 		CreateMap<CreatePostRequest, Post>();
 		CreateMap<UpdatePostRequest, Post>().ReverseMap();
 

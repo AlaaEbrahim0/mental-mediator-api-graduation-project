@@ -14,6 +14,15 @@ public static class PostErrors
 	public static Error DoctorsOnlyForbidden() => Error.Forbidden(
 		"Posts.DoctorsOnlyForbidden", "Only doctors can publish to the Doctors Only audience.");
 
-	public static Error VisibilityUnsupported() => Error.Validation(
-		"Posts.VisibilityUnsupported", "Posts for a specific group are not available yet.");
+	public static Error SpecificGroupRequired() => Error.Validation(
+		"Posts.SpecificGroupRequired", "Choose a group for the Specific Group audience.");
+
+	public static Error SpecificGroupForbidden() => Error.Forbidden(
+		"Posts.SpecificGroupForbidden", "Only active members of a group can post to it.");
+
+	public static Error SpecificGroupNotFound() => Error.Validation(
+		"Posts.SpecificGroupNotFound", "That group is not available.");
+
+	public static Error MediaAttached() => Error.Conflict(
+		"Posts.MediaAttached", "This media is already attached to a post and cannot be removed.");
 }

@@ -182,19 +182,20 @@ public class AuthController : ControllerBase
 		return Ok(result.Value);
 	}
 
-	[HttpGet("confirm-email")]
+	/// <summary>
+	/// Confirms an address from a POST body. The link emailed to the user puts
+	/// the token in the URL fragment, which browsers do not send to the server;
+	/// the static page then submits it here so it never reaches access logs.
+	/// </summary>
+	[HttpPost("confirm-email")]
 	[EnableRateLimiting(RateLimitPolicies.Auth)]
-	public async Task<IActionResult> ConfirmEmail(string id, string token)
+	public async Task<IActionResult> ConfirmEmail([FromBody] ConfirmEmailRequest request)
 	{
-		if (string.IsNullOrEmpty(id) || string.IsNullOrEmpty(token))
-		{
-			return BadRequest("Null or empty values for either id or token");
-		}
-		var result = await _authService.ConfirmEmailAsync(id, token);
+		var result = await _authService.ConfirmEmailAsync(request.Id, request.Token);
 		if (result.IsFailure)
 		{
 			return result.ToProblemDetails();
 		}
-		return Redirect($"{Request.Scheme}://{Request.Host}/successfulEmailConfirmation.html");
+		return Ok(result.Value);
 	}
 }

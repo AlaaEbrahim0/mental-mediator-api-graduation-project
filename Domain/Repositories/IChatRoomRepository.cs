@@ -58,6 +58,9 @@ public interface IChatRoomRepository
 		DateTime sinceUtc,
 		int take);
 	Task<IReadOnlyList<ChatRoomMember>> GetMembershipsAsync(string userId, IReadOnlyCollection<int> roomIds, bool trackChanges);
+
+	/// <summary>Rooms where the user is still an active member.</summary>
+	Task<int[]> GetActiveRoomIdsAsync(string userId);
 	Task<int> GetActiveMemberCountAsync(int roomId);
 	Task<IReadOnlyDictionary<int, int>> GetActiveMemberCountsAsync(IReadOnlyCollection<int> roomIds);
 	void CreateRoom(ChatRoom room);

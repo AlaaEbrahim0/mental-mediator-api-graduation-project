@@ -26,18 +26,16 @@ public class RepositoryBase<T> : IRepositoryBase<T> where T : class
 
 	public IQueryable<T> FindAll(bool trackChanges)
 	{
-		return
-			!trackChanges ?
-			_dbContext.Set<T>() :
-			_dbContext.Set<T>().AsNoTracking();
+		return trackChanges
+			? _dbContext.Set<T>()
+			: _dbContext.Set<T>().AsNoTracking();
 	}
 
 	public IQueryable<T> FindByCondition(Expression<Func<T, bool>> conition, bool trackChanges)
 	{
-		return
-			!trackChanges ?
-			_dbContext.Set<T>().Where(conition) :
-			_dbContext.Set<T>().Where(conition).AsNoTracking();
+		return trackChanges
+			? _dbContext.Set<T>().Where(conition)
+			: _dbContext.Set<T>().Where(conition).AsNoTracking();
 	}
 
 	public void Update(T entity)

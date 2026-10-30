@@ -26,6 +26,22 @@ public class PostConfiguration : IEntityTypeConfiguration<Post>
 			.HasDefaultValue(Domain.Enums.PostVisibility.Public);
 
 		builder
+			.Property(p => p.IsDraft)
+			.IsRequired()
+			.HasDefaultValue(false);
+
+		// A room deletion must not delete published posts. The audience becomes
+		// unresolvable instead, and the read policy hides it.
+		builder
+			.HasOne(p => p.TargetChatRoom)
+			.WithMany()
+			.HasForeignKey(p => p.TargetChatRoomId)
+			.OnDelete(DeleteBehavior.SetNull);
+
+		builder.HasIndex(p => new { p.Visibility, p.TargetChatRoomId });
+		builder.HasIndex(p => new { p.IsDraft, p.PostedOn });
+
+		builder
 			.Property(p => p.MediaJson)
 			.HasMaxLength(4000);
 

@@ -61,7 +61,7 @@ public static class PostMediaCodec
 
 		foreach (var item in items)
 		{
-			var url = item.Url?.Trim();
+			var url = NormalizeSecureUrl(item.Url?.Trim() ?? string.Empty);
 			var type = item.Type?.Trim().ToLowerInvariant();
 
 			if (string.IsNullOrWhiteSpace(url) ||
@@ -108,9 +108,22 @@ public static class PostMediaCodec
 	public static string Serialize(IEnumerable<PostMediaRequest> items) =>
 		JsonSerializer.Serialize(items, Options);
 
+	/// <summary>
+	/// Existing rows can predate the secure-URL setting. Only Cloudinary URLs
+	/// are rewritten; unrelated external URLs (legacy data) are left alone.
+	/// </summary>
+	public static string NormalizeSecureUrl(string url) =>
+		url.StartsWith("http://res.cloudinary.com/", StringComparison.OrdinalIgnoreCase)
+			? string.Concat("https://", url.AsSpan("http://".Length))
+			: url;
+
 	public static List<PostMediaResponse> ToResponse(string? json) =>
 		TryParse(json, out var items, out _)
-			? items.Select(item => new PostMediaResponse { Url = item.Url, Type = item.Type }).ToList()
+			? items.Select(item => new PostMediaResponse
+			{
+				Url = NormalizeSecureUrl(item.Url),
+				Type = item.Type
+			}).ToList()
 			: new List<PostMediaResponse>();
 
 	public static List<PostMediaRequest> ToRequestList(string? json) =>

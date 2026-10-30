@@ -23,9 +23,22 @@ public class CreatePostRequest
 	/// <summary>JSON array of media already uploaded through POST /api/posts/media.</summary>
 	public string? Media { get; set; }
 
-	public PostVisibility Visibility { get; set; } = PostVisibility.Public;
+	/// <summary>
+	/// Null on an edit means "keep the existing audience". This prevents an
+	/// older edit client from silently widening a restricted post.
+	/// </summary>
+	public PostVisibility? Visibility { get; set; }
+
+	/// <summary>Required for SpecificGroup; a chat room the author belongs to.</summary>
+	public int? TargetGroupId { get; set; }
 
 	public bool IsAnonymous { get; set; }
+
+	/// <summary>
+	/// Drafts may be incomplete and are readable only by their owner and
+	/// administrators. Publishing the same record sets this back to false.
+	/// </summary>
+	public bool IsDraft { get; set; }
 
 	public IFormFile? PhotoPost { get; set; }
 }
@@ -35,18 +48,26 @@ public class CreatePostRequestValidator : AbstractValidator<CreatePostRequest>
 
 	public CreatePostRequestValidator()
 	{
+		// The composer mirrors these limits; published posts must be complete,
+		// while a draft may be saved with only some fields filled in.
 		RuleFor(x => x.Content)
 			.NotEmpty()
-			.Length(1, 10000);
+			.Length(1, PostTaxonomy.MaxContentLength)
+			.When(x => !x.IsDraft);
 
-		// A title is optional so short social updates do not need one; long
-		// clinical write-ups still use it.
+		RuleFor(x => x.Content)
+			.MaximumLength(PostTaxonomy.MaxContentLength);
+
 		RuleFor(x => x.Title)
-			.MaximumLength(2000);
+			.MaximumLength(PostTaxonomy.MaxTitleLength);
 
 		RuleFor(x => x.Category)
 			.NotEmpty()
-			.Must(PostTaxonomy.IsCategory)
+			.When(x => !x.IsDraft)
+			.WithMessage("Choose one of the predefined categories.");
+
+		RuleFor(x => x.Category)
+			.Must(category => string.IsNullOrWhiteSpace(category) || PostTaxonomy.IsCategory(category))
 			.WithMessage("Choose one of the predefined categories.");
 
 		RuleFor(x => x.Tags)
@@ -67,9 +88,19 @@ public class CreatePostRequestValidator : AbstractValidator<CreatePostRequest>
 				}
 			});
 
-		RuleFor(x => x.Visibility)
-			.Must(visibility => visibility != PostVisibility.SpecificGroup)
-			.WithMessage("Posts for a specific group are not available yet.");
+		RuleFor(x => x.TargetGroupId)
+			.NotNull().WithMessage("Choose a group for this audience.")
+			.GreaterThan(0).WithMessage("Choose a valid group.")
+			.When(x => x.Visibility == PostVisibility.SpecificGroup && !x.IsDraft);
+
+		RuleFor(x => x.TargetGroupId)
+			.Must(groupId => groupId is null || groupId > 0)
+			.WithMessage("Choose a valid group.");
+
+		RuleFor(x => x.TargetGroupId)
+			.Null()
+			.When(x => x.Visibility != PostVisibility.SpecificGroup && !x.IsDraft)
+			.WithMessage("A target group is only valid for the Specific Group audience.");
 
 		RuleFor(x => x.PhotoPost)
 			.SetValidator(new PhotoValidator()!);

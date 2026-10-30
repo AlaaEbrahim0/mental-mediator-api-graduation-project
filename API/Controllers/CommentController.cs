@@ -77,6 +77,7 @@ public class CommentController : ControllerBase
 	}
 
 	[HttpPut("{commentId:int}")]
+	[Authorize]
 	public async Task<IActionResult> UpdateComment(int postId, int commentId, [FromBody] UpdateCommentRequest updateCommentRequest)
 	{
 		var result = await _commentService.UpdateComment(postId, commentId, updateCommentRequest);

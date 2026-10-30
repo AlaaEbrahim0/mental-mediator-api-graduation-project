@@ -22,6 +22,7 @@ public class AppDbContext : IdentityDbContext<BaseUser>
 
 	public DbSet<Post> Posts { get; set; }
 	public DbSet<PostLike> PostLikes { get; set; }
+	public DbSet<PostMediaAsset> PostMediaAssets { get; set; }
 	public DbSet<Comment> Comments { get; set; }
 	public DbSet<Reply> Replies { get; set; }
 	public DbSet<Notification> Notifications { get; set; }

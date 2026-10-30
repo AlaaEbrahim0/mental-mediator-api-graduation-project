@@ -206,6 +206,13 @@ public class ChatRoomRepository : IChatRoomRepository
 			.ToListAsync();
 	}
 
+	public Task<int[]> GetActiveRoomIdsAsync(string userId) =>
+		Members(false)
+			.Where(member => member.UserId == userId && member.LeftAtUtc == null)
+			.Select(member => member.RoomId)
+			.Distinct()
+			.ToArrayAsync();
+
 	public Task<int> GetActiveMemberCountAsync(int roomId) =>
 		Members(false).CountAsync(x => x.RoomId == roomId && x.LeftAtUtc == null);
 

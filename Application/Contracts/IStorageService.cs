@@ -3,7 +3,7 @@ using Shared;
 
 namespace Application.Contracts;
 
-public sealed record StoredMedia(string Url, string Type);
+public sealed record StoredMedia(string Url, string Type, string? PublicId = null);
 
 public interface IStorageService
 {
@@ -18,4 +18,7 @@ public interface IStorageService
 	/// arbitrary third-party URLs submitted alongside a post.
 	/// </summary>
 	bool IsManagedMediaUrl(string url);
+
+	/// <summary>Destroys an uploaded asset. Used only for abandoned or removed media.</summary>
+	Task<Result> DeleteMediaAsync(string publicId, string mediaType);
 }

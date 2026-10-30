@@ -23,6 +23,21 @@ public class Post
 
 	public PostVisibility Visibility { get; set; } = PostVisibility.Public;
 
+	/// <summary>
+	/// The room whose active members may read a Specific Group post. Reusing the
+	/// existing room membership model avoids inventing a second group system.
+	/// Null for the Public and DoctorsOnly audiences.
+	/// </summary>
+	public int? TargetChatRoomId { get; set; }
+
+	public ChatRoom? TargetChatRoom { get; set; }
+
+	/// <summary>
+	/// Drafts are visible only to their owner and administrators. They are
+	/// excluded from every feed and cannot be liked or commented on.
+	/// </summary>
+	public bool IsDraft { get; set; }
+
 	/// <summary>JSON array of uploaded media: [{ "url": "...", "type": "image" }].</summary>
 	public string? MediaJson { get; set; }
 

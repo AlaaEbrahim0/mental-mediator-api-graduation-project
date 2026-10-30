@@ -28,7 +28,12 @@ public class PostResponse
 
 	public PostVisibility Visibility { get; set; }
 
+	/// <summary>The room whose active members can read a Specific Group post.</summary>
+	public int? TargetGroupId { get; set; }
+
 	public bool IsAnonymous { get; set; }
+
+	public bool IsDraft { get; set; }
 
 	public bool IsOwnPost { get; set; }
 

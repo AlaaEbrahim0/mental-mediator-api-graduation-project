@@ -225,35 +225,52 @@ public class AppointmentRepository : RepositoryBase<Appointment>, IAppointmentRe
 
 	public async Task<Appointment?> GetById(int appointmentId, bool trackChanges)
 	{
-		return await
-			FindByCondition(x =>
-				x.Id == appointmentId,
-				trackChanges)
+		if (!trackChanges)
+		{
+			return await FindByCondition(x => x.Id == appointmentId, false)
+				.Include(x => x.User)
+				.Include(x => x.Doctor)
+				.Select(x => new Appointment
+				{
+					Id = x.Id,
+					DoctorId = x.DoctorId,
+					UserId = x.UserId,
+					Fees = x.Fees,
+					ClientName = x.User.FullName,
+					DoctorName = x.Doctor.FullName,
+					DoctorPhotoUrl = x.Doctor.PhotoUrl,
+					ClientPhotoUrl = x.User.PhotoUrl,
+					ClientEmail = x.User.Email!,
+					DoctorEmail = x.Doctor.Email!,
+					StartTime = x.StartTime,
+					Duration = x.Duration,
+					Status = x.Status,
+					Location = x.Location,
+					Reason = x.Reason,
+					CancellationReason = x.CancellationReason,
+					RejectionReason = x.RejectionReason,
+				})
+				.FirstOrDefaultAsync();
+		}
+
+		var appointment = await FindByCondition(x => x.Id == appointmentId, true)
 			.Include(x => x.User)
 			.Include(x => x.Doctor)
-			.Select(x => new Appointment
-			{
-				Id = x.Id,
-				DoctorId = x.DoctorId,
-				UserId = x.UserId,
-				Fees = x.Fees,
-				ClientName = x.User.FullName,
-				DoctorName = x.Doctor.FullName,
-				DoctorPhotoUrl = x.Doctor.PhotoUrl,
-				ClientPhotoUrl = x.User.PhotoUrl,
-				ClientEmail = x.User.Email!,
-				DoctorEmail = x.Doctor.Email!,
-				StartTime = x.StartTime,
-				Duration = x.Duration,
-				Status = x.Status,
-				Location = x.Location,
-				Reason = x.Reason,
-				CancellationReason = x.CancellationReason,
-				RejectionReason = x.RejectionReason,
-			})
 			.FirstOrDefaultAsync();
 
+		if (appointment is not null)
+		{
+			// NotMapped fields are populated for the response mapping while the
+			// persisted entity stays the tracked instance.
+			appointment.ClientName = appointment.User.FullName;
+			appointment.DoctorName = appointment.Doctor.FullName;
+			appointment.DoctorPhotoUrl = appointment.Doctor.PhotoUrl;
+			appointment.ClientPhotoUrl = appointment.User.PhotoUrl;
+			appointment.ClientEmail = appointment.User.Email!;
+			appointment.DoctorEmail = appointment.Doctor.Email!;
+		}
 
+		return appointment;
 	}
 
 	public async Task<IEnumerable<Appointment>> GetByUserId(string userId, MyAppointmentsRequestParameters requestParameters, bool trackChanges)
@@ -318,14 +335,21 @@ public class AppointmentRepository : RepositoryBase<Appointment>, IAppointmentRe
 
 	public async Task<(int totalAppointments, decimal totalProfit)> GetDoctorStats(string doctorId)
 	{
-		var result = await FindByCondition(x => x.DoctorId == doctorId, false)
-			.Select(x => new { x.Fees, x.Status }) // Include fields needed for both total count and profit
-			.ToListAsync();
+		// A dashboard scalar must not materialize the doctor's appointment
+		// history. Completed is also the only status that represents revenue:
+		// pending, confirmed, cancelled and rejected rows are not profit.
+		var stats = await FindByCondition(
+				x => x.DoctorId == doctorId && x.Status == AppointmentStatus.Completed,
+				false)
+			.GroupBy(_ => 1)
+			.Select(group => new
+			{
+				TotalAppointments = group.Count(),
+				TotalProfit = group.Sum(appointment => appointment.Fees)
+			})
+			.FirstOrDefaultAsync();
 
-		var totalAppointments = result.Count();
-		var totalProfit = result.Sum(x => x.Fees);
-
-		return (totalAppointments, totalProfit);
+		return stats is null ? (0, 0m) : (stats.TotalAppointments, stats.TotalProfit);
 	}
 	public async Task<int> GetDoctorCompletedAppointmentsCount(string doctorId)
 	{

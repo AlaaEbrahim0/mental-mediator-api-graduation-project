@@ -4,6 +4,7 @@ namespace Application.Contracts;
 public interface IRepositoryManager
 {
 	IPostRepository Posts { get; }
+	IPostMediaAssetRepository PostMediaAssets { get; }
 	ICommentRepository Comments { get; }
 	IReplyRepository Replies { get; }
 	INotificationRepository Notifications { get; }

@@ -126,6 +126,7 @@ public class NotificationOwnershipTests
 		public Task SaveAsync() => Task.CompletedTask;
 
 	 public  IPostRepository Posts => throw new NotImplementedException();
+		public IPostMediaAssetRepository PostMediaAssets => throw new NotImplementedException();
 		public ICommentRepository Comments => throw new NotImplementedException();
 		public IReplyRepository Replies => throw new NotImplementedException();
 		public IChatRoomRepository ChatRooms => throw new NotImplementedException();

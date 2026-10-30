@@ -162,7 +162,60 @@ public class CloudinaryStorageService : IStorageService
 				"The storage provider accepted the upload but returned no URL.");
 		}
 
-		return new StoredMedia(url, isVideo ? "video" : "image");
+		// SecureUrl is normally populated, but the fallback must never put a
+		// plain-HTTP URL into a post. Only Cloudinary URLs are rewritten.
+		url = Application.Dtos.PostsDto.PostMediaCodec.NormalizeSecureUrl(url);
+
+		return new StoredMedia(
+			url,
+			isVideo ? "video" : "image",
+			uploadResult.PublicId ?? $"{UploadFolder}/{publicId}");
+	}
+
+	public async Task<Result> DeleteMediaAsync(string publicId, string mediaType)
+	{
+		if (string.IsNullOrWhiteSpace(publicId))
+		{
+			return Result.Success();
+		}
+
+		var client = GetClient();
+		if (client is null)
+		{
+			return Shared.Error.ServiceUnavailable(
+				"ExternalServices.StorageServiceUnavailable",
+				"Uploads require a valid CLOUDINARY_URL (cloudinary://<api_key>:<api_secret>@<cloud_name>).");
+		}
+
+		try
+		{
+			var result = await client.DestroyAsync(new DeletionParams(publicId)
+			{
+				ResourceType = string.Equals(mediaType, "video", StringComparison.OrdinalIgnoreCase)
+					? ResourceType.Video
+					: ResourceType.Image
+			});
+
+			// "not found" is success for cleanup: the desired end state (no asset)
+			// already holds, for example after a manual provider-side deletion.
+			if (string.Equals(result.Result, "ok", StringComparison.OrdinalIgnoreCase) ||
+				string.Equals(result.Result, "not found", StringComparison.OrdinalIgnoreCase))
+			{
+				return Result.Success();
+			}
+
+			return Shared.Error.ServiceUnavailable(
+				"ExternalServices.StorageServiceUnavailable",
+				"The storage provider could not delete the media.");
+		}
+		catch
+		{
+			// Provider exceptions can include account identifiers; keep them out
+			// of the client payload and retry on the next cleanup pass.
+			return Shared.Error.ServiceUnavailable(
+				"ExternalServices.StorageServiceUnavailable",
+				"The storage provider could not delete the media.");
+		}
 	}
 
 	private static bool IsVideo(IFormFile file) =>

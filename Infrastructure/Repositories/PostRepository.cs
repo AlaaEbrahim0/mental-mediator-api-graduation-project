@@ -1,4 +1,6 @@
-﻿using Domain.Entities;
+﻿using System.Linq.Expressions;
+using Domain.Entities;
+using Domain.Enums;
 using Domain.Repositories;
 using Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
@@ -22,16 +24,13 @@ public class PostRepository : RepositoryBase<Post>, IPostRepository
 		Delete(post);
 	}
 
-	public async Task<IEnumerable<Post>> GetAllPosts(PostRequestParameters parameters, bool trackChanges)
+	public async Task<IEnumerable<Post>> GetAllPosts(PostRequestParameters parameters, bool trackChanges, PostAudience? audience = null)
 	{
-		var query = FindAll(trackChanges);
+		var query = ApplyAudience(FindAll(trackChanges), audience ?? PostAudience.Public);
 
-		query = query.Where(p => p.IsAnonymous == parameters.ConfessionsOnly);
-
-		if (!parameters.IncludeDoctorsOnly)
-		{
-			query = query.Where(p => p.Visibility != Domain.Enums.PostVisibility.DoctorsOnly);
-		}
+		query = query
+			.Where(p => !p.IsDraft)
+			.Where(p => p.IsAnonymous == parameters.ConfessionsOnly);
 
 		if (!string.IsNullOrEmpty(parameters.Title))
 		{
@@ -58,65 +57,22 @@ public class PostRepository : RepositoryBase<Post>, IPostRepository
 			query = query.Where(p => p.PostedOn <= parameters.EndTime);
 		}
 
-		// The navigation must be included BEFORE projection. Projecting with
-		// Select<T>() (which returns a different type) cancels any previously
-		// applied Include, so p.AppUser would be unloaded and EF would throw.
-		var posts = await query
-			.Include(p => p.AppUser)
+		return await query
 			.OrderByDescending(c => c.PostedOn)
-			.Select(p => new Post
-			{
-				Id = p.Id,
-				AppUserId = p.AppUserId,
-				Content = p.Content,
-				Category = p.Category,
-				Tags = p.Tags,
-				PostedOn = p.PostedOn,
-				Title = p.Title,
-				IsAnonymous = p.IsAnonymous,
-				Visibility = p.Visibility,
-				MediaJson = p.MediaJson,
-				Username = p.IsAnonymous ? null : p.AppUser!.FullName,
-				PhotoUrl = p.IsAnonymous ? null : p.AppUser!.PhotoUrl,
-				PostPhotoUrl = p.PostPhotoUrl,
-				CommentsCount = p.Comments.Count()
-			})
+			.Select(PostProjection.Summary)
 			.Paginate(parameters.PageNumber, parameters.PageSize)
 			.ToListAsync();
-
-		return posts;
 	}
 
 
-	public async Task<IEnumerable<Post>> GetConfessionOnly(PostRequestParameters parameters, bool trackChanges)
+	public async Task<IEnumerable<Post>> GetConfessionOnly(PostRequestParameters parameters, bool trackChanges, PostAudience? audience = null)
 	{
-		var query = FindByCondition(x => x.IsAnonymous, trackChanges);
-
-		if (!parameters.IncludeDoctorsOnly)
-		{
-			query = query.Where(p => p.Visibility != Domain.Enums.PostVisibility.DoctorsOnly);
-		}
+		var query = ApplyAudience(FindByCondition(x => x.IsAnonymous, trackChanges), audience ?? PostAudience.Public)
+			.Where(p => !p.IsDraft);
 
 		return await query
-			.Include(p => p.AppUser)
 			.OrderByDescending(c => c.PostedOn)
-			.Select(p => new Post
-			{
-				Id = p.Id,
-				AppUserId = p.AppUserId,
-				Content = p.Content,
-				Category = p.Category,
-				Tags = p.Tags,
-				PostedOn = p.PostedOn,
-				Title = p.Title,
-				IsAnonymous = p.IsAnonymous,
-				Visibility = p.Visibility,
-				MediaJson = p.MediaJson,
-				Username = p.IsAnonymous ? null : p.AppUser!.FullName,
-				PhotoUrl = p.IsAnonymous ? null : p.AppUser!.PhotoUrl,
-				PostPhotoUrl = p.PostPhotoUrl,
-				CommentsCount = p.Comments.Count()
-			})
+			.Select(PostProjection.Summary)
 			.Paginate(parameters.PageNumber, parameters.PageSize)
 			.ToListAsync();
 	}
@@ -124,61 +80,47 @@ public class PostRepository : RepositoryBase<Post>, IPostRepository
 	public async Task<IEnumerable<Post>> GetPostsByUserId(string userId, PostRequestParameters
 			parameters, bool trackChanges)
 	{
-		var query = FindByCondition(p => p.AppUserId == userId, trackChanges);
-
-		if (!parameters.IncludeDoctorsOnly)
-		{
-			query = query.Where(p => p.Visibility != Domain.Enums.PostVisibility.DoctorsOnly);
-		}
-
-		return await query
-			.Include(p => p.AppUser)
+		// The service only reaches this method for the signed-in owner, so drafts
+		// are included: this is the owner's workspace, not a public feed.
+		return await FindByCondition(p => p.AppUserId == userId, trackChanges)
 			.OrderByDescending(c => c.PostedOn)
-			.Select(p => new Post
-			{
-				Id = p.Id,
-				AppUserId = p.AppUserId,
-				Content = p.Content,
-				Category = p.Category,
-				Tags = p.Tags,
-				PostedOn = p.PostedOn,
-				Title = p.Title,
-				IsAnonymous = p.IsAnonymous,
-				Visibility = p.Visibility,
-				MediaJson = p.MediaJson,
-				Username = p.IsAnonymous ? null : p.AppUser!.FullName,
-				PhotoUrl = p.IsAnonymous ? null : p.AppUser!.PhotoUrl,
-				PostPhotoUrl = p.PostPhotoUrl,
-				CommentsCount = p.Comments.Count()
-			})
+			.Select(PostProjection.Summary)
 			.Paginate(parameters.PageNumber, parameters.PageSize)
 			.ToListAsync();
 	}
 
 	public async Task<Post?> GetPostById(int id, bool trackChanges)
 	{
+		if (!trackChanges)
+		{
+			return await FindByCondition(p => p.Id == id, false)
+				.Select(PostProjection.Summary)
+				.SingleOrDefaultAsync();
+		}
 
-		return await
-			FindByCondition(p => p.Id == id, trackChanges)
+		// Update and delete paths need the tracked entity itself. Returning a
+		// projected instance and then calling Update() attaches a second entity
+		// with the same key, which throws once tracking works correctly.
+		var post = await FindByCondition(p => p.Id == id, true)
 			.Include(p => p.AppUser)
-			.Select(p => new Post
-			{
-				Id = p.Id,
-				AppUserId = p.AppUserId,
-				Content = p.Content,
-				Category = p.Category,
-				Tags = p.Tags,
-				PostedOn = p.PostedOn,
-				Title = p.Title,
-				IsAnonymous = p.IsAnonymous,
-				Visibility = p.Visibility,
-				MediaJson = p.MediaJson,
-				Username = p.IsAnonymous ? null : p.AppUser!.FullName,
-				PhotoUrl = p.IsAnonymous ? null : p.AppUser!.PhotoUrl,
-				PostPhotoUrl = p.PostPhotoUrl,
-				CommentsCount = p.Comments.Count()
-			})
 			.SingleOrDefaultAsync();
+
+		if (post is not null)
+		{
+			post.Username = post.IsAnonymous ? null : post.AppUser?.FullName;
+			post.PhotoUrl = post.IsAnonymous ? null : post.AppUser?.PhotoUrl;
+			post.CommentsCount = await _dbContext.Comments.CountAsync(comment => comment.PostId == id);
+		}
+
+		return post;
+	}
+
+	public async Task<Post?> GetLatestDraft(string userId, bool trackChanges)
+	{
+		return await FindByCondition(p => p.AppUserId == userId && p.IsDraft, trackChanges)
+			.OrderByDescending(p => p.PostedOn)
+			.Select(PostProjection.Summary)
+			.FirstOrDefaultAsync();
 	}
 
 	public void UpdatePost(Post post)
@@ -197,10 +139,80 @@ public class PostRepository : RepositoryBase<Post>, IPostRepository
 		return (await query.CountAsync(), userId != null && await query.AnyAsync(x => x.UserId == userId));
 	}
 
+	public async Task<IReadOnlyDictionary<int, (int Count, bool IsLiked)>> GetLikeStates(IEnumerable<int> postIds, string? userId)
+	{
+		var ids = postIds.Distinct().ToArray();
+		if (ids.Length == 0)
+		{
+			return new Dictionary<int, (int Count, bool IsLiked)>();
+		}
+
+		var counts = await _dbContext.PostLikes
+			.AsNoTracking()
+			.Where(like => ids.Contains(like.PostId))
+			.GroupBy(like => like.PostId)
+			.Select(group => new { PostId = group.Key, Count = group.Count() })
+			.ToListAsync();
+
+		var liked = string.IsNullOrEmpty(userId)
+			? new HashSet<int>()
+			: (await _dbContext.PostLikes
+				.AsNoTracking()
+				.Where(like => ids.Contains(like.PostId) && like.UserId == userId)
+				.Select(like => like.PostId)
+				.ToListAsync())
+				.ToHashSet();
+
+		return ids.ToDictionary(
+			id => id,
+			id =>
+			{
+				var count = counts.FirstOrDefault(entry => entry.PostId == id)?.Count ?? 0;
+				return (count, liked.Contains(id));
+			});
+	}
+
 	public async Task SetLike(int postId, string userId, bool liked)
 	{
 		var existing = await _dbContext.PostLikes.FirstOrDefaultAsync(x => x.PostId == postId && x.UserId == userId);
 		if (liked && existing == null) _dbContext.PostLikes.Add(new PostLike { PostId = postId, UserId = userId, LikedOn = DateTime.UtcNow });
 		else if (!liked && existing != null) _dbContext.PostLikes.Remove(existing);
 	}
+
+	private static IQueryable<Post> ApplyAudience(IQueryable<Post> query, PostAudience audience)
+	{
+		return query.Where(post =>
+			post.Visibility == PostVisibility.Public ||
+			(audience.CanReadDoctorsOnly && post.Visibility == PostVisibility.DoctorsOnly) ||
+			(post.Visibility == PostVisibility.SpecificGroup &&
+				post.TargetChatRoomId != null &&
+				audience.SpecificGroupIds.Contains(post.TargetChatRoomId.Value)));
+	}
+}
+
+/// <summary>
+/// One projection for every post read. Keeping it in a single expression means
+/// a new post column cannot be silently dropped from one endpoint.
+/// </summary>
+internal static class PostProjection
+{
+	public static readonly Expression<Func<Post, Post>> Summary = post => new Post
+	{
+		Id = post.Id,
+		AppUserId = post.AppUserId,
+		Content = post.Content,
+		Category = post.Category,
+		Tags = post.Tags,
+		PostedOn = post.PostedOn,
+		Title = post.Title,
+		IsAnonymous = post.IsAnonymous,
+		IsDraft = post.IsDraft,
+		Visibility = post.Visibility,
+		TargetChatRoomId = post.TargetChatRoomId,
+		MediaJson = post.MediaJson,
+		Username = post.IsAnonymous ? null : post.AppUser!.FullName,
+		PhotoUrl = post.IsAnonymous ? null : post.AppUser!.PhotoUrl,
+		PostPhotoUrl = post.PostPhotoUrl,
+		CommentsCount = post.Comments.Count()
+	};
 }

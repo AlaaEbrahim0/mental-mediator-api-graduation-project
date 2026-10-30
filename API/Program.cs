@@ -41,7 +41,7 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services
     .ConfigureControllers()
     .ConfigureSwagger()
-    .ConfigureCors()
+    .ConfigureCors(builder.Configuration)
     .ConfigureOptions(builder.Configuration)
     .ConfigureDbContext(builder.Configuration, builder.Environment)
     .ConfigureIdentity()
@@ -79,13 +79,12 @@ app.UseSwagger();
 app.UseSwaggerUI(c =>
     c.SwaggerEndpoint("/swagger/v1/swagger.json", "TestApiJWT v1"));
 
-// HTTPS redirection is opt-in via RequireHttps=true. Somee's free plan serves
-// the site over plain HTTP on a *.somee.com domain and does not issue a
-// certificate for free subdomains (only paid plans renew automatically), so an
-// unconditional UseHttpsRedirection would bounce every request into a loop
-// and the site would never answer.
-if (string.Equals(builder.Configuration["RequireHttps"], "true",
-                   StringComparison.OrdinalIgnoreCase))
+// HTTPS is on by default outside Development, where TLS is not guaranteed.
+// RequireHttps=false remains available for a host that genuinely cannot serve
+// a certificate (the retired Somee free tier was the historical reason).
+var requireHttps = builder.Configuration.GetValue<bool?>("RequireHttps")
+    ?? !app.Environment.IsDevelopment();
+if (requireHttps)
 {
     app.UseHttpsRedirection();
 }
@@ -123,6 +122,9 @@ app.MapGet("/health", () => Results.Ok(new
     time = DateTime.UtcNow
 }));
 
-app.InitializeDatabaseAsync().Wait();
+// Top-level statements compile to an async entry point, so the migration
+// check is awaited instead of blocking a thread with .Wait(). Blocking here
+// can deadlock under IIS's in-process host and delays every first request.
+await app.InitializeDatabaseAsync();
 
 app.Run();

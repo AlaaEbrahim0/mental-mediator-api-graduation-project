@@ -132,11 +132,14 @@ public class AuthService : IAuthService
 
 	private string generateEmailConfirmationLink(string id, string token)
 	{
+		// A fragment is not sent in the HTTP request, so neither reverse-proxy
+		// logs nor the initial navigation record the token. confirm-email.html
+		// removes it from history and POSTs it to the API.
 		return
 			$"{_signInManager.Context.Request.Scheme}://" +
 			$"{_signInManager.Context.Request.Host}" +
-			$"/api/auth/confirm-email?" +
-			$"id={id}&" +
+			$"/confirm-email.html#" +
+			$"id={WebUtility.UrlEncode(id)}&" +
 			$"token={WebUtility.UrlEncode(token)}";
 	}
 

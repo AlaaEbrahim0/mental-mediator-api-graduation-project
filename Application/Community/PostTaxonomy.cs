@@ -10,6 +10,8 @@ public static class PostTaxonomy
 {
 	public const int MaxSelectedTags = 5;
 	public const int MaxTagLength = 40;
+	public const int MaxTitleLength = 160;
+	public const int MaxContentLength = 2000;
 
 	public static readonly IReadOnlyList<string> Categories = new[]
 	{

@@ -790,6 +790,11 @@ namespace Infrastructure.Migrations
                     b.Property<bool>("IsAnonymous")
                         .HasColumnType("bit");
 
+                    b.Property<bool>("IsDraft")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(false);
+
                     b.Property<string>("MediaJson")
                         .HasMaxLength(4000)
                         .HasColumnType("nvarchar(4000)");
@@ -804,6 +809,9 @@ namespace Infrastructure.Migrations
                     b.Property<string>("Tags")
                         .HasMaxLength(1000)
                         .HasColumnType("nvarchar(1000)");
+
+                    b.Property<int?>("TargetChatRoomId")
+                        .HasColumnType("int");
 
                     b.Property<string>("Title")
                         .IsRequired()
@@ -822,6 +830,12 @@ namespace Infrastructure.Migrations
                     b.HasIndex("IsAnonymous");
 
                     b.HasIndex("PostedOn");
+
+                    b.HasIndex("TargetChatRoomId");
+
+                    b.HasIndex("IsDraft", "PostedOn");
+
+                    b.HasIndex("Visibility", "TargetChatRoomId");
 
                     b.ToTable("Posts");
                 });
@@ -853,6 +867,52 @@ namespace Infrastructure.Migrations
                         .IsUnique();
 
                     b.ToTable("PostLikes");
+                });
+
+            modelBuilder.Entity("Domain.Entities.PostMediaAsset", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("MediaType")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("nvarchar(16)");
+
+                    b.Property<string>("OwnerId")
+                        .IsRequired()
+                        .HasMaxLength(450)
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<int?>("PostId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("PublicId")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<string>("Url")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PostId");
+
+                    b.HasIndex("Url")
+                        .IsUnique();
+
+                    b.HasIndex("OwnerId", "PostId", "CreatedAtUtc");
+
+                    b.ToTable("PostMediaAssets");
                 });
 
             modelBuilder.Entity("Domain.Entities.Reply", b =>
@@ -1380,7 +1440,14 @@ namespace Infrastructure.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
+                    b.HasOne("Domain.Entities.ChatRoom", "TargetChatRoom")
+                        .WithMany()
+                        .HasForeignKey("TargetChatRoomId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.Navigation("AppUser");
+
+                    b.Navigation("TargetChatRoom");
                 });
 
             modelBuilder.Entity("Domain.Entities.PostLike", b =>
@@ -1396,6 +1463,22 @@ namespace Infrastructure.Migrations
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.NoAction)
                         .IsRequired();
+
+                    b.Navigation("Post");
+                });
+
+            modelBuilder.Entity("Domain.Entities.PostMediaAsset", b =>
+                {
+                    b.HasOne("Domain.Entities.BaseUser", null)
+                        .WithMany()
+                        .HasForeignKey("OwnerId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+
+                    b.HasOne("Domain.Entities.Post", "Post")
+                        .WithMany()
+                        .HasForeignKey("PostId")
+                        .OnDelete(DeleteBehavior.Cascade);
 
                     b.Navigation("Post");
                 });

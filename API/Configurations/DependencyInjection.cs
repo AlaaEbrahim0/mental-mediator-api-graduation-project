@@ -35,44 +35,51 @@ namespace API.Configurations;
 
 public static class DependencyInjection
 {
-	public static IServiceCollection ConfigureCors(this IServiceCollection services)
+	private static readonly string[] VerifiedProductionOrigins =
 	{
+		"https://mental-health-ochre-xi.vercel.app",
+		"https://mental-mediator-doctor-ui-graduation-project.vercel.app",
+		"https://mental-mediator-doctor-ui-graduation-project-lms6panp1.vercel.app",
+	};
+
+	private static readonly string[] LocalDevelopmentOrigins =
+	{
+		"https://localhost:7221",
+		"http://localhost:5184",
+		"http://localhost:5068",
+		"http://localhost:5500",
+		"http://localhost:3000",
+		"http://localhost:3001",
+		"http://localhost:5173",
+	};
+
+	public static IServiceCollection ConfigureCors(this IServiceCollection services, IConfiguration configuration)
+	{
+		// The allowlist is deploy-time configuration: an operator can replace it
+		// with CORS_ALLOWED_ORIGINS (comma-separated) or Cors:AllowedOrigins
+		// without rebuilding the API. Only origins verified as belonging to this
+		// project are compiled in; stale third-party deployments are not.
+		var configuredOrigins =
+			configuration.GetSection("Cors:AllowedOrigins").Get<string[]>()
+			?? Environment.GetEnvironmentVariable("CORS_ALLOWED_ORIGINS")
+				?.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+			?? Array.Empty<string>();
+
+		var origins = configuredOrigins.Length > 0
+			? configuredOrigins
+			: VerifiedProductionOrigins.Concat(LocalDevelopmentOrigins).ToArray();
+
 		services.AddCors(config =>
 		{
 			config.AddPolicy("Default", policy =>
 			{
-				policy.WithOrigins(
-                // Your Vercel Deployments (Production & Previews)
-                // The next origin is NOT owned by this project: the name resolves to a
-                // different Vercel account and 302s to their login page. It is listed only so
-                // any stale bookmarked deployment keeps working. Sessions travel as a Bearer
-                // token held in the portal's own localStorage, not as cookies, so a foreign
-                // origin on this list cannot read them — safe to delete once unused.
-                "https://mental-health-ochre.vercel.app",         // patient portal (foreign account)
-                "https://mental-health-ochre-xi.vercel.app",      // patient portal (current production)
-                "https://mental-mediator-doctor-ui-graduation-project.vercel.app",
-                "https://mental-mediator-doctor-ui-graduation-project-lms6panp1.vercel.app",
-                "https://mental-health-b2uehhu7l-rana-tareks-projects.vercel.app",
-                "https://nexus-admin-panel.vercel.app",
-                "https://mental-health-drab.vercel.app",
-                // Local Development
-                // 5173 (Vite default) was missing, so a browser on the default
-                // Vite URL got a CORS failure that looked like a broken API.
-                "https://localhost:7221",
-                "http://localhost:5184",
-                "http://localhost:5068",
-                "http://localhost:5500",
-                "http://localhost:3000",
-                "http://localhost:3001",
-                "http://localhost:5173"
-            )
-            .AllowAnyHeader()
-            .AllowAnyMethod()
-            .AllowCredentials();
-
+				policy.WithOrigins(origins)
+					.AllowAnyHeader()
+					.AllowAnyMethod()
+					.AllowCredentials();
 			});
-
 		});
+
 		return services;
 	}
 	public static IServiceCollection ConfigureSwagger(this IServiceCollection services)
@@ -123,6 +130,7 @@ public static class DependencyInjection
 			{
 				config.JsonSerializerOptions
 					.Converters.Add(new JsonStringEnumConverter());
+				config.JsonSerializerOptions.Converters.Add(new CloudinaryUrlJsonConverter());
 
 			});
 
@@ -136,6 +144,7 @@ public static class DependencyInjection
 	{
 		services.AddScoped<IRepositoryManager, RepositoryManager>();
 		services.AddScoped<IPostRepository, PostRepository>();
+		services.AddScoped<IPostMediaAssetRepository, PostMediaAssetRepository>();
 		services.AddScoped<ICommentRepository, CommentRepository>();
 		services.AddScoped<IReplyRepository, ReplyRepository>();
 		services.AddScoped<INotificationRepository, NotificationRepository>();
@@ -240,6 +249,7 @@ public static class DependencyInjection
 				// Keep hub payload enums consistent with the REST API, which
 				// already serializes enums as strings.
 				options.PayloadSerializerOptions.Converters.Add(new JsonStringEnumConverter());
+				options.PayloadSerializerOptions.Converters.Add(new CloudinaryUrlJsonConverter());
 			});
 
 		// On shared IIS hosting the app pool has neither a user profile nor the

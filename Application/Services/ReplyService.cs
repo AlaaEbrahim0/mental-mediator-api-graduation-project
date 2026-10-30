@@ -1,9 +1,11 @@
-﻿using Application.Contracts;
+﻿using Application.Community;
+using Application.Contracts;
 using Application.Dtos.ReplyDtos;
 using AutoMapper;
 using Domain.Entities;
 using Domain.Enums;
 using Domain.Errors;
+using Microsoft.Extensions.Logging;
 using Shared;
 
 namespace Application.Services;
@@ -16,8 +18,9 @@ public class ReplyService : IReplyService
 	private readonly INotificationService _notificationService;
 	private readonly IHateSpeechDetector _hateSpeechDetector;
 	private readonly ICacheService _cacheService;
+	private readonly ILogger<ReplyService>? _logger;
 
-	public ReplyService(IRepositoryManager repos, IMapper mapper, IUserClaimsService userClaimsService, INotificationService notificationService, IHateSpeechDetector hateSpeechDetector, ICacheService cacheService)
+	public ReplyService(IRepositoryManager repos, IMapper mapper, IUserClaimsService userClaimsService, INotificationService notificationService, IHateSpeechDetector hateSpeechDetector, ICacheService cacheService, ILogger<ReplyService>? logger = null)
 	{
 		_repos = repos;
 		_mapper = mapper;
@@ -25,17 +28,12 @@ public class ReplyService : IReplyService
 		_notificationService = notificationService;
 		_hateSpeechDetector = hateSpeechDetector;
 		_cacheService = cacheService;
+		_logger = logger;
 	}
 
 	public async Task<Result<ReplyResponse>> CreateReply(int postId, int commentId, CreateReplyRequest createReplyRequest)
 	{
-		var isHateSpeechResult = await _hateSpeechDetector.IsHateSpeech(createReplyRequest.Content!);
-
-		if (isHateSpeechResult.IsFailure)
-		{
-			return isHateSpeechResult.Error;
-		}
-		if (isHateSpeechResult.Value)
+		if (await IsRestrictedContentAsync(createReplyRequest.Content!, "reply"))
 		{
 			return Error.Forbidden("Content.Forbidden", "Your reply violates our policy against hate speech and could not be published");
 		}
@@ -46,6 +44,27 @@ public class ReplyService : IReplyService
 			return CommentErrors.NotFound(commentId);
 		}
 
+		var post = await _repos.Posts.GetPostById(postId, false);
+		if (post is null ||
+			post.IsDraft ||
+			!await PostAccessPolicy.CanReadAsync(
+				post,
+				_userClaimsService.GetUserId(),
+				_userClaimsService.GetRole(),
+				_repos.ChatRooms))
+		{
+			return PostErrors.NotFound(postId);
+		}
+
+		if (!PostAccessPolicy.CanDiscuss(
+				post,
+				_userClaimsService.GetUserId(),
+				_userClaimsService.GetRole()))
+		{
+			return Error.Forbidden(
+				"Users.Forbidden",
+				"Only doctors and the post author can reply on anonymous posts");
+		}
 
 		var userId = _userClaimsService.GetUserId();
 		var userName = _userClaimsService.GetUserName();
@@ -116,31 +135,33 @@ public class ReplyService : IReplyService
 
 	public async Task<Result<IEnumerable<ReplyResponse>>> GetRepliesForComment(int postId, int commentId)
 	{
-		var cachedReplies = await _cacheService.GetAsync<List<ReplyResponse>>("replies");
-
 		var comment = await _repos.Comments.GetById(postId, commentId, false);
 		if (comment is null)
 		{
 			return CommentErrors.NotFound(commentId);
 		}
+
+		var post = await _repos.Posts.GetPostById(postId, false);
+		if (post is null ||
+			post.IsDraft ||
+			!await PostAccessPolicy.CanReadAsync(
+				post,
+				_userClaimsService.GetUserId(),
+				_userClaimsService.GetRole(),
+				_repos.ChatRooms))
+		{
+			return CommentErrors.NotFound(commentId);
+		}
+
 		var replies = await _repos.Replies.GetRepliesByCommentId(commentId, false);
 
 		var repliesResult = _mapper.Map<IEnumerable<ReplyResponse>>(replies);
-		//await _cacheService.SetAsync("replies", repliesResult);
-
 		return repliesResult.ToList();
-
 	}
 
 	public async Task<Result<ReplyResponse>> UpdateReply(int postId, int commentId, int replyId, UpdateReplyRequest updateReplyRequest)
 	{
-		var isHateSpeechResult = await _hateSpeechDetector.IsHateSpeech(updateReplyRequest.Content!);
-
-		if (isHateSpeechResult.IsFailure)
-		{
-			return isHateSpeechResult.Error;
-		}
-		if (isHateSpeechResult.Value)
+		if (await IsRestrictedContentAsync(updateReplyRequest.Content!, "reply"))
 		{
 			return Error.Forbidden("Content.Forbidden", "Your reply violates our policy against hate speech and could not be published");
 		}
@@ -148,6 +169,18 @@ public class ReplyService : IReplyService
 		var reply = await _repos.Replies.GetById(postId, commentId, replyId, true);
 
 		if (reply is null)
+		{
+			return ReplyErrors.NotFound(replyId);
+		}
+
+		var post = await _repos.Posts.GetPostById(postId, false);
+		if (post is null ||
+			post.IsDraft ||
+			!await PostAccessPolicy.CanReadAsync(
+				post,
+				_userClaimsService.GetUserId(),
+				_userClaimsService.GetRole(),
+				_repos.ChatRooms))
 		{
 			return ReplyErrors.NotFound(replyId);
 		}
@@ -175,7 +208,36 @@ public class ReplyService : IReplyService
 			return ReplyErrors.NotFound(replyId);
 		}
 
+		var post = await _repos.Posts.GetPostById(postId, false);
+		if (post is null ||
+			post.IsDraft ||
+			!await PostAccessPolicy.CanReadAsync(
+				post,
+				_userClaimsService.GetUserId(),
+				_userClaimsService.GetRole(),
+				_repos.ChatRooms))
+		{
+			return ReplyErrors.NotFound(replyId);
+		}
+
 		var replyResponse = _mapper.Map<ReplyResponse>(reply);
 		return replyResponse;
+	}
+
+	private async Task<bool> IsRestrictedContentAsync(string content, string contentType)
+	{
+		var result = await _hateSpeechDetector.IsHateSpeech(content);
+
+		if (result.IsFailure)
+		{
+			_logger?.LogWarning(
+				"Content moderation unavailable for a {ContentType}; allowing publication for review. {Code}: {Description}",
+				contentType,
+				result.Error.Code,
+				result.Error.Description);
+			return false;
+		}
+
+		return result.Value;
 	}
 }

@@ -3,8 +3,10 @@ using Application.Dtos.CommentsDtos;
 using AutoMapper;
 using Domain.Entities;
 using Domain.Enums;
+using Application.Community;
 using Domain.Errors;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.Extensions.Logging;
 using Shared;
 
 namespace Application.Services;
@@ -17,8 +19,9 @@ public class CommentService : ICommentService
 	private readonly IRepositoryManager _repos;
 	private readonly ICacheService _cacheService;
 	private readonly IMapper _mapper;
+	private readonly ILogger<CommentService>? _logger;
 
-	public CommentService(IRepositoryManager repos, IMapper mapper, IUserClaimsService userClaimsService, UserManager<BaseUser> userManager, INotificationService notificationService, IHateSpeechDetector hateSpeechDetector, ICacheService cacheService)
+	public CommentService(IRepositoryManager repos, IMapper mapper, IUserClaimsService userClaimsService, UserManager<BaseUser> userManager, INotificationService notificationService, IHateSpeechDetector hateSpeechDetector, ICacheService cacheService, ILogger<CommentService>? logger = null)
 	{
 		_repos = repos;
 		_mapper = mapper;
@@ -27,13 +30,20 @@ public class CommentService : ICommentService
 		_notificationService = notificationService;
 		_hateSpeechDetector = hateSpeechDetector;
 		_cacheService = cacheService;
+		_logger = logger;
 	}
 
 
 	public async Task<Result<IEnumerable<CommentResponse>>> GetCommentsByPostId(int postId)
 	{
 		var post = await _repos.Posts.GetPostById(postId, false);
-		if (post is null || !CanRead(post, _userClaimsService.GetRole()))
+		if (post is null ||
+			post.IsDraft ||
+			!await PostAccessPolicy.CanReadAsync(
+				post,
+				_userClaimsService.GetUserId(),
+				_userClaimsService.GetRole(),
+				_repos.ChatRooms))
 		{
 			return PostErrors.NotFound(postId);
 		}
@@ -61,20 +71,20 @@ public class CommentService : ICommentService
 
 	public async Task<Result<CommentResponse>> CreateComment(int postId, CreateCommentRequest createCommentRequest)
 	{
-		var isHateSpeechResult = await _hateSpeechDetector.IsHateSpeech(createCommentRequest.Content!);
-
-		if (isHateSpeechResult.IsFailure)
-		{
-			return isHateSpeechResult.Error;
-		}
-		if (isHateSpeechResult.Value)
+		if (await IsRestrictedContentAsync(createCommentRequest.Content!, "comment"))
 		{
 			return Error.Forbidden("Content.Forbidden", "Your comment violates our policy against hate speech and could not be published");
 		}
 
 		var post = await _repos.Posts.GetPostById(postId, true);
 
-		if (post is null || !CanRead(post, _userClaimsService.GetRole()))
+		if (post is null ||
+			post.IsDraft ||
+			!await PostAccessPolicy.CanReadAsync(
+				post,
+				_userClaimsService.GetUserId(),
+				_userClaimsService.GetRole(),
+				_repos.ChatRooms))
 		{
 			return PostErrors.NotFound(postId);
 		}
@@ -84,7 +94,7 @@ public class CommentService : ICommentService
 		var userRole = _userClaimsService.GetRole();
 		var userPhotoUrl = _userClaimsService.GetPhotoUrl();
 
-		if (!AllowedToComment(post, userId, userRole))
+		if (!PostAccessPolicy.CanDiscuss(post, userId, userRole))
 		{
 			return Error.Forbidden("Users.Forbidden", "Only doctors and post author are allowed to comment on anonymous posts");
 		}
@@ -133,14 +143,21 @@ public class CommentService : ICommentService
 		return commentResponse;
 	}
 
-	private static bool CanRead(Post post, string role) =>
-		post.Visibility != PostVisibility.DoctorsOnly ||
-		string.Equals(role, "Doctor", StringComparison.OrdinalIgnoreCase) ||
-		string.Equals(role, "Admin", StringComparison.OrdinalIgnoreCase);
-
-	private static bool AllowedToComment(Post post, string userId, string userRole)
+	private async Task<bool> IsRestrictedContentAsync(string content, string contentType)
 	{
-		return !(post.IsAnonymous && userRole != "Doctor" && post.AppUserId != userId);
+		var result = await _hateSpeechDetector.IsHateSpeech(content);
+
+		if (result.IsFailure)
+		{
+			_logger?.LogWarning(
+				"Content moderation unavailable for a {ContentType}; allowing publication for review. {Code}: {Description}",
+				contentType,
+				result.Error.Code,
+				result.Error.Description);
+			return false;
+		}
+
+		return result.Value;
 	}
 
 	public async Task<Result<CommentResponse>> DeleteComment(int postId, int commentId)
@@ -153,7 +170,7 @@ public class CommentService : ICommentService
 
 		var userId = _userClaimsService.GetUserId();
 		var userRole = _userClaimsService.GetRole();
-		if (!comment.AppUserId!.Equals(userId) && userRole != "Admin")
+		if (!comment.AppUserId!.Equals(userId) && !PostAccessPolicy.IsModerator(userRole))
 		{
 			return CommentErrors.Forbidden(commentId);
 		}
@@ -168,19 +185,25 @@ public class CommentService : ICommentService
 
 	public async Task<Result<CommentResponse>> UpdateComment(int postId, int commentId, UpdateCommentRequest updateCommentRequest)
 	{
-		var isHateSpeechResult = await _hateSpeechDetector.IsHateSpeech(updateCommentRequest.Content!);
-
-		if (isHateSpeechResult.IsFailure)
-		{
-			return isHateSpeechResult.Error;
-		}
-		if (isHateSpeechResult.Value)
+		if (await IsRestrictedContentAsync(updateCommentRequest.Content!, "comment"))
 		{
 			return Error.Forbidden("Content.Forbidden", "Your comment violates our policy against hate speech and could not be published");
 		}
 
 		var comment = await _repos.Comments.GetById(postId, commentId, true);
 		if (comment is null)
+		{
+			return CommentErrors.NotFound(commentId);
+		}
+
+		var post = await _repos.Posts.GetPostById(postId, false);
+		if (post is null ||
+			post.IsDraft ||
+			!await PostAccessPolicy.CanReadAsync(
+				post,
+				_userClaimsService.GetUserId(),
+				_userClaimsService.GetRole(),
+				_repos.ChatRooms))
 		{
 			return CommentErrors.NotFound(commentId);
 		}
@@ -211,6 +234,21 @@ public class CommentService : ICommentService
 		{
 			return CommentErrors.NotFound(commentId);
 		}
+
+		// Comments are post content: the same audience rules have to apply on
+		// this direct URL as on the post itself.
+		var post = await _repos.Posts.GetPostById(postId, false);
+		if (post is null ||
+			post.IsDraft ||
+			!await PostAccessPolicy.CanReadAsync(
+				post,
+				_userClaimsService.GetUserId(),
+				_userClaimsService.GetRole(),
+				_repos.ChatRooms))
+		{
+			return CommentErrors.NotFound(commentId);
+		}
+
 		var commentResponse = _mapper.Map<CommentResponse>(comment);
 		return commentResponse;
 	}

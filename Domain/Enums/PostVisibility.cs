@@ -5,7 +5,7 @@ public enum PostVisibility
 	Public = 0,
 	DoctorsOnly = 1,
 
-	// Reserved until the application has a group model to target. The API
-	// rejects it on write rather than silently publishing to everyone.
+	// Visible to active members of Post.TargetChatRoomId. A post without a
+	// target is rejected on write rather than silently widened to everyone.
 	SpecificGroup = 2
 }
