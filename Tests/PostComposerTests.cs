@@ -1,7 +1,9 @@
 using API.Configurations;
 using Application.Community;
 using Application.Contracts;
+using Application.Dtos.CommentsDtos;
 using Application.Dtos.PostsDto;
+using Application.Dtos.ReplyDtos;
 using Application.Services;
 using AutoMapper;
 using Domain.Entities;
@@ -497,6 +499,70 @@ public class PostComposerTests : IDisposable
 
 		_context.PostMediaAssets.Should().BeEmpty();
 		_storage.DeletedPublicIds.Should().Contain("posts/file");
+	}
+
+	[Fact]
+	public async Task Anonymous_authors_keep_internal_ownership_while_responses_are_redacted()
+	{
+		var post = AddPost(DoctorId, isAnonymous: true);
+
+		var commenter = new CommentService(
+			new RepositoryManager(_context),
+			_mapper,
+			new FakeClaims(DoctorId, "Doctor"),
+			null!,
+			null!,
+			new FakeHateSpeechDetector(),
+			new FakeCacheService());
+
+		var createdComment = await commenter.CreateComment(post.Id, new CreateCommentRequest
+		{
+			Content = "A private author's comment",
+		});
+
+		createdComment.IsSuccess.Should().BeTrue();
+		createdComment.Value.AppUserId.Should().BeNull();
+		createdComment.Value.Username.Should().BeNull();
+
+		var storedComment = await _context.Comments.SingleAsync();
+		storedComment.AppUserId.Should().Be(DoctorId);
+
+		var replies = new ReplyService(
+			new RepositoryManager(_context),
+			_mapper,
+			new FakeClaims(DoctorId, "Doctor"),
+			null!,
+			new FakeHateSpeechDetector(),
+			new FakeCacheService());
+
+		var createdReply = await replies.CreateReply(post.Id, storedComment.Id, new CreateReplyRequest
+		{
+			Content = "A private author's reply",
+		});
+
+		createdReply.IsSuccess.Should().BeTrue();
+		createdReply.Value.AppUserId.Should().BeNull();
+		createdReply.Value.Username.Should().BeNull();
+
+		var storedReply = await _context.Replies.SingleAsync();
+		storedReply.AppUserId.Should().Be(DoctorId);
+
+		var reader = new ReplyService(
+			new RepositoryManager(_context),
+			_mapper,
+			new FakeClaims(PatientId, "Client"),
+			null!,
+			new FakeHateSpeechDetector(),
+			new FakeCacheService());
+
+		var list = await reader.GetRepliesForComment(post.Id, storedComment.Id);
+		list.Value.Should().ContainSingle();
+		list.Value!.Single().AppUserId.Should().BeNull();
+		list.Value!.Single().Username.Should().BeNull();
+
+		var direct = await reader.GetReplyById(post.Id, storedComment.Id, storedReply.Id);
+		direct.Value!.AppUserId.Should().BeNull();
+		direct.Value!.Username.Should().BeNull();
 	}
 
 	[Fact]

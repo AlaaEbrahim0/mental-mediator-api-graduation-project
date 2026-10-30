@@ -82,6 +82,13 @@ public class ReplyService : IReplyService
 
 		if (!comment.AppUserId!.Equals(userId))
 		{
+			// The anonymous post author must stay anonymous even in the
+			// notification another community member receives.
+			var isAnonymousAuthor = post.IsAnonymous &&
+				string.Equals(post.AppUserId, userId, StringComparison.Ordinal);
+			var notifierName = isAnonymousAuthor ? "Anonymous" : userName;
+			var notifierPhotoUrl = isAnonymousAuthor ? null : userPhotoUrl;
+
 			var replyResources = new Dictionary<string, int>()
 			{
 				{ "postId", postId },
@@ -92,10 +99,10 @@ public class ReplyService : IReplyService
 			var notification = Notification.CreateNotification(
 				comment.AppUserId!,
 				"New Reply",
-				$"{userName} has replied to your comment",
+				$"{notifierName} has replied to your comment",
 				replyResources,
-				userName,
-				userPhotoUrl,
+				notifierName,
+				notifierPhotoUrl ?? string.Empty,
 				NotificationType.Reply,
 				relatedResourceId: reply.Id,
 				deduplicationKey: $"reply:{reply.Id}"
@@ -105,6 +112,7 @@ public class ReplyService : IReplyService
 		}
 
 		var replyResponse = _mapper.Map<ReplyResponse>(reply);
+		RedactAnonymousAuthor(replyResponse, post);
 		return replyResponse;
 	}
 
@@ -120,16 +128,18 @@ public class ReplyService : IReplyService
 		var userId = _userClaimsService.GetUserId();
 		var userRole = _userClaimsService.GetRole();
 
-		if (!reply.AppUserId!.Equals(userId) && userRole != "Admin")
+		if (!reply.AppUserId!.Equals(userId) && !PostAccessPolicy.IsModerator(userRole))
 		{
 			return ReplyErrors.Forbidden(replyId);
 		}
 
+		var post = await _repos.Posts.GetPostById(postId, false);
+
 		_repos.Replies.DeleteReply(reply);
 		await _repos.SaveAsync();
 
-
 		var replyResponse = _mapper.Map<ReplyResponse>(reply);
+		RedactAnonymousAuthor(replyResponse, post);
 		return replyResponse;
 	}
 
@@ -155,8 +165,12 @@ public class ReplyService : IReplyService
 
 		var replies = await _repos.Replies.GetRepliesByCommentId(commentId, false);
 
-		var repliesResult = _mapper.Map<IEnumerable<ReplyResponse>>(replies);
-		return repliesResult.ToList();
+		var repliesResult = _mapper.Map<IEnumerable<ReplyResponse>>(replies).ToList();
+		foreach (var reply in repliesResult)
+		{
+			RedactAnonymousAuthor(reply, post);
+		}
+		return repliesResult;
 	}
 
 	public async Task<Result<ReplyResponse>> UpdateReply(int postId, int commentId, int replyId, UpdateReplyRequest updateReplyRequest)
@@ -197,6 +211,7 @@ public class ReplyService : IReplyService
 		await _repos.SaveAsync();
 
 		var replyResponse = _mapper.Map<ReplyResponse>(reply);
+		RedactAnonymousAuthor(replyResponse, post);
 		return replyResponse;
 	}
 
@@ -221,7 +236,20 @@ public class ReplyService : IReplyService
 		}
 
 		var replyResponse = _mapper.Map<ReplyResponse>(reply);
+		RedactAnonymousAuthor(replyResponse, post);
 		return replyResponse;
+	}
+
+	private static void RedactAnonymousAuthor(ReplyResponse reply, Post? post)
+	{
+		if (post is not null &&
+			post.IsAnonymous &&
+			string.Equals(post.AppUserId, reply.AppUserId, StringComparison.Ordinal))
+		{
+			reply.Username = null;
+			reply.PhotoUrl = null;
+			reply.AppUserId = null;
+		}
 	}
 
 	private async Task<bool> IsRestrictedContentAsync(string content, string contentType)

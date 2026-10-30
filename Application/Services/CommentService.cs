@@ -59,6 +59,7 @@ public class CommentService : ICommentService
 				{
 					comment.PhotoUrl = null;
 					comment.Username = null;
+					comment.AppUserId = null!;
 				}
 				return comment;
 			})
@@ -109,6 +110,8 @@ public class CommentService : ICommentService
 
 		if (post.IsAnonymous && post.AppUserId == userId)
 		{
+			// Redact the response only; the internal author relationship must
+			// remain for moderation, ownership and audit.
 			comment.Username = null;
 			comment.PhotoUrl = null;
 		}
@@ -140,6 +143,7 @@ public class CommentService : ICommentService
 		}
 
 		var commentResponse = _mapper.Map<CommentResponse>(comment);
+		RedactAnonymousAuthor(commentResponse, post);
 		return commentResponse;
 	}
 
@@ -175,11 +179,13 @@ public class CommentService : ICommentService
 			return CommentErrors.Forbidden(commentId);
 		}
 
+		var post = await _repos.Posts.GetPostById(postId, false);
+
 		_repos.Comments.DeleteComment(comment);
 		await _repos.SaveAsync();
 
-
 		var commentResponse = _mapper.Map<CommentResponse>(comment);
+		RedactAnonymousAuthor(commentResponse, post);
 		return commentResponse;
 	}
 
@@ -221,6 +227,7 @@ public class CommentService : ICommentService
 		await _repos.SaveAsync();
 
 		var commentResponse = _mapper.Map<CommentResponse>(comment);
+		RedactAnonymousAuthor(commentResponse, post);
 		return commentResponse;
 	}
 
@@ -250,6 +257,19 @@ public class CommentService : ICommentService
 		}
 
 		var commentResponse = _mapper.Map<CommentResponse>(comment);
+		RedactAnonymousAuthor(commentResponse, post);
 		return commentResponse;
+	}
+
+	private static void RedactAnonymousAuthor(CommentResponse comment, Post? post)
+	{
+		if (post is not null &&
+			post.IsAnonymous &&
+			string.Equals(post.AppUserId, comment.AppUserId, StringComparison.Ordinal))
+		{
+			comment.Username = null;
+			comment.PhotoUrl = null;
+			comment.AppUserId = null!;
+		}
 	}
 }

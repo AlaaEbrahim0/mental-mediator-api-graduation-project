@@ -58,7 +58,7 @@
         letter-spacing: 1px;
     }
 
-    #contBtn {
+    .contBtn {
         position: relative;
         top: 1.5em;
         text-decoration: none;
@@ -76,7 +76,7 @@
         transition: all 0.4s ease;
     }
 
-        #contBtn:hover {
+        .contBtn:hover {
             -webkit-box-shadow: 0px 15px 30px rgba(60, 60, 60, 0.4);
             -moz-box-shadow: 0px 15px 30px rgba(60, 60, 60, 0.4);
             box-shadow: 0px 15px 30px rgba(60, 60, 60, 0.4);
@@ -115,7 +115,10 @@
                 Congratulations, your account has been confirmed
                 successfully
             </p>
-            <a href="https://mental-health-ochre-xi.vercel.app" id="contBtn">Continue</a>
+            <div style="display: flex; flex-wrap: wrap; gap: 0.75em; justify-content: center;">
+                <a href="https://mental-health-ochre-xi.vercel.app" class="contBtn">Patient portal</a>
+                <a href="https://mental-mediator-doctor-ui-graduation-project.vercel.app" class="contBtn">Doctor portal</a>
+            </div>
         </div>
     </div>
 </body>
