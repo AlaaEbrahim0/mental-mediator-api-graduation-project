@@ -11,6 +11,13 @@ public interface IChatMessageRepository
 	Task<IReadOnlyDictionary<int, ChatMessage>> GetLatestMessagesAsync(IReadOnlyCollection<int> roomIds, bool trackChanges);
 
 	/// <summary>
+	/// Per-room count of messages newer than the caller's last read mark,
+	/// excluding the caller's own messages and deleted rows. Only active
+	/// memberships are considered; other rooms are absent from the result.
+	/// </summary>
+	Task<IReadOnlyDictionary<int, int>> GetUnreadCountsAsync(string userId, IReadOnlyCollection<int> roomIds);
+
+	/// <summary>
 	/// Persists the message unless the sender already used the same client message id.
 	/// Returns null when the message was created, or the existing message when the
 	/// unique index rejected a concurrent duplicate.

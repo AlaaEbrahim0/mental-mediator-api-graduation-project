@@ -32,6 +32,12 @@ public class CommentService : ICommentService
 
 	public async Task<Result<IEnumerable<CommentResponse>>> GetCommentsByPostId(int postId)
 	{
+		var post = await _repos.Posts.GetPostById(postId, false);
+		if (post is null || !CanRead(post, _userClaimsService.GetRole()))
+		{
+			return PostErrors.NotFound(postId);
+		}
+
 		var comments = await _repos.Comments
 			.GetAllCommentsByPostId(postId, false);
 
@@ -68,7 +74,7 @@ public class CommentService : ICommentService
 
 		var post = await _repos.Posts.GetPostById(postId, true);
 
-		if (post is null)
+		if (post is null || !CanRead(post, _userClaimsService.GetRole()))
 		{
 			return PostErrors.NotFound(postId);
 		}
@@ -126,6 +132,11 @@ public class CommentService : ICommentService
 		var commentResponse = _mapper.Map<CommentResponse>(comment);
 		return commentResponse;
 	}
+
+	private static bool CanRead(Post post, string role) =>
+		post.Visibility != PostVisibility.DoctorsOnly ||
+		string.Equals(role, "Doctor", StringComparison.OrdinalIgnoreCase) ||
+		string.Equals(role, "Admin", StringComparison.OrdinalIgnoreCase);
 
 	private static bool AllowedToComment(Post post, string userId, string userRole)
 	{

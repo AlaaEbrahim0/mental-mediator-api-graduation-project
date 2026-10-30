@@ -88,6 +88,36 @@ public class ChatMessageRepository : IChatMessageRepository
 		return messages.ToDictionary(x => x.RoomId);
 	}
 
+	public async Task<IReadOnlyDictionary<int, int>> GetUnreadCountsAsync(string userId, IReadOnlyCollection<int> roomIds)
+	{
+		if (roomIds.Count == 0)
+		{
+			return new Dictionary<int, int>();
+		}
+
+		// One query instead of one per room: the membership row itself carries
+		// the read threshold, so message and member are joined on RoomId.
+		var counts = await _dbContext.ChatMessages
+			.AsNoTracking()
+			.Where(message =>
+				roomIds.Contains(message.RoomId) &&
+				!message.IsDeleted &&
+				message.SenderId != userId)
+			.Join(
+				_dbContext.ChatRoomMembers
+					.AsNoTracking()
+					.Where(member => member.UserId == userId && member.LeftAtUtc == null),
+				message => message.RoomId,
+				member => member.RoomId,
+				(message, member) => new { Message = message, Member = member })
+			.Where(pair => pair.Message.SentAtUtc > (pair.Member.LastReadAtUtc ?? pair.Member.JoinedAtUtc))
+			.GroupBy(pair => pair.Message.RoomId)
+			.Select(group => new { RoomId = group.Key, Count = group.Count() })
+			.ToListAsync();
+
+		return counts.ToDictionary(x => x.RoomId, x => x.Count);
+	}
+
 	public async Task<ChatMessage?> CreateMessageIfAbsentAsync(ChatMessage message)
 	{
 		_dbContext.ChatMessages.Add(message);

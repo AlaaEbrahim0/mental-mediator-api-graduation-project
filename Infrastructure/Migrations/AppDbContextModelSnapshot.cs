@@ -432,6 +432,9 @@ namespace Infrastructure.Migrations
                     b.Property<DateTime>("JoinedAtUtc")
                         .HasColumnType("datetime2");
 
+                    b.Property<DateTime?>("LastReadAtUtc")
+                        .HasColumnType("datetime2");
+
                     b.Property<DateTime?>("LeftAtUtc")
                         .HasColumnType("datetime2");
 
@@ -787,6 +790,10 @@ namespace Infrastructure.Migrations
                     b.Property<bool>("IsAnonymous")
                         .HasColumnType("bit");
 
+                    b.Property<string>("MediaJson")
+                        .HasMaxLength(4000)
+                        .HasColumnType("nvarchar(4000)");
+
                     b.Property<string>("PostPhotoUrl")
                         .HasMaxLength(1000)
                         .HasColumnType("nvarchar(1000)");
@@ -802,6 +809,11 @@ namespace Infrastructure.Migrations
                         .IsRequired()
                         .HasMaxLength(2000)
                         .HasColumnType("nvarchar(2000)");
+
+                    b.Property<int>("Visibility")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(0);
 
                     b.HasKey("Id");
 

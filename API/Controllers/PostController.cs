@@ -3,6 +3,7 @@ using Application.Contracts;
 using Application.Dtos.PostsDto;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Shared;
 using Shared.RequestParameters;
 
 namespace API.Controllers;
@@ -12,10 +13,12 @@ namespace API.Controllers;
 public class PostController : ControllerBase
 {
 	private readonly IPostService _postService;
+	private readonly IStorageService _storageService;
 
-	public PostController(IPostService postService)
+	public PostController(IPostService postService, IStorageService storageService)
 	{
 		_postService = postService;
+		_storageService = storageService;
 	}
 
 	[HttpGet]
@@ -86,6 +89,30 @@ public class PostController : ControllerBase
 			nameof(GetPostById),
 			new { id = result.Value.Id },
 			result.Value);
+	}
+
+	/// <summary>
+	/// Uploads one image or short video for the composer. The returned URL is
+	/// then sent with the post as a media item; uploads are separated so the
+	/// client can display real progress per file.
+	/// </summary>
+	[HttpPost("media")]
+	[Authorize]
+	[RequestSizeLimit(25 * 1024 * 1024)]
+	public async Task<IActionResult> UploadMedia([FromForm] UploadPostMediaRequest request)
+	{
+		if (request.File is null)
+		{
+			return Result.Failure(Error.Validation("Posts.MediaRequired", "Choose a file to upload.")).ToProblemDetails();
+		}
+
+		var result = await _storageService.UploadMedia(request.File);
+		if (result.IsFailure)
+		{
+			return result.ToProblemDetails();
+		}
+
+		return Ok(new { url = result.Value.Url, type = result.Value.Type });
 	}
 
 	[HttpPut("{id:int}")]

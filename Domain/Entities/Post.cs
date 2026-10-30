@@ -1,4 +1,5 @@
 ﻿using System.ComponentModel.DataAnnotations.Schema;
+using Domain.Enums;
 
 namespace Domain.Entities;
 
@@ -19,6 +20,11 @@ public class Post
 	public string? Tags { get; set; }
 
 	public bool IsAnonymous { get; set; }
+
+	public PostVisibility Visibility { get; set; } = PostVisibility.Public;
+
+	/// <summary>JSON array of uploaded media: [{ "url": "...", "type": "image" }].</summary>
+	public string? MediaJson { get; set; }
 
 	[NotMapped]
 	public string? PhotoUrl { get; set; }

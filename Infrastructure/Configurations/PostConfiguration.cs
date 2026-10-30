@@ -18,6 +18,17 @@ public class PostConfiguration : IEntityTypeConfiguration<Post>
 		builder.Property(p => p.Category).HasMaxLength(100);
 		builder.Property(p => p.Tags).HasMaxLength(1000);
 
+		// Existing rows predate audiences and are public, so the column can be
+		// added to a populated table with a constant default instead of a rewrite.
+		builder
+			.Property(p => p.Visibility)
+			.IsRequired()
+			.HasDefaultValue(Domain.Enums.PostVisibility.Public);
+
+		builder
+			.Property(p => p.MediaJson)
+			.HasMaxLength(4000);
+
 		builder
 			.Property(p => p.PostPhotoUrl)
 			.HasMaxLength(1000);

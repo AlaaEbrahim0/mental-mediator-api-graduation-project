@@ -54,6 +54,12 @@ public class ChatRoomResponse
 	public bool OwnerIsDoctor { get; set; }
 
 	public string? LastMessagePreview { get; set; }
+
+	/// <summary>
+	/// Messages newer than this member's last read mark, excluding their own.
+	/// Always 0 for non-members, whose read state does not exist.
+	/// </summary>
+	public int UnreadCount { get; set; }
 }
 
 public class ChatRoomPageResponse

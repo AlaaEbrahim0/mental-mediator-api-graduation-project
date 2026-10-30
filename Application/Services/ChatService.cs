@@ -82,6 +82,7 @@ public class ChatService : IChatService
 			.Select(x => x.RoomId)
 			.ToList();
 		var latestMessages = await _repos.ChatMessages.GetLatestMessagesAsync(memberRoomIds, false);
+		var unreadCounts = await _repos.ChatMessages.GetUnreadCountsAsync(currentUser.Value.Id, memberRoomIds);
 
 		var response = new ChatRoomPageResponse
 		{
@@ -91,8 +92,9 @@ public class ChatService : IChatService
 				memberCounts.TryGetValue(room.Id, out var memberCount);
 				latestMessages.TryGetValue(room.Id, out var latestMessage);
 				ownersByRoom.TryGetValue(room.Id, out var owner);
+				unreadCounts.TryGetValue(room.Id, out var unreadCount);
 
-				return MapRoom(room, membership, memberCount, latestMessage, owner);
+				return MapRoom(room, membership, memberCount, latestMessage, owner, unreadCount);
 			}).ToList(),
 			HasMore = hasMore,
 			NextBeforeRoomId = hasMore && page.Count > 0 ? page[^1].Id : null
@@ -133,6 +135,7 @@ public class ChatService : IChatService
 			.Select(x => x.RoomId)
 			.ToList();
 		var latestMessages = await _repos.ChatMessages.GetLatestMessagesAsync(memberRoomIds, false);
+		var unreadCounts = await _repos.ChatMessages.GetUnreadCountsAsync(currentUser.Value.Id, memberRoomIds);
 
 		return new ChatRoomBrowseResponse
 		{
@@ -142,8 +145,9 @@ public class ChatService : IChatService
 				memberCounts.TryGetValue(room.Id, out var memberCount);
 				latestMessages.TryGetValue(room.Id, out var latestMessage);
 				ownersByRoom.TryGetValue(room.Id, out var owner);
+				unreadCounts.TryGetValue(room.Id, out var unreadCount);
 
-				return MapRoom(room, membership, memberCount, latestMessage, owner);
+				return MapRoom(room, membership, memberCount, latestMessage, owner, unreadCount);
 			}).ToList(),
 			TotalCount = totalCount,
 			PageNumber = pageNumber,
@@ -179,11 +183,12 @@ public class ChatService : IChatService
 		var latestMessage = isActiveMember
 			? await _repos.ChatMessages.GetLatestMessageAsync(roomId, false)
 			: null;
+		var unreadCount = await CountUnreadAsync(roomId, membership);
 
 		// A private room is reachable by non-members on purpose: this is the
 		// response that tells the client to ask for the passphrase. The
 		// description and preview are redacted inside MapRoom.
-		return MapRoom(room, membership, memberCount, latestMessage, owner);
+		return MapRoom(room, membership, memberCount, latestMessage, owner, unreadCount);
 	}
 
 	public async Task<Result<ChatRoomResponse>> EnsureActiveMemberAsync(int roomId)
@@ -213,8 +218,9 @@ public class ChatService : IChatService
 		var memberCount = await _repos.ChatRooms.GetActiveMemberCountAsync(roomId);
 		var owner = await _repos.ChatRooms.GetOwnerAsync(roomId, false);
 		var latestMessage = await _repos.ChatMessages.GetLatestMessageAsync(roomId, false);
+		var unreadCount = await CountUnreadAsync(roomId, membership);
 
-		return MapRoom(room, membership, memberCount, latestMessage, owner);
+		return MapRoom(room, membership, memberCount, latestMessage, owner, unreadCount);
 	}
 
 	public async Task<Result<ChatRoomResponse>> CreateRoomAsync(CreateChatRoomRequest request)
@@ -288,7 +294,8 @@ public class ChatService : IChatService
 			Role = ChatRoomRole.Owner,
 			DisplayName = GetNewMemberDisplayName(chatUser),
 			IsDoctor = chatUser.IsDoctor,
-			JoinedAtUtc = now
+			JoinedAtUtc = now,
+			LastReadAtUtc = now
 		};
 
 		_repos.ChatRooms.CreateRoom(room);
@@ -365,6 +372,13 @@ public class ChatService : IChatService
 
 			if (changed)
 			{
+				// A member who rejoins starts with a clean slate rather than
+				// inheriting unread messages from before the leave.
+				if (membership.LeftAtUtc is not null)
+				{
+					membership.LastReadAtUtc = DateTime.UtcNow;
+				}
+
 				membership.LeftAtUtc = null;
 				membership.DisplayName = displayName;
 				membership.IsDoctor = chatUser.IsDoctor;
@@ -387,7 +401,8 @@ public class ChatService : IChatService
 				: ChatRoomRole.Member,
 			DisplayName = GetNewMemberDisplayName(chatUser),
 			IsDoctor = chatUser.IsDoctor,
-			JoinedAtUtc = DateTime.UtcNow
+			JoinedAtUtc = DateTime.UtcNow,
+			LastReadAtUtc = DateTime.UtcNow
 		};
 
 		var concurrentMembership = await _repos.ChatRooms.CreateMembershipIfAbsentAsync(membership);
@@ -435,6 +450,27 @@ public class ChatService : IChatService
 			roomId,
 			membership.Id,
 			currentUser.Value.Id);
+
+		return Result.Success();
+	}
+
+	public async Task<Result> MarkRoomReadAsync(int roomId)
+	{
+		var currentUser = await GetCurrentUserAsync();
+		if (currentUser.IsFailure)
+		{
+			return currentUser.Error;
+		}
+
+		var membership = await _repos.ChatRooms.GetMembershipAsync(roomId, currentUser.Value.Id, true);
+		if (!IsActiveMember(membership))
+		{
+			return ChatErrors.RoomNotFound();
+		}
+
+		membership!.LastReadAtUtc = DateTime.UtcNow;
+		_repos.ChatRooms.UpdateMembership(membership);
+		await _repos.SaveAsync();
 
 		return Result.Success();
 	}
@@ -1358,8 +1394,20 @@ public class ChatService : IChatService
 		var latestMessage = isActiveMember
 			? await _repos.ChatMessages.GetLatestMessageAsync(room.Id, false)
 			: null;
+		var unreadCount = await CountUnreadAsync(room.Id, membership);
 
-		return MapRoom(room, membership, memberCount, latestMessage, owner);
+		return MapRoom(room, membership, memberCount, latestMessage, owner, unreadCount);
+	}
+
+	private async Task<int> CountUnreadAsync(int roomId, ChatRoomMember? membership)
+	{
+		if (!IsActiveMember(membership))
+		{
+			return 0;
+		}
+
+		var counts = await _repos.ChatMessages.GetUnreadCountsAsync(membership!.UserId, new[] { roomId });
+		return counts.TryGetValue(roomId, out var count) ? count : 0;
 	}
 
 	private static string GetNewMemberDisplayName(ChatUser user)
@@ -1463,7 +1511,8 @@ public class ChatService : IChatService
 		ChatRoomMember? membership,
 		int memberCount,
 		ChatMessage? latestMessage,
-		ChatRoomMember? owner = null)
+		ChatRoomMember? owner = null,
+		int unreadCount = 0)
 	{
 		var activeMembership = IsActiveMember(membership) ? membership : null;
 		var canSeeContent = RoomAccessPolicy.CanSeeContent(room, activeMembership is not null);
@@ -1492,7 +1541,8 @@ public class ChatService : IChatService
 			// members. Non-members can still see the room metadata and join.
 			LastMessagePreview = activeMembership is not null && latestMessage is not null && !latestMessage.IsDeleted
 				? BuildPreview(latestMessage.Content)
-				: null
+				: null,
+			UnreadCount = activeMembership is not null ? unreadCount : 0
 		};
 	}
 

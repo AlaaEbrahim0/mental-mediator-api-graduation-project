@@ -1,7 +1,9 @@
-﻿using Application.Contracts;
+﻿using Application.Community;
+using Application.Contracts;
 using Application.Dtos.PostsDto;
 using AutoMapper;
 using Domain.Entities;
+using Domain.Enums;
 using Domain.Errors;
 using Shared;
 using Shared.RequestParameters;
@@ -29,20 +31,30 @@ namespace Application.Services
 
 		public async Task<Result<IEnumerable<PostResponse>>> GetPosts(PostRequestParameters parameters)
 		{
+			var currentUserId = _userClaimsService.GetUserId();
+
+			// The audience filter is decided by the caller's role, never by the
+			// query string: the request parameters are bound from the URL first,
+			// so the flag has to be overwritten here.
+			parameters.IncludeDoctorsOnly = CanReadDoctorsOnly(_userClaimsService.GetRole());
+
 			var posts = await _repos.Posts.GetAllPosts(parameters, false);
-			var postResponse = _mapper.Map<IEnumerable<PostResponse>>(posts);
+			var postResponse = posts.Select(post => ToResponse(post, currentUserId)).ToList();
 			await PopulateLikeState(posts, postResponse);
-			return postResponse.ToList();
+			return postResponse;
 		}
 
 		public async Task<Result<PostResponse?>> GetPostById(int id)
 		{
 			var post = await _repos.Posts.GetPostById(id, false);
-			if (post is null)
+			if (post is null || !CanRead(post, _userClaimsService.GetRole()))
 			{
+				// A Doctors Only post answers exactly like a missing one, so the
+				// endpoint does not confirm that it exists.
 				return PostErrors.NotFound(id);
 			}
-			var postResponse = _mapper.Map<PostResponse>(post);
+
+			var postResponse = ToResponse(post, _userClaimsService.GetUserId());
 			await PopulateLikeState(post, postResponse);
 			return postResponse;
 		}
@@ -60,20 +72,28 @@ namespace Application.Services
 				return Error.Forbidden("Content.Forbidden", "Your post violates our policy against hate speech and could not be published");
 			}
 
-			var post = _mapper.Map<Post>(postRequest);
-
-			if (postRequest.PhotoPost is not null)
+			if (postRequest.Visibility == PostVisibility.SpecificGroup)
 			{
-				// An unchecked upload result wrote null over the photo URL, so the
-				// post was saved as "successful" with the image silently dropped.
-				var uploadResult = await _storageService.UploadPhoto(postRequest.PhotoPost);
-				if (uploadResult.IsFailure)
-				{
-					return uploadResult.Error;
-				}
-
-				post.PostPhotoUrl = uploadResult.Value;
+				return PostErrors.VisibilityUnsupported();
 			}
+			if (postRequest.Visibility == PostVisibility.DoctorsOnly &&
+				!CanReadDoctorsOnly(_userClaimsService.GetRole()))
+			{
+				return PostErrors.DoctorsOnlyForbidden();
+			}
+
+			var post = _mapper.Map<Post>(postRequest);
+			post.Title = postRequest.Title?.Trim() ?? string.Empty;
+			post.Category = PostTaxonomy.NormalizeCategory(postRequest.Category);
+			post.Tags = PostTaxonomy.NormalizeTagsCsv(postRequest.Tags);
+			post.Visibility = postRequest.Visibility;
+
+			var mediaResult = await ResolveMediaAsync(postRequest.Media, postRequest.PhotoPost, Array.Empty<PostMediaRequest>());
+			if (mediaResult.IsFailure)
+			{
+				return mediaResult.Error;
+			}
+			ApplyMedia(post, mediaResult.Value);
 
 			var userId = _userClaimsService.GetUserId();
 			post.AppUserId = userId;
@@ -89,7 +109,7 @@ namespace Application.Services
 
 			await _repos.SaveAsync();
 
-			var postResponse = _mapper.Map<PostResponse>(post);
+			var postResponse = ToResponse(post, userId);
 			await PopulateLikeState(post, postResponse);
 			return postResponse;
 		}
@@ -112,7 +132,7 @@ namespace Application.Services
 			_repos.Posts.DeletePost(post);
 			await _repos.SaveAsync();
 
-			var postResponse = _mapper.Map<PostResponse>(post);
+			var postResponse = ToResponse(post, userId);
 			await PopulateLikeState(post, postResponse);
 			return postResponse;
 		}
@@ -144,29 +164,60 @@ namespace Application.Services
 				return PostErrors.Forbidden(id);
 			}
 
-			if (updatePostRequest.PhotoPost is not null)
+			if (string.IsNullOrWhiteSpace(updatePostRequest.Content))
 			{
-				// Fail before touching the entity: a failed upload used to null out
-				// the photo URL of an existing post, destroying a valid reference.
-				var uploadResult = await _storageService.UploadPhoto(updatePostRequest.PhotoPost);
-				if (uploadResult.IsFailure)
-				{
-					return uploadResult.Error;
-				}
-
-				post.PostPhotoUrl = uploadResult.Value;
+				return Error.Validation("Posts.ContentRequired", "Post content is required.");
 			}
 
-			var existingCategory = post.Category;
-			var existingTags = post.Tags;
-			_mapper.Map(updatePostRequest, post);
-			post.Category = updatePostRequest.Category ?? existingCategory;
-			post.Tags = updatePostRequest.Tags ?? existingTags;
+			if (updatePostRequest.Category is not null)
+			{
+				if (!PostTaxonomy.IsCategory(updatePostRequest.Category))
+				{
+					return Error.Validation("Posts.InvalidCategory", "Choose one of the predefined categories.");
+				}
+				post.Category = PostTaxonomy.NormalizeCategory(updatePostRequest.Category);
+			}
+
+			if (updatePostRequest.Tags is not null)
+			{
+				if (!PostTaxonomy.TryNormalizeTags(PostTaxonomy.SplitTags(updatePostRequest.Tags), out var csv, out var tagError))
+				{
+					return Error.Validation("Posts.InvalidTags", tagError!);
+				}
+				post.Tags = csv;
+			}
+
+			// The audience cannot be changed after publishing in this iteration;
+			// the edit modal does not send it and the property is ignored here.
+			post.Title = updatePostRequest.Title?.Trim() ?? string.Empty;
+			post.Content = updatePostRequest.Content;
+
+			if (updatePostRequest.Media is not null)
+			{
+				var existing = PostMediaCodec.ToRequestList(post.MediaJson);
+				var mediaResult = await ResolveMediaAsync(updatePostRequest.Media, updatePostRequest.PhotoPost, existing);
+				if (mediaResult.IsFailure)
+				{
+					return mediaResult.Error;
+				}
+				ApplyMedia(post, mediaResult.Value);
+			}
+			else if (updatePostRequest.PhotoPost is not null)
+			{
+				// Legacy edit clients send one file and no media list: append it.
+				var existing = PostMediaCodec.ToRequestList(post.MediaJson);
+				var mediaResult = await ResolveMediaAsync(null, updatePostRequest.PhotoPost, existing);
+				if (mediaResult.IsFailure)
+				{
+					return mediaResult.Error;
+				}
+				ApplyMedia(post, mediaResult.Value);
+			}
+
 			_repos.Posts.UpdatePost(post);
 			await _repos.SaveAsync();
 
-
-			var postResponse = _mapper.Map<PostResponse>(post);
+			var postResponse = ToResponse(post, userId);
 			await PopulateLikeState(post, postResponse);
 			return postResponse;
 		}
@@ -179,10 +230,12 @@ namespace Application.Services
 				return Error.Forbidden("Users.Forbidden", "You don't have access to the required resource");
 			}
 
+			parameters.IncludeDoctorsOnly = CanReadDoctorsOnly(_userClaimsService.GetRole());
+
 			var posts = await _repos.Posts.GetPostsByUserId(userId, parameters, false);
-			var postResponse = _mapper.Map<IEnumerable<PostResponse>>(posts);
+			var postResponse = posts.Select(post => ToResponse(post, currentUserId)).ToList();
 			await PopulateLikeState(posts, postResponse);
-			return postResponse.ToList();
+			return postResponse;
 		}
 
 		public async Task<Result<PostResponse>> SetLike(int id, bool liked)
@@ -190,15 +243,97 @@ namespace Application.Services
 			var userId = _userClaimsService.GetUserId();
 
 			var post = await _repos.Posts.GetPostById(id, false);
-			if (post is null) return PostErrors.NotFound(id);
+			if (post is null || !CanRead(post, _userClaimsService.GetRole())) return PostErrors.NotFound(id);
 
 			await _repos.Posts.SetLike(id, userId, liked);
 			await _repos.SaveAsync();
 
 			// Read the like state *after* the write has been committed, otherwise the
 			// response reports the previous count and the client renders stale state.
-			var response = _mapper.Map<PostResponse>(post);
+			var response = ToResponse(post, userId);
 			await PopulateLikeState(post, response);
+			return response;
+		}
+
+		private static bool IsDoctorOrAdmin(string role) =>
+			string.Equals(role, "Doctor", StringComparison.OrdinalIgnoreCase) ||
+			string.Equals(role, "Admin", StringComparison.OrdinalIgnoreCase);
+
+		private static bool CanReadDoctorsOnly(string role) => IsDoctorOrAdmin(role);
+
+		private static bool CanRead(Post post, string role) =>
+			post.Visibility != PostVisibility.DoctorsOnly || CanReadDoctorsOnly(role);
+
+		/// <summary>
+		/// Builds the final media list from the submitted JSON and an optional
+		/// legacy single photo. Every URL must belong to the configured
+		/// Cloudinary cloud, so a post cannot embed arbitrary external assets.
+		/// </summary>
+		private async Task<Result<List<PostMediaRequest>>> ResolveMediaAsync(
+			string? mediaJson,
+			Microsoft.AspNetCore.Http.IFormFile? photo,
+			IReadOnlyCollection<PostMediaRequest> existing)
+		{
+			var items = existing.ToList();
+
+			if (!string.IsNullOrWhiteSpace(mediaJson))
+			{
+				if (!PostMediaCodec.TryParse(mediaJson, out var submitted, out var mediaError))
+				{
+					return Error.Validation("Posts.InvalidMedia", mediaError!);
+				}
+				items = submitted;
+			}
+
+			if (photo is not null)
+			{
+				var uploadResult = await _storageService.UploadPhoto(photo);
+				if (uploadResult.IsFailure)
+				{
+					return uploadResult.Error;
+				}
+				items.Add(new PostMediaRequest { Url = uploadResult.Value, Type = "image" });
+			}
+
+			foreach (var item in items)
+			{
+				if (!_storageService.IsManagedMediaUrl(item.Url))
+				{
+					return Error.Validation(
+						"Posts.InvalidMedia",
+						"Media must be uploaded through the post media endpoint first.");
+				}
+			}
+
+			if (!PostMediaCodec.TryParse(PostMediaCodec.Serialize(items), out var normalised, out var error))
+			{
+				return Error.Validation("Posts.InvalidMedia", error!);
+			}
+
+			return normalised;
+		}
+
+		private static void ApplyMedia(Post post, List<PostMediaRequest> media)
+		{
+			post.MediaJson = media.Count > 0 ? PostMediaCodec.Serialize(media) : null;
+			post.PostPhotoUrl = media.FirstOrDefault(item => item.Type == "image")?.Url;
+		}
+
+		private PostResponse ToResponse(Post post, string currentUserId)
+		{
+			var response = _mapper.Map<PostResponse>(post);
+
+			// Anonymous posts must not expose the author's id to anybody except
+			// the author themselves, who manages the post through IsOwnPost.
+			response.IsOwnPost = !string.IsNullOrEmpty(currentUserId) &&
+			                     string.Equals(post.AppUserId, currentUserId, StringComparison.Ordinal);
+			if (post.IsAnonymous)
+			{
+				response.AppUserId = null;
+				response.Username = null;
+				response.PhotoUrl = null;
+			}
+
 			return response;
 		}
 

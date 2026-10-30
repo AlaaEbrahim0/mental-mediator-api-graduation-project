@@ -8,7 +8,7 @@
 [![Commit](https://img.shields.io/github/last-commit/AlaaEbrahim0/mental-mediator-api-graduation-project)](https://github.com/AlaaEbrahim0/mental-mediator-api-graduation-project/commits/master)
 
 **Production API:** https://nexus-api.runasp.net/  
-**Swagger UI:** https://nexus-api.runasp.net/swagger/index.html
+**Swagger UI:** https://nexus-api.runasp.net/swagger/index.html ⚠️ (currently exposed without an `IsDevelopment()` gate — see [SEC audit finding](audit/NEXUS_ENGINEERING_AUDIT.md))  
 
 | Frontend | URL | Repository |
 |----------|-----|-----------|
@@ -29,8 +29,8 @@ The backend is built with **ASP.NET Core 8**, following **Clean Architecture** p
 | Area | Achievement |
 |------|-------------|
 | **Architecture** | Clean/Layered architecture with boundary-constrained dependency injection |
-| **Security** | JWT + Google OAuth auth, role-based access, input validation, no hardcoded secrets, production exception handling |
-| **Performance** | Database indexes on FK/status columns, lazy-loaded repository pattern, structured logging, HTTP client factory |
+| **Security** | JWT + Google OAuth auth, role-based access, input validation, no hardcoded secrets, production exception handling, PBKDF2-SHA256 room passphrases (150k iterations), per-IP rate limiting on auth endpoints, Cloudinary URL allowlist preventing external media embedding |
+| **Performance** | Database indexes on FK/status/search columns, projection-based repository reads, structured logging, HTTP client factory, ML service cold-start probe (`MLServiceProbe`), fixed-window rate limiters on chat/auth endpoints |
 | **Reliability** | `Result<T>` pattern, global validation filter, configurable exception handler, structured logging |
 | **DevOps** | GitHub Actions CI/CD pipeline, Docker multi-stage builds, MonsterASP (WebDeploy) hosting |
 
@@ -57,7 +57,7 @@ The backend is built with **ASP.NET Core 8**, following **Clean Architecture** p
 - **Reporting** — Doctors and admins can view appointment/profiling reports
 
 ### Communication & Media
-- **Email Service** — MailKit with Google SMTP for confirmation, password reset, and appointment notifications
+- **Email Service** — Resend (primary) with MailKit SMTP fallback for confirmation, password reset, and appointment notifications
 - **Image Storage** — Cloudinary API for secure photo uploads
 - **News Feed** — News API integration for relevant articles
 - **Template System** — Reusable HTML email templates
@@ -69,29 +69,32 @@ The backend is built with **ASP.NET Core 8**, following **Clean Architecture** p
 ```
 MentalMediator.sln
 ├── API/                     # Presentation Layer (ASP.NET Core Web API)
-│   ├── Controllers/         # REST endpoints (8 controllers) + Validation Filter
+│   ├── Controllers/         # REST endpoints (16 controllers) + Validation Filter
 │   ├── Configurations/      # DI, CORS, Swagger, Validation Filter, Mapping Profile
 │   ├── Program.cs           # Pipeline setup, exception handling, CORS, auth
 │   └── appsettings.json     # Configuration (secrets via .env / environment variables)
 ├── Application/             # Business Logic Layer (Domain services, DTOs, Contracts)
 │   ├── Contracts/           # Service interfaces
+│   ├── Community/           # Post taxonomy, visibility rules
 │   ├── Dtos/                # Request/Response DTOs per domain
 │   ├── Services/            # Business logic, orchestration, validation
-│   └── Options/             # Configuration options
+│   └── Options/             # Configuration options (JwtSettings, Resend, etc.)
 ├── Domain/                  # Domain Layer (Entities, Enums, Errors, Value Objects)
-│   ├── Entities/            # Core domain models (User, Doctor, Post, Appointment, etc.)
-│   ├── Enums/               # Domain enums (AppointmentStatus, DoctorSpecialization, etc.)
+│   ├── Entities/            # Core domain models (BaseUser, User, Doctor, Post, Comment, Reply, Appointment, ChatRoom, ChatMessage, Notification, DoctorSchedulingSettings, etc.)
+│   ├── Enums/               # Domain enums (AppointmentStatus, DoctorSpecialization, PostVisibility, etc.)
 │   ├── Errors/              # Domain error definitions
 │   ├── Repositories/        # Repository interfaces
 │   └── States/              # State pattern for Appointment lifecycle
 ├── Infrastructure/          # Data & External Services
-│   ├── Data/                # AppDbContext, DbInitializer, Migrations
+│   ├── Data/                # AppDbContext, DbInitializer, 20 Migrations
 │   ├── Configurations/      # EF Core entity configurations + indexes
-│   ├── Clients/             # External service clients (ML, News, Cloudinary)
-│   ├── Repositories/        # EF Core implementations
-│   ├── Services/            # AuthService, MailService, StorageService, NotificationSender
-│   └── Utilities/           # JWT Token Generator
-└── Shared/                  # Shared utilities (Result<T>, Paging, Errors)
+│   ├── Clients/             # External service clients (ML/HateSpeech, News, Cloudinary, Resend)
+│   ├── Repositories/        # EF Core implementations (RepositoryBase + 12 repos)
+│   ├── Services/            # AuthService, ProfileService, ChatService, NotificationSender, CloudinaryStorageService, ResendMailService, ChatRealtimeNotifier
+│   ├── Hubs/                # SignalR hub implementations
+│   ├── Caching/             # InMemoryCacheService, MLServiceProbe (cold-start probe)
+│   └── Utilities/           # JWT Token Generator, AuthHandoff, RoomPassphraseHasher, RoomJoinThrottle
+└── Shared/                  # Shared utilities (Result<T>, Error, Paging, RequestParameters, Extensions, Enums)
 ```
 
 ### Design Patterns & Principles
@@ -192,8 +195,9 @@ https://<your-deploy-url>/swagger
 | **Auth** | `GET /api/auth/external-login` | Start Google OAuth (patient accounts only) |
 | **Auth** | `GET /signin-google` | OAuth handler callback (validates `state`/PKCE, then continues to `external-login-callback`) |
 | **Auth** | `GET /api/auth/exchange-token` | Turn a one-time Google handoff token into a JWT |
-| **Posts** | `GET /api/posts` | List posts (paginated, filterable) |
-| **Posts** | `POST /api/posts` | Create post (with optional photo) |
+| **Posts** | `GET /api/posts` | List posts (paginated, filterable; doctors-only posts are hidden from non-doctors) |
+| **Posts** | `POST /api/posts` | Create post (optional title, predefined category, tags, audience, optional media) |
+| **Posts** | `POST /api/posts/media` | Upload one image or short video for the composer (`multipart/form-data`, field `File`) |
 | **Comments** | `GET /api/posts/{postId}/comments` | Get post comments |
 | **Comments** | `POST /api/posts/{postId}/comments` | Add comment |
 | **Replies** | `GET /api/posts/{postId}/comments/{commentId}/replies` | Get replies |
@@ -210,13 +214,26 @@ https://<your-deploy-url>/swagger
 | **Profiles** | `POST/PUT/DELETE /api/profiles/me/certificates` | Manage certificates (`multipart/form-data`, optional `Image`) |
 | **Profiles** | `POST/PUT/DELETE /api/profiles/me/qualifications` | Manage structured qualifications (JSON) |
 | **Doctor** | `GET /api/doctors/me` | My profile |
-| **Schedule** | `GET /api/doctors/{doctorId}/schedule` | Weekly schedule |
+| **Schedule** | `GET /api/doctors/{doctorId}/schedule` | Weekly schedule (availability periods, time zone, consultation duration) |
+| **Schedule** | `PUT /api/doctors/{doctorId}/schedule` | Update weekly schedule (Doctor role only) |
+| **Schedule** | `GET /api/doctors/{doctorId}/time-off` | List time-off periods (Doctor role only) |
+| **Schedule** | `POST /api/doctors/{doctorId}/time-off` | Create a time-off period blocking slots (Doctor role only) |
+| **Schedule** | `DELETE /api/doctors/{doctorId}/time-off/{id}` | Remove a time-off period (Doctor role only) |
+| **Schedule** | `GET /api/doctors/{id}/slots?date=...&from=...&to=...` | Available slots derived from availability + time-off + existing appointments |
+| **Doctor workspace** | `GET /api/doctors/me/dashboard` / `activity` / `notes` / `follow-ups` | Doctor-specific workspace data (Doctor role only, scoped to caller) |
 | **Chat** | `GET /api/chat/rooms/browse` | Search, filter and sort listable rooms |
 | **Chat** | `POST /api/chat/rooms` | Create a room (patients and staff; public or private, optional passphrase) |
 | **Chat** | `POST /api/chat/rooms/{id}/join` | Join a room (`{"passphrase": "..."}` only when required) |
 | **Chat** | `POST /api/chat/rooms/{id}/lock` / `unlock` | Pause or resume posting (owner or doctor moderator) |
 | **Chat** | `PUT /api/chat/rooms/{id}/privacy` / `passphrase` / `scheduled` | Manage room access and scheduling |
 | **Chat** | `PUT/DELETE /api/chat/rooms/{id}/cover` | Upload or clear the room cover (`multipart/form-data`, field `Image`) |
+
+#### Post composer rules
+
+- A title is optional; the category must be one of `Clinical Case`, `General Discussion`, `Medical News`, `Patient Care` or `Platform Feedback`, and tags must come from the standard vocabulary (max 5).
+- Media is uploaded one file at a time through `POST /api/posts/media` (images up to 5 MB, videos up to 20 MB) and then referenced by URL in the post `media` JSON array. Only URLs under the configured Cloudinary cloud are accepted.
+- Audiences are `Public` and `DoctorsOnly`. Doctors-only posts are hidden from non-doctors in feeds, detail, likes and comments, and only doctors/admins can publish them. `SpecificGroup` is reserved and rejected until groups exist.
+- Anonymous posts appear only under the Confessions filter and never expose `appUserId` or `username`; the author still receives `isOwnPost: true` so the client can offer edit/delete.
 
 #### Profile visibility and contact details
 
@@ -272,10 +289,11 @@ The pipeline runs on every push to `master` and on manual `workflow_dispatch`:
 
 1. **Build** — `dotnet restore`, `dotnet build --configuration Release --no-restore`
 2. **Test** — `dotnet test --configuration Release --no-build --verbosity normal`. This runs the
-   41 unit tests in `Tests/MentalMediator.Tests.csproj` (booking validation, slot calculation,
-   schedule mutation, profile validation). The project is now registered in `MentalMediator.sln`;
-   while it was absent, solution-level `dotnet test` discovered no test assembly and the step passed
-   while asserting nothing.
+   193 tests in `Tests/MentalMediator.Tests.csproj` covering booking validation, slot calculation,
+   schedule mutation, profile validation, content moderation, room passphrase hashing, chat room
+   privacy, notification ownership, auth security, OAuth handoff, and post composition. The
+   project is registered in `MentalMediator.sln`, so solution-level `dotnet test` discovers and runs
+   the full suite.
 3. **Publish** — Build and push `systematicmess/nexus_api:latest` to Docker Hub
 4. **Deploy** — Publish the app for IIS and upload it to MonsterASP over WebDeploy (manual or on push when `AUTO_DEPLOY_MONSTERASP` is enabled)
 
@@ -294,7 +312,7 @@ MonsterASP, so a registry failure cannot take the site down.
 |------|-----------------|
 | Restore | `dotnet restore` |
 | Build | `dotnet build --configuration Release --no-restore` |
-| Test | `dotnet test --configuration Release --no-build --verbosity normal` (41 tests in `Tests/`, which is now in the solution) |
+| Test | `dotnet test --configuration Release --no-build --verbosity normal` (193 tests in `Tests/`, registered in `MentalMediator.sln`) |
 | Docker Login | `docker/login-action@v3` using `DOCKER_USERNAME` / `DOCKER_PASSWORD` |
 | Docker Build & Push | `docker/build-push-action@v5` → `systematicmess/nexus_api:latest` |
 | Publish for IIS | `dotnet publish API/API.csproj -c Release --output ./publish --runtime win-x86 --self-contained false -p:UseAppHost=false` |
@@ -378,6 +396,20 @@ MonsterASP serves `*.runasp.net` subdomains over TLS, so production
 only safe behind a certificate we control end-to-end (it advertises
 `Strict-Transport-Security` at the HTTP layer, and a lapsed certificate would then leave
 browsers unable to reach the site at all).
+
+### Secondary hosting (Somee free plan)
+
+The API is also deployed to Somee (`nexus-api-gp.somee.com`) as a free-tier fallback:
+
+| Constraint | Value | Consequence |
+|---|---|---|
+| Architecture | 32-bit app pool | The API must be published with `win-x86` (matches the WebDeploy pipeline). |
+| Storage | 150 MB per site | Total across published files, logs, and DataProtection keys. |
+| Database | SQL Server Express, 30 MB data-file limit (7.7 MB used, 19 tables) | Migrations must be schema-only; data must stay lean. |
+| HTTPS | Not available on free subdomains | Plain HTTP only; JWT tokens transit in cleartext. Use the primary RunASP endpoint for any sensitive traffic. |
+| Memory | 256 MB | SignalR and large query results may cause OOM in high-concurrency scenarios. |
+
+> Somee has 18 of 20 migrations applied. The `/api/posts` endpoint currently returns HTTP 500 due to schema drift (the `Posts` table on Somee is behind the committed migration `AddPostAudienceAndMedia`). Run `dotnet ef database update` or the appropriate ALTER statements to reconcile before relying on Somee as a production endpoint.
 
 ### Deploy Readiness Checklist
 
@@ -464,25 +496,35 @@ states.
 User 1─────── N Appointment 1───── 1 Doctor
 User 1───── N Post 1───── N Comment 1───── N Reply
 User 1───── N Notification
+User 1───── N PostLike
 Doctor 1───── N Appointment
 Doctor 1───── N DoctorAvailabilityPeriod   (weekly working windows)
 Doctor 1───── N DoctorTimeOff              (UTC ranges that block slots)
 Doctor 1───── 1 DoctorSchedulingSettings   (time zone + consultation length)
+Doctor 1───── N PatientNote                (doctor workspace notes)
+Doctor 1───── N FollowUp                   (scheduled follow-ups)
 Post 1───── N Comment
 Comment 1───── N Reply
 ChatRoom 1───── N ChatRoomMember 1───── N ChatMessage
+ChatRoom 1───── N ChatMessageReport        (moderation reports on messages)
+Patient 1─── N ChatRoomMember 1─── N ChatMessage
 ```
 
 ### Indexes Added for Performance
 
 | Table | Columns |
-|-------|---------|
-| `Appointments` | `StartTime`, `DoctorId`, `UserId`, `Status`, Composite `(DoctorId, StartTime, Status)` |
-| `Posts` | `PostedOn`, `AppUserId`, `IsAnonymous` |
-| `Comments` | `PostId`, `AppUserId` |
-| `Replies` | `CommentId`, `AppUserId` |
-| `Notifications` | `AppUserId`, `IsRead`, Composite `(AppUserId, IsRead)` |
-| `Doctors` | `Specialization`, `City` |
+||-------|---------|
+|| `Appointments` | `StartTime`, `DoctorId`, `UserId`, `Status`, Composite `(DoctorId, StartTime, Status)` |
+|| `Posts` | `PostedOn`, `AppUserId`, `IsAnonymous` |
+|| `Comments` | `PostId`, `AppUserId` |
+|| `Replies` | `CommentId`, `AppUserId` |
+|| `Notifications` | `AppUserId`, `IsRead`, Composite `(AppUserId, IsRead)` |
+|| `Doctors` | `Specialization`, `City` |
+|| `ChatRooms` | Composite `(Visibility, IsArchived, LastMessageAtUtc)`, `(IsArchived, IsLocked, LastMessageAtUtc)`, `ScheduledStartAtUtc` (filtered) |
+|| `ChatRoomMembers` | `UserId`, `RoomId` (foreign keys) |
+|| `ChatMessages` | `RoomId`, `SenderId`, `SentAt` |
+|| `ChatMessageReports` | `MessageId`, `Status`, `ReportedById` |
+|| `PostLikes` | Unique `(UserId, PostId)` |
 
 ---
 
@@ -539,7 +581,25 @@ keypress. See `Tests/ModerationClientTests.cs` for the behaviours covered.
 | Role-based auth | ✅ JWT + Google OAuth + claims extraction |
 | Database indexes | ✅ Added on FK/status/search columns |
 | Secure HTTP client usage | ✅ `IHttpClientFactory` with `using` disposal |
-| Email service | ✅ MailKit with structured logging |
+| Email service | ✅ Resend (primary) with MailKit SMTP fallback; structured logging; no secret fields in errors |
+
+### Known security issues (tracked for remediation)
+
+| Issue | Status | Tracking |
+|---|---|---|
+| Swagger UI exposed in production (no `IsDevelopment()` gate) | Open | `Program.cs:78-80` |
+| JWT bearer token stored in `localStorage` (XSS token theft) | Open | both portals' auth contexts |
+| No refresh token; 30-min JWT expiry with no renewal | Open | `JwtTokenGenerator.cs` |
+| CORS allowlist includes unverified third-party origins | Open | `DependencyInjection.cs:51-57` |
+| `RepositoryBase.FindByCondition`/`FindAll` inverted `trackChanges` logic | Open | `RepositoryBase.cs:20-37` |
+| `InitializeDatabaseAsync().Wait()` synchronous startup | Open | `Program.cs:126` |
+| `GetDoctorStats` sums fees for all statuses (incl. cancelled/rejected) | Open | `AppointmentRepository.cs:325-326` |
+| `GetDoctorStats`/`GetDoctorAppointmentCounts` load full history into memory | Open | `AppointmentRepository.cs:319-329`, `339-365` |
+| `PopulateLikeState` N+1: one DB query per post in a listing | Open | `PostService.cs:347-352` |
+| `ResendMailService` passes `CancellationToken.None` | Open | `ResendMailService.cs:62` |
+| `output.txt` debug artifact tracked in git | Open | Repo root |
+
+A full audit report is available at `audit/NEXUS_ENGINEERING_AUDIT.md`.
 
 ### Known integration limitations
 

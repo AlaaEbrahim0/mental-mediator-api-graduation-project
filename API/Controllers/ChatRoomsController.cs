@@ -99,6 +99,18 @@ public class ChatRoomsController : ControllerBase
 		return NoContent();
 	}
 
+	[HttpPut("{roomId:int}/read")]
+	public async Task<IActionResult> MarkRoomRead(int roomId)
+	{
+		var result = await _chatService.MarkRoomReadAsync(roomId);
+		if (result.IsFailure)
+		{
+			return result.ToProblemDetails();
+		}
+
+		return NoContent();
+	}
+
 	[HttpGet("{roomId:int}/members")]
 	public async Task<IActionResult> GetMembers(int roomId)
 	{

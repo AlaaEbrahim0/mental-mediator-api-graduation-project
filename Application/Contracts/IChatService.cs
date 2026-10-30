@@ -31,6 +31,12 @@ public interface IChatService
 
 	Task<Result> LeaveRoomAsync(int roomId);
 
+	/// <summary>
+	/// Moves the caller's read mark to now. Only an active member can mark a
+	/// room read; for anybody else this is the same 404 as a missing room.
+	/// </summary>
+	Task<Result> MarkRoomReadAsync(int roomId);
+
 	Task<Result<IReadOnlyList<ChatRoomMemberResponse>>> GetRoomMembersAsync(int roomId);
 
 	Task<Result<ChatMessagePageResponse>> GetMessagesAsync(int roomId, ChatMessageRequestParameters parameters);

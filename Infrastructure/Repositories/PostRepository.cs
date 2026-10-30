@@ -28,6 +28,11 @@ public class PostRepository : RepositoryBase<Post>, IPostRepository
 
 		query = query.Where(p => p.IsAnonymous == parameters.ConfessionsOnly);
 
+		if (!parameters.IncludeDoctorsOnly)
+		{
+			query = query.Where(p => p.Visibility != Domain.Enums.PostVisibility.DoctorsOnly);
+		}
+
 		if (!string.IsNullOrEmpty(parameters.Title))
 		{
 			query = query.Where(p => p.Title.Contains(parameters.Title));
@@ -69,6 +74,8 @@ public class PostRepository : RepositoryBase<Post>, IPostRepository
 				PostedOn = p.PostedOn,
 				Title = p.Title,
 				IsAnonymous = p.IsAnonymous,
+				Visibility = p.Visibility,
+				MediaJson = p.MediaJson,
 				Username = p.IsAnonymous ? null : p.AppUser!.FullName,
 				PhotoUrl = p.IsAnonymous ? null : p.AppUser!.PhotoUrl,
 				PostPhotoUrl = p.PostPhotoUrl,
@@ -83,8 +90,14 @@ public class PostRepository : RepositoryBase<Post>, IPostRepository
 
 	public async Task<IEnumerable<Post>> GetConfessionOnly(PostRequestParameters parameters, bool trackChanges)
 	{
-		return await
-			FindByCondition(x => x.IsAnonymous, trackChanges)
+		var query = FindByCondition(x => x.IsAnonymous, trackChanges);
+
+		if (!parameters.IncludeDoctorsOnly)
+		{
+			query = query.Where(p => p.Visibility != Domain.Enums.PostVisibility.DoctorsOnly);
+		}
+
+		return await query
 			.Include(p => p.AppUser)
 			.OrderByDescending(c => c.PostedOn)
 			.Select(p => new Post
@@ -97,6 +110,8 @@ public class PostRepository : RepositoryBase<Post>, IPostRepository
 				PostedOn = p.PostedOn,
 				Title = p.Title,
 				IsAnonymous = p.IsAnonymous,
+				Visibility = p.Visibility,
+				MediaJson = p.MediaJson,
 				Username = p.IsAnonymous ? null : p.AppUser!.FullName,
 				PhotoUrl = p.IsAnonymous ? null : p.AppUser!.PhotoUrl,
 				PostPhotoUrl = p.PostPhotoUrl,
@@ -109,8 +124,14 @@ public class PostRepository : RepositoryBase<Post>, IPostRepository
 	public async Task<IEnumerable<Post>> GetPostsByUserId(string userId, PostRequestParameters
 			parameters, bool trackChanges)
 	{
-		return await
-			FindByCondition(p => p.AppUserId == userId, trackChanges)
+		var query = FindByCondition(p => p.AppUserId == userId, trackChanges);
+
+		if (!parameters.IncludeDoctorsOnly)
+		{
+			query = query.Where(p => p.Visibility != Domain.Enums.PostVisibility.DoctorsOnly);
+		}
+
+		return await query
 			.Include(p => p.AppUser)
 			.OrderByDescending(c => c.PostedOn)
 			.Select(p => new Post
@@ -123,6 +144,8 @@ public class PostRepository : RepositoryBase<Post>, IPostRepository
 				PostedOn = p.PostedOn,
 				Title = p.Title,
 				IsAnonymous = p.IsAnonymous,
+				Visibility = p.Visibility,
+				MediaJson = p.MediaJson,
 				Username = p.IsAnonymous ? null : p.AppUser!.FullName,
 				PhotoUrl = p.IsAnonymous ? null : p.AppUser!.PhotoUrl,
 				PostPhotoUrl = p.PostPhotoUrl,
@@ -147,6 +170,9 @@ public class PostRepository : RepositoryBase<Post>, IPostRepository
 				Tags = p.Tags,
 				PostedOn = p.PostedOn,
 				Title = p.Title,
+				IsAnonymous = p.IsAnonymous,
+				Visibility = p.Visibility,
+				MediaJson = p.MediaJson,
 				Username = p.IsAnonymous ? null : p.AppUser!.FullName,
 				PhotoUrl = p.IsAnonymous ? null : p.AppUser!.PhotoUrl,
 				PostPhotoUrl = p.PostPhotoUrl,

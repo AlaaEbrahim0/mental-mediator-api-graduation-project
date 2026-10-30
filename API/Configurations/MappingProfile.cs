@@ -16,7 +16,8 @@ public class MappingProfile : Profile
 {
 	public MappingProfile()
 	{
-		CreateMap<Post, PostResponse>();
+		CreateMap<Post, PostResponse>()
+			.ForMember(dest => dest.Media, src => src.MapFrom(post => PostMediaCodec.ToResponse(post.MediaJson)));
 		CreateMap<CreatePostRequest, Post>();
 		CreateMap<UpdatePostRequest, Post>().ReverseMap();
 
