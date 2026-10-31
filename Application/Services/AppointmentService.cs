@@ -1,6 +1,7 @@
 ﻿using Application.Contracts;
 using Application.Dtos.AppointmentDtos;
 using Application.Dtos.NotificationDtos;
+using Application.Utilities;
 using AutoMapper;
 using Domain.Entities;
 using Domain.Enums;
@@ -20,10 +21,11 @@ public class AppointmentService : IAppointmentService
 	private readonly ICacheService _cacheService;
 	private readonly INotificationService _notificationService;
 	private readonly IMailService _mailService;
+	private readonly MailTemplates _mailTemplates;
 	private readonly IDoctorSchedulingService _schedulingService;
 	private readonly ILogger<AppointmentService> _logger;
 
-	public AppointmentService(IRepositoryManager repos, IMapper mapper, IUserClaimsService userClaimsService, IHateSpeechDetector hateSpeechDetector, IStorageService storageService, ICacheService cacheService, INotificationService notificationService, IMailService mailService, IDoctorSchedulingService schedulingService, ILogger<AppointmentService> logger)
+	public AppointmentService(IRepositoryManager repos, IMapper mapper, IUserClaimsService userClaimsService, IHateSpeechDetector hateSpeechDetector, IStorageService storageService, ICacheService cacheService, INotificationService notificationService, IMailService mailService, MailTemplates mailTemplates, IDoctorSchedulingService schedulingService, ILogger<AppointmentService> logger)
 	{
 		_repos = repos;
 		_mapper = mapper;
@@ -33,6 +35,7 @@ public class AppointmentService : IAppointmentService
 		_cacheService = cacheService;
 		_notificationService = notificationService;
 		_mailService = mailService;
+		_mailTemplates = mailTemplates;
 		_schedulingService = schedulingService;
 		_logger = logger;
 	}
@@ -44,16 +47,22 @@ public class AppointmentService : IAppointmentService
 	/// swallowed: reporting it as a failed request would tell the client the
 	/// operation did not happen, and a retry would duplicate the appointment.
 	/// </summary>
-	private async Task SendAppointmentEmailAsync(MailRequest mailRequest)
+	private async Task SendAppointmentEmailAsync(string toEmail, EmailContent email)
 	{
-		var mailResult = await _mailService.SendEmailAsync(mailRequest);
+		var mailResult = await _mailService.SendEmailAsync(new MailRequest
+		{
+			ToEmail = toEmail,
+			Subject = email.Subject,
+			Body = email.Html,
+			TextBody = email.Text
+		});
 
 		if (mailResult.IsFailure)
 		{
 			_logger.LogWarning(
 				"Appointment email \"{Subject}\" to {Recipient} was not delivered: {Reason}",
-				mailRequest.Subject,
-				mailRequest.ToEmail,
+				email.Subject,
+				toEmail,
 				mailResult.Error.Description);
 		}
 	}
@@ -93,13 +102,13 @@ public class AppointmentService : IAppointmentService
 
 		await _notificationService.SendNotificationAsync(notification);
 
-		var mailRequest = new MailRequest
-		{
-			ToEmail = appointment.DoctorEmail,
-			Subject = "Appointment Cancellation",
-			Body = $"The appointment with ID {appointment.Id} has been cancelled by {appointment.ClientEmail} [{appointment.ClientName}]."
-		};
-		await SendAppointmentEmailAsync(mailRequest);
+		await SendAppointmentEmailAsync(
+			appointment.DoctorEmail,
+			_mailTemplates.AppointmentCancelled(
+				appointment.DoctorName,
+				appointment.ClientName,
+				appointment.Id,
+				cancellationReason));
 
 		var appointmentResponse = _mapper.Map<AppointmentResponse>(appointment);
 		return appointmentResponse;
@@ -139,13 +148,13 @@ public class AppointmentService : IAppointmentService
 
 		await _notificationService.SendNotificationAsync(notification);
 
-		var mailRequest = new MailRequest
-		{
-			ToEmail = appointment.ClientEmail,
-			Subject = "Appointment Confirmation",
-			Body = $"The appointment with ID {appointment.Id} has been confirmed by Dr. {appointment.DoctorName}."
-		};
-		await SendAppointmentEmailAsync(mailRequest);
+		await SendAppointmentEmailAsync(
+			appointment.ClientEmail,
+			_mailTemplates.AppointmentConfirmed(
+				appointment.ClientName,
+				appointment.DoctorName,
+				appointment.Id,
+				appointment.StartTime));
 
 		var appointmentResponse = _mapper.Map<AppointmentResponse>(appointment);
 		return appointmentResponse;
@@ -160,6 +169,27 @@ public class AppointmentService : IAppointmentService
 		if (completionResult.IsFailure) return completionResult.Error;
 		_repos.Appointments.UpdateAppointment(appointment);
 		await _repos.SaveAsync();
+
+		var notification = Notification.CreateNotification(
+			appointment.UserId,
+			"Appointment Completed",
+			$"{_userClaimsService.GetUserName()} marked the appointment as completed",
+			new Dictionary<string, int> { { "appointmentId", appointment.Id } },
+			_userClaimsService.GetUserName(),
+			_userClaimsService.GetPhotoUrl(),
+			NotificationType.AppointmentCompleted,
+			relatedResourceId: appointment.Id,
+			deduplicationKey: $"appointment-completed:{appointment.Id}");
+
+		await _notificationService.SendNotificationAsync(notification);
+
+		await SendAppointmentEmailAsync(
+			appointment.ClientEmail,
+			_mailTemplates.AppointmentCompleted(
+				appointment.ClientName,
+				appointment.DoctorName,
+				appointment.Id));
+
 		return _mapper.Map<AppointmentResponse>(appointment);
 	}
 
@@ -225,13 +255,13 @@ public class AppointmentService : IAppointmentService
 
 		await _notificationService.SendNotificationAsync(notification);
 
-		var mailRequest = new MailRequest
-		{
-			ToEmail = doctor.Email,
-			Subject = "New Appointment Request",
-			Body = $"You have a new appointment request from {userName}. Appointment ID: {appointment.Id}."
-		};
-		await SendAppointmentEmailAsync(mailRequest);
+		await SendAppointmentEmailAsync(
+			doctor.Email!,
+			_mailTemplates.AppointmentRequested(
+				doctor.FullName,
+				userName,
+				appointment.Id,
+				appointment.StartTime));
 
 		var appointmentResponse = _mapper.Map<AppointmentResponse>(appointment);
 		return appointmentResponse;
@@ -282,13 +312,13 @@ public class AppointmentService : IAppointmentService
 
 		await _notificationService.SendNotificationAsync(notification);
 
-		var mailRequest = new MailRequest
-		{
-			ToEmail = appointment.ClientEmail,
-			Subject = "Appointment Rejection",
-			Body = $"Your appointment with ID {appointment.Id} has been rejected by Dr. {appointment.DoctorName}. Reason: {request.RejectionReason}."
-		};
-		await SendAppointmentEmailAsync(mailRequest);
+		await SendAppointmentEmailAsync(
+			appointment.ClientEmail,
+			_mailTemplates.AppointmentRejected(
+				appointment.ClientName,
+				appointment.DoctorName,
+				appointment.Id,
+				request.RejectionReason));
 
 		var appointmentResponse = _mapper.Map<AppointmentResponse>(appointment);
 		return appointmentResponse;

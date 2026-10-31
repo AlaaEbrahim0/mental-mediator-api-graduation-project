@@ -77,6 +77,66 @@ public class NotificationOwnershipTests
 			}
 			return Task.FromResult(true);
 		}
+
+		public Task<bool> ExistsByDeduplicationKeyAsync(string userId, string deduplicationKey) =>
+			Task.FromResult(Store.Values.Any(n =>
+				n.AppUserId == userId && n.DeduplicationKey == deduplicationKey));
+
+		public Task<Notification> UpsertRoomMessageNotificationAsync(
+			string userId,
+			int roomId,
+			string roomName,
+			string senderName,
+			DateTime now)
+		{
+			var key = $"room:{roomId}";
+			var notification = Store.Values.FirstOrDefault(n =>
+				n.AppUserId == userId && n.DeduplicationKey == key);
+			if (notification is null)
+			{
+				notification = Notification.CreateNotification(
+					userId,
+					$"New messages in {roomName}",
+					$"1 new message in {roomName}",
+					new Dictionary<string, int> { { "roomId", roomId } },
+					senderName,
+					string.Empty,
+					NotificationType.RoomMessage,
+					roomId,
+					key);
+				CreateNotification(notification);
+			}
+			else
+			{
+				notification.RelatedCount = notification.IsRead ? 1 : notification.RelatedCount + 1;
+				notification.IsRead = false;
+				notification.ReadAt = null;
+				notification.DateCreated = now;
+			}
+
+			return Task.FromResult(notification);
+		}
+
+		public Task<IReadOnlyList<Notification>> MarkRoomNotificationsAsReadAsync(
+			string userId,
+			int roomId,
+			DateTimeOffset readAt)
+		{
+			var notifications = Store.Values
+				.Where(n => n.AppUserId == userId &&
+				            n.Type == nameof(NotificationType.RoomMessage) &&
+				            n.RelatedResourceId == roomId &&
+				            !n.IsRead)
+				.ToList();
+
+			foreach (var notification in notifications)
+			{
+				notification.IsRead = true;
+				notification.ReadAt = readAt;
+			}
+
+			return Task.FromResult<IReadOnlyList<Notification>>(notifications);
+		}
 	}
 
 	private sealed class FakeNotificationSender : INotificationSender
@@ -90,6 +150,15 @@ public class NotificationOwnershipTests
 			Last = notification;
 			return Task.CompletedTask;
 		}
+
+		public Task SendRoomMessageNotificationAsync(
+			string recipientUserId,
+			int roomId,
+			string roomName,
+			string senderName,
+			DateTime sentAtUtc) => Task.CompletedTask;
+
+		public Task NotifyUpdatedAsync(Notification notification) => Task.CompletedTask;
 	}
 
 	private static IMapper CreateMapper() =>

@@ -43,10 +43,17 @@ public class Notification
 
 	/// <summary>
 	/// Optional caller-supplied key identifying the event a notification came
-	/// from. Indexed for lookups only: the index is not unique, so storing a key
-	/// does not by itself prevent a second notification for the same event.
+	/// from. New event types use a unique filtered index so concurrent senders
+	/// cannot persist the same event twice.
 	/// </summary>
 	public string? DeduplicationKey { get; set; }
+
+	/// <summary>
+	/// Number of events represented by an aggregated notification. A room
+	/// notification counts unread messages since the room was last read; every
+	/// other notification represents one event.
+	/// </summary>
+	public int RelatedCount { get; set; } = 1;
 
 	[NotMapped]
 	public NotificationType TypeEnum

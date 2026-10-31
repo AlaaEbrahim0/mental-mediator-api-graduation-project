@@ -6,5 +6,10 @@ public enum NotificationType
 	AppointmentRequest,
 	AppointmentRejection,
 	AppointmentConfirmation,
-	AppointmentCancellation
+	AppointmentCancellation,
+	AppointmentCompleted,
+	PostLike,
+	FollowUp,
+	PatientNote,
+	RoomMessage
 }

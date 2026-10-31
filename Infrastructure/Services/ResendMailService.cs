@@ -59,6 +59,7 @@ public class ResendMailService : IMailService
 				mailRequest.ToEmail!,
 				mailRequest.Subject!,
 				mailRequest.Body!,
+				mailRequest.TextBody,
 				CancellationToken.None);
 			responseId = response?.Id;
 		}

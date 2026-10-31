@@ -18,6 +18,7 @@ public interface IResendClient
 		string to,
 		string subject,
 		string html,
+		string? text = null,
 		CancellationToken ct = default);
 }
 
@@ -46,6 +47,7 @@ public class ResendClient : IResendClient
 		string to,
 		string subject,
 		string html,
+		string? text = null,
 		CancellationToken ct = default)
 	{
 		var request = new ResendSendRequest
@@ -53,7 +55,8 @@ public class ResendClient : IResendClient
 			From = from,
 			To = new[] { to },
 			Subject = subject,
-			Html = html
+			Html = html,
+			Text = text
 		};
 
 		try
@@ -103,6 +106,9 @@ public record ResendSendRequest
 
 	[JsonPropertyName("html")]
 	public string? Html { get; init; }
+
+	[JsonPropertyName("text")]
+	public string? Text { get; init; }
 }
 
 /// <summary>

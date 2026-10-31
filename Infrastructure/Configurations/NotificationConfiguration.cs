@@ -31,5 +31,16 @@ public class NotificationConfiguration : IEntityTypeConfiguration<Notification>
 
 		builder
 			.HasIndex(n => n.DeduplicationKey);
+
+		builder
+			.HasIndex(n => new { n.AppUserId, n.Type, n.RelatedResourceId });
+
+		// Only notifications whose event key is expected to be unique are
+		// covered. Historical Comment/Reply rows keep their non-unique lookup
+		// index because older data may already contain repeated keys.
+		builder
+			.HasIndex(n => new { n.AppUserId, n.DeduplicationKey })
+			.IsUnique()
+			.HasFilter("[DeduplicationKey] IS NOT NULL AND [Type] IN ('RoomMessage', 'PostLike', 'FollowUp', 'PatientNote', 'AppointmentCompleted')");
 	}
 }

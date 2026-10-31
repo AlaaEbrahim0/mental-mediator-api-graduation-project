@@ -37,6 +37,35 @@ public class NotificationSender : INotificationSender
 		_repos.Notifications.CreateNotification(notification);
 		await _repos.SaveAsync();
 
+		await DeliverAsync(notification);
+	}
+
+	public async Task SendRoomMessageNotificationAsync(
+		string recipientUserId,
+		int roomId,
+		string roomName,
+		string senderName,
+		DateTime sentAtUtc)
+	{
+		var notification = await _repos.Notifications.UpsertRoomMessageNotificationAsync(
+			recipientUserId,
+			roomId,
+			roomName,
+			senderName,
+			sentAtUtc);
+
+		await DeliverAsync(notification);
+	}
+
+	public Task NotifyUpdatedAsync(Notification notification)
+	{
+		var notificationResponse = _mapper.Map<NotificationResponse>(notification);
+
+		return DeliverUpdatedAsync(notification.AppUserId, notificationResponse, notification.Id);
+	}
+
+	private async Task DeliverAsync(Notification notification)
+	{
 		var notificationResponse = _mapper.Map<NotificationResponse>(notification);
 
 		try
@@ -56,6 +85,28 @@ public class NotificationSender : INotificationSender
 				"Real-time delivery of notification {NotificationId} to user {UserId} failed; record is persisted",
 				notification.Id,
 				notification.AppUserId);
+		}
+	}
+
+	private async Task DeliverUpdatedAsync(
+		string userId,
+		NotificationResponse notificationResponse,
+		int notificationId)
+	{
+		try
+		{
+			await _hubContext
+				.Clients
+				.User(userId)
+				.NotificationUpdated(notificationResponse);
+		}
+		catch (Exception ex)
+		{
+			_logger.LogWarning(
+				ex,
+				"Real-time update of notification {NotificationId} to user {UserId} failed",
+				notificationId,
+				userId);
 		}
 	}
 }

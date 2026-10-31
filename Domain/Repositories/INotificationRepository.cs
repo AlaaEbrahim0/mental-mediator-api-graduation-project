@@ -12,5 +12,16 @@ namespace Domain.Repositories
 		void UpdateNotification(Notification notification);
 		Task<int> GetUnreadCountAsync(string userId);
 		Task<bool> MarkMultipleAsReadAsync(IEnumerable<int> ids, string userId);
+		Task<bool> ExistsByDeduplicationKeyAsync(string userId, string deduplicationKey);
+		Task<Notification> UpsertRoomMessageNotificationAsync(
+			string userId,
+			int roomId,
+			string roomName,
+			string senderName,
+			DateTime now);
+		Task<IReadOnlyList<Notification>> MarkRoomNotificationsAsReadAsync(
+			string userId,
+			int roomId,
+			DateTimeOffset readAt);
 	}
 }

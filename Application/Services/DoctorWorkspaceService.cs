@@ -4,6 +4,7 @@ using Application.Dtos.DoctorWorkspaceDtos;
 using Domain.Entities;
 using Domain.Enums;
 using Domain.Errors;
+using Microsoft.Extensions.Logging;
 using Shared;
 
 namespace Application.Services;
@@ -31,15 +32,21 @@ public class DoctorWorkspaceService : IDoctorWorkspaceService
 	private readonly IRepositoryManager _repos;
 	private readonly IUserClaimsService _claims;
 	private readonly IPatientDirectoryLookup _patients;
+	private readonly INotificationSender _notificationSender;
+	private readonly ILogger<DoctorWorkspaceService>? _logger;
 
 	public DoctorWorkspaceService(
 		IRepositoryManager repos,
 		IUserClaimsService claims,
-		IPatientDirectoryLookup patients)
+		IPatientDirectoryLookup patients,
+		INotificationSender notificationSender,
+		ILogger<DoctorWorkspaceService>? logger = null)
 	{
 		_repos = repos;
 		_claims = claims;
 		_patients = patients;
+		_notificationSender = notificationSender;
+		_logger = logger;
 	}
 
 	public async Task<Result<DoctorDashboardResponse>> GetDashboardAsync()
@@ -249,6 +256,11 @@ public class DoctorWorkspaceService : IDoctorWorkspaceService
 		_repos.DoctorWorkspace.CreateNote(note);
 		await _repos.SaveAsync();
 
+		if (note.IsPatientVisible)
+		{
+			await NotifyPatientShareAsync(patientId, note.Id, isFollowUp: false);
+		}
+
 		var names = await _patients.GetDisplayNamesAsync(new[] { patientId });
 		return MapNote(note, names.GetValueOrDefault(patientId));
 	}
@@ -289,14 +301,21 @@ public class DoctorWorkspaceService : IDoctorWorkspaceService
 			note.Body = body;
 		}
 
+		var becameVisible = false;
 		if (request.IsPatientVisible.HasValue)
 		{
+			becameVisible = request.IsPatientVisible.Value && !note.IsPatientVisible;
 			note.IsPatientVisible = request.IsPatientVisible.Value;
 		}
 
 		note.UpdatedAtUtc = DateTime.UtcNow;
 		_repos.DoctorWorkspace.UpdateNote(note);
 		await _repos.SaveAsync();
+
+		if (becameVisible)
+		{
+			await NotifyPatientShareAsync(note.PatientId, note.Id, isFollowUp: false);
+		}
 
 		var names = await _patients.GetDisplayNamesAsync(new[] { note.PatientId });
 		return MapNote(note, names.GetValueOrDefault(note.PatientId));
@@ -370,6 +389,11 @@ public class DoctorWorkspaceService : IDoctorWorkspaceService
 		_repos.DoctorWorkspace.CreateFollowUp(followUp);
 		await _repos.SaveAsync();
 
+		if (followUp.IsPatientVisible)
+		{
+			await NotifyPatientShareAsync(patientId, followUp.Id, isFollowUp: true);
+		}
+
 		var names = await _patients.GetDisplayNamesAsync(new[] { patientId });
 		return MapFollowUp(followUp, names.GetValueOrDefault(patientId));
 	}
@@ -405,9 +429,11 @@ public class DoctorWorkspaceService : IDoctorWorkspaceService
 			changed = true;
 		}
 
+		var becameVisible = false;
 		if (request.IsPatientVisible.HasValue &&
 			followUp.IsPatientVisible != request.IsPatientVisible.Value)
 		{
+			becameVisible = request.IsPatientVisible.Value;
 			followUp.IsPatientVisible = request.IsPatientVisible.Value;
 			changed = true;
 		}
@@ -418,8 +444,56 @@ public class DoctorWorkspaceService : IDoctorWorkspaceService
 			await _repos.SaveAsync();
 		}
 
+		if (becameVisible)
+		{
+			await NotifyPatientShareAsync(followUp.PatientId, followUp.Id, isFollowUp: true);
+		}
+
 		var names = await _patients.GetDisplayNamesAsync(new[] { followUp.PatientId });
 		return MapFollowUp(followUp, names.GetValueOrDefault(followUp.PatientId));
+	}
+
+	/// <summary>
+	/// Tells a patient that a note or follow-up became visible to them. The
+	/// notification intentionally carries no clinical content; the patient
+	/// opens the history page to read the shared record.
+	/// </summary>
+	private async Task NotifyPatientShareAsync(string patientId, int resourceId, bool isFollowUp)
+	{
+		var key = isFollowUp ? $"follow-up:{resourceId}" : $"patient-note:{resourceId}";
+		if (await _repos.Notifications.ExistsByDeduplicationKeyAsync(patientId, key))
+		{
+			return;
+		}
+
+		var notification = Notification.CreateNotification(
+			patientId,
+			isFollowUp ? "Follow-up shared with you" : "Care note shared with you",
+			$"{_claims.GetUserName()} shared {(isFollowUp ? "a follow-up update" : "a care note")} with you.",
+			new Dictionary<string, int>
+			{
+				{ isFollowUp ? "followUpId" : "noteId", resourceId }
+			},
+			_claims.GetUserName(),
+			_claims.GetPhotoUrl(),
+			isFollowUp ? NotificationType.FollowUp : NotificationType.PatientNote,
+			resourceId,
+			key);
+
+		try
+		{
+			await _notificationSender.SendNotificationAsync(notification);
+		}
+		catch (Exception ex)
+		{
+			// The note is already saved; a failed notification must not undo or
+			// fail the sharing action.
+			_logger?.LogWarning(
+				ex,
+				"Could not notify patient about shared {ResourceType} {ResourceId}",
+				isFollowUp ? "follow-up" : "note",
+				resourceId);
+		}
 	}
 
 	private async Task<bool> AppointmentBelongsToAsync(int appointmentId, string doctorId, string patientId)

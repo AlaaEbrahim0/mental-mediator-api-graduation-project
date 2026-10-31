@@ -103,12 +103,14 @@ public class AuthService : IAuthService
 
 		var token = await _userManager.GenerateEmailConfirmationTokenAsync(user);
 		var confirmationLink = generateEmailConfirmationLink(user.Id, token);
+		var emailContent = _MailTemplates.EmailConfirmation(user.FullName, confirmationLink);
 
 		var mailResult = await _mailService.SendEmailAsync(new MailRequest()
 		{
 			ToEmail = user.Email,
-			Subject = "EMAIL CONFIRMATION",
-			Body = _MailTemplates.EmailConfirmation(user.FullName, confirmationLink)
+			Subject = emailContent.Subject,
+			Body = emailContent.Html,
+			TextBody = emailContent.Text
 		});
 
 		// The confirmation link only reaches the user through this email, so a
@@ -447,10 +449,20 @@ public class AuthService : IAuthService
 			return UserErrors.InvalidToken(sb.ToString());
 		}
 
+		var roles = await _userManager.GetRolesAsync(user);
+		var portalBaseUrl = AuthHandoff.TryResolveConfiguredBaseUrl(
+			_configuration,
+			AuthHandoff.SettingForRoles(roles),
+			_logger);
+
 		return new EmailConfirmationResponse()
 		{
 			Email = user.Email,
-			Message = "Email has been confirmed successfully"
+			Message = "Email has been confirmed successfully",
+			// Only a validated configured origin is returned. When the setting
+			// is missing or unsafe the page shows success without redirecting,
+			// so a bad Host header can never become an open redirect.
+			RedirectUrl = portalBaseUrl is null ? null : $"{portalBaseUrl}/login?confirmed=1"
 		};
 	}
 
@@ -467,12 +479,14 @@ public class AuthService : IAuthService
 
 		var token = await _userManager.GeneratePasswordResetTokenAsync(user);
 		var resetPasswordLink = await GenerateResetPasswordLinkAsync(user, token);
+		var emailContent = _MailTemplates.ResetPassword(resetPasswordLink);
 
 		var mailResult = await _mailService.SendEmailAsync(new MailRequest
 		{
-			Subject = "RESET PASSWORD",
+			Subject = emailContent.Subject,
 			ToEmail = email,
-			Body = _MailTemplates.ResetPassword(resetPasswordLink)
+			Body = emailContent.Html,
+			TextBody = emailContent.Text
 		});
 
 		// The reset link only reaches the user through this email, so a delivery

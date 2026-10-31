@@ -23,6 +23,7 @@ public class DoctorWorkspaceMetricsTests : IDisposable
 
 	private readonly AppDbContext _context;
 	private readonly DoctorWorkspaceService _service;
+	private readonly FakeNotificationSender _notifications;
 
 	public DoctorWorkspaceMetricsTests()
 	{
@@ -31,16 +32,21 @@ public class DoctorWorkspaceMetricsTests : IDisposable
 			.Options;
 
 		_context = new AppDbContext(options);
-		_service = CreateService(_context, DoctorId);
+		_notifications = new FakeNotificationSender(_context);
+		_service = CreateService(_context, DoctorId, _notifications);
 	}
 
 	public void Dispose() => _context.Dispose();
 
-	private static DoctorWorkspaceService CreateService(AppDbContext context, string doctorId) =>
+	private static DoctorWorkspaceService CreateService(
+		AppDbContext context,
+		string doctorId,
+		FakeNotificationSender? notificationSender = null) =>
 		new(
 			new RepositoryManager(context),
 			new TestUserClaimsService(doctorId),
-			new PatientDirectoryLookup(context));
+			new PatientDirectoryLookup(context),
+			notificationSender ?? new FakeNotificationSender(context));
 
 	private void AddPatient(string id, string firstName, string lastName)
 	{
@@ -236,6 +242,68 @@ public class DoctorWorkspaceMetricsTests : IDisposable
 
 		reopened.Value.Status.Should().Be(FollowUpStatus.Open);
 		reopened.Value.ResolvedAtUtc.Should().BeNull();
+	}
+
+	[Fact]
+	public async Task Sharing_a_note_notifies_the_patient_once_without_clinical_content()
+	{
+		AddPatient("p1", "Alice", "Patient");
+		await _context.SaveChangesAsync();
+
+		var created = await _service.CreateNoteAsync(new Application.Dtos.DoctorWorkspaceDtos.CreatePatientNoteRequest
+		{
+			PatientId = "p1",
+			Title = "Session summary",
+			Body = "Patient reported improvement.",
+			IsPatientVisible = false,
+		});
+		created.IsSuccess.Should().BeTrue();
+		_notifications.Sent.Should().BeEmpty();
+
+		var shared = await _service.UpdateNoteAsync(
+			created.Value.Id,
+			new Application.Dtos.DoctorWorkspaceDtos.UpdatePatientNoteRequest { IsPatientVisible = true });
+		shared.IsSuccess.Should().BeTrue();
+
+		_notifications.Sent.Should().ContainSingle();
+		var notification = _notifications.Sent[0];
+		notification.AppUserId.Should().Be("p1");
+		notification.Type.Should().Be(nameof(NotificationType.PatientNote));
+		notification.Message.Should().NotContain("Session summary");
+		notification.Message.Should().NotContain("improvement");
+
+		await _service.UpdateNoteAsync(
+			created.Value.Id,
+			new Application.Dtos.DoctorWorkspaceDtos.UpdatePatientNoteRequest { IsPatientVisible = false });
+		await _service.UpdateNoteAsync(
+			created.Value.Id,
+			new Application.Dtos.DoctorWorkspaceDtos.UpdatePatientNoteRequest { IsPatientVisible = true });
+		_notifications.Sent.Should().ContainSingle();
+	}
+
+	[Fact]
+	public async Task Sharing_a_follow_up_notifies_the_patient_and_status_changes_do_not()
+	{
+		AddPatient("p1", "Alice", "Patient");
+		await _context.SaveChangesAsync();
+
+		var created = await _service.CreateFollowUpAsync(new Application.Dtos.DoctorWorkspaceDtos.CreateFollowUpRequest
+		{
+			PatientId = "p1",
+			Reason = "Check in",
+			IsPatientVisible = true,
+		});
+		created.IsSuccess.Should().BeTrue();
+
+		_notifications.Sent.Should().ContainSingle();
+		_notifications.Sent[0].Type.Should().Be(nameof(NotificationType.FollowUp));
+		_notifications.Sent[0].AppUserId.Should().Be("p1");
+		_notifications.Sent[0].Message.Should().NotContain("Check in");
+
+		await _service.UpdateFollowUpAsync(
+			created.Value.Id,
+			new Application.Dtos.DoctorWorkspaceDtos.UpdateFollowUpRequest { Status = FollowUpStatus.Done });
+		_notifications.Sent.Should().ContainSingle();
 	}
 
 	[Fact]

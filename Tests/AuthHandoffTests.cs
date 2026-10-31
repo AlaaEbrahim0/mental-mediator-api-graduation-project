@@ -61,6 +61,43 @@ public class AuthHandoffTests
         url.Should().Be("https://nexus-api.runasp.net");
     }
 
+    [Fact]
+    public void A_confirmed_email_redirect_only_uses_a_validated_configured_origin()
+    {
+        var url = AuthHandoff.TryResolveConfiguredBaseUrl(
+            Config("https://patient.example.com/", "https://doctor.example.com"),
+            AuthHandoff.PatientSetting);
+
+        url.Should().Be("https://patient.example.com");
+    }
+
+    [Theory]
+    [InlineData("http://patient.example.com")]
+    [InlineData("javascript:alert(1)")]
+    [InlineData("https://user:pass@patient.example.com")]
+    [InlineData("https://patient.example.com/?next=https://evil.example.com")]
+    [InlineData("https://patient.example.com/#fragment")]
+    [InlineData("not a url")]
+    [InlineData("")]
+    public void An_unsafe_configured_origin_is_not_offered_for_redirect(string configured)
+    {
+        AuthHandoff.TryResolveConfiguredBaseUrl(
+                Config(configured, configured),
+                AuthHandoff.PatientSetting)
+            .Should().BeNull();
+    }
+
+    [Theory]
+    [InlineData("http://localhost:3000")]
+    [InlineData("http://127.0.0.1:3001")]
+    public void Loopback_http_is_allowed_for_local_development(string configured)
+    {
+        AuthHandoff.TryResolveConfiguredBaseUrl(
+                Config(configured, configured),
+                AuthHandoff.PatientSetting)
+            .Should().Be(configured);
+    }
+
     [Theory]
     [InlineData("ExternalAuthentication.RoleUnsupported", "role_unsupported")]
     [InlineData("ExternalAuthentication.EmailUnverified", "email_unverified")]

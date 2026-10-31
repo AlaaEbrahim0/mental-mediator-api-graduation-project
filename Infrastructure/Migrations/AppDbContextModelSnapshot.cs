@@ -698,6 +698,9 @@ namespace Infrastructure.Migrations
                     b.Property<DateTimeOffset?>("ReadAt")
                         .HasColumnType("datetimeoffset");
 
+                    b.Property<int>("RelatedCount")
+                        .HasColumnType("int");
+
                     b.Property<int?>("RelatedResourceId")
                         .HasColumnType("int");
 
@@ -710,7 +713,7 @@ namespace Infrastructure.Migrations
                         .HasColumnType("nvarchar(200)");
 
                     b.Property<string>("Type")
-                        .HasColumnType("nvarchar(max)");
+                        .HasColumnType("nvarchar(450)");
 
                     b.HasKey("Id");
 
@@ -720,7 +723,13 @@ namespace Infrastructure.Migrations
 
                     b.HasIndex("IsRead");
 
+                    b.HasIndex("AppUserId", "DeduplicationKey")
+                        .IsUnique()
+                        .HasFilter("[DeduplicationKey] IS NOT NULL AND [Type] IN ('RoomMessage', 'PostLike', 'FollowUp', 'PatientNote', 'AppointmentCompleted')");
+
                     b.HasIndex("AppUserId", "IsRead");
+
+                    b.HasIndex("AppUserId", "Type", "RelatedResourceId");
 
                     b.ToTable("Notifications");
                 });

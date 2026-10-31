@@ -33,6 +33,7 @@ public class ChatService : IChatService
 	private readonly IRoomPassphraseHasher _passphraseHasher;
 	private readonly IRoomJoinThrottle _joinThrottle;
 	private readonly IStorageService _storageService;
+	private readonly INotificationSender _notificationSender;
 
 	public ChatService(
 		IRepositoryManager repos,
@@ -42,7 +43,8 @@ public class ChatService : IChatService
 		IChatRealtimeNotifier realtimeNotifier,
 		IRoomPassphraseHasher passphraseHasher,
 		IRoomJoinThrottle joinThrottle,
-		IStorageService storageService)
+		IStorageService storageService,
+		INotificationSender notificationSender)
 	{
 		_repos = repos;
 		_userClaimsService = userClaimsService;
@@ -52,6 +54,7 @@ public class ChatService : IChatService
 		_passphraseHasher = passphraseHasher;
 		_joinThrottle = joinThrottle;
 		_storageService = storageService;
+		_notificationSender = notificationSender;
 	}
 
 	public async Task<Result<ChatRoomPageResponse>> GetRoomsAsync(ChatRoomRequestParameters parameters)
@@ -468,9 +471,22 @@ public class ChatService : IChatService
 			return ChatErrors.RoomNotFound();
 		}
 
-		membership!.LastReadAtUtc = DateTime.UtcNow;
+		var readAt = DateTimeOffset.UtcNow;
+		membership!.LastReadAtUtc = readAt.UtcDateTime;
 		_repos.ChatRooms.UpdateMembership(membership);
+
+		// Opening a room resolves its pending notification, but the message
+		// read position above remains the only thing that marks messages read.
+		var readNotifications = await _repos.Notifications.MarkRoomNotificationsAsReadAsync(
+			currentUser.Value.Id,
+			roomId,
+			readAt);
 		await _repos.SaveAsync();
+
+		foreach (var notification in readNotifications)
+		{
+			await _notificationSender.NotifyUpdatedAsync(notification);
+		}
 
 		return Result.Success();
 	}
@@ -667,6 +683,22 @@ public class ChatService : IChatService
 		{
 			trackedRoom.LastMessageAtUtc = message.SentAtUtc;
 			await _repos.SaveAsync();
+		}
+
+		// One aggregated notification per active member. The sender is excluded
+		// and members who left no longer receive room activity. No message text
+		// is copied into the notification.
+		var recipients = await _repos.ChatRooms.GetActiveMembersAsync(roomId, false);
+		foreach (var recipient in recipients
+			         .Where(member => !string.Equals(member.UserId, currentUser.Value.Id, StringComparison.Ordinal))
+			         .DistinctBy(member => member.UserId))
+		{
+			await _notificationSender.SendRoomMessageNotificationAsync(
+				recipient.UserId,
+				roomId,
+				currentRoom.Name,
+				membership.DisplayName,
+				message.SentAtUtc);
 		}
 
 		// Persist before broadcast. The notifier logs and swallows delivery

@@ -8,6 +8,12 @@ public class MailRequest
 	public string? Subject { get; set; }
 
 	public string? Body { get; set; }
+
+	/// <summary>
+	/// Optional plain-text alternative. Clients that cannot or do not render
+	/// HTML receive this version; it never contains a different message.
+	/// </summary>
+	public string? TextBody { get; set; }
 }
 
 public class MailRequestValidator : AbstractValidator<MailRequest>

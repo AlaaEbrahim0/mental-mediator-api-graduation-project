@@ -102,7 +102,12 @@ public class MailService : IMailService
         email.To.Add(MailboxAddress.Parse(mailRequest.ToEmail));
         email.Subject = mailRequest.Subject;
 
-        email.Body = new BodyBuilder { HtmlBody = mailRequest.Body }.ToMessageBody();
+        var body = new BodyBuilder { HtmlBody = mailRequest.Body };
+        if (!string.IsNullOrWhiteSpace(mailRequest.TextBody))
+        {
+            body.TextBody = mailRequest.TextBody;
+        }
+        email.Body = body.ToMessageBody();
 
         return email;
     }

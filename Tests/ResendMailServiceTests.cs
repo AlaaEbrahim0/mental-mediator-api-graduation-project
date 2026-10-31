@@ -33,16 +33,18 @@ public class ResendMailServiceTests
 		public string? CapturedTo { get; private set; }
 		public string? CapturedSubject { get; private set; }
 		public string? CapturedHtml { get; private set; }
+		public string? CapturedText { get; private set; }
 		public string? CapturedFrom { get; private set; }
 
 		public Task<ResendSendResponse?> SendAsync(
-			string from, string to, string subject, string html,
+			string from, string to, string subject, string html, string? text = null,
 			System.Threading.CancellationToken ct = default)
 		{
 			CapturedFrom = from;
 			CapturedTo = to;
 			CapturedSubject = subject;
 			CapturedHtml = html;
+			CapturedText = text;
 
 			if (Throws)
 				throw new System.Exception("simulated provider crash");
@@ -62,7 +64,8 @@ public class ResendMailServiceTests
 	{
 		ToEmail = "recipient@example.com",
 		Subject = "Test Subject",
-		Body = "<p>Test body</p>"
+		Body = "<p>Test body</p>",
+		TextBody = "Test body"
 	};
 
 	private static IMailService CreateService(
@@ -90,6 +93,7 @@ public class ResendMailServiceTests
 		client.CapturedTo.Should().Be("recipient@example.com");
 		client.CapturedSubject.Should().Be("Test Subject");
 		client.CapturedHtml.Should().Be("<p>Test body</p>");
+		client.CapturedText.Should().Be("Test body");
 		client.CapturedFrom.Should().Be($"{TestFromName} <{TestFromEmail}>");
 	}
 

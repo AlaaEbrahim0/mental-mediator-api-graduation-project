@@ -40,9 +40,46 @@ public static class AuthHandoff
 			: PatientSetting;
 
 	/// <summary>
+	/// Reads a configured portal origin and returns it only when it is an
+	/// absolute HTTP(S) URL without credentials, query or fragment. Returning
+	/// null is deliberate: callers that put this value in a browser redirect
+	/// must not fall back to the request Host, which is attacker-controlled.
+	/// </summary>
+	public static string? TryResolveConfiguredBaseUrl(
+		IConfiguration configuration,
+		string settingName,
+		ILogger? logger = null)
+	{
+		var configured = configuration[settingName]?.Trim();
+
+		if (string.IsNullOrWhiteSpace(configured))
+		{
+			logger?.LogWarning(
+				"{Setting} is not configured; no portal redirect will be offered",
+				settingName);
+			return null;
+		}
+
+		if (!Uri.TryCreate(configured, UriKind.Absolute, out var uri) ||
+			(uri.Scheme != Uri.UriSchemeHttps && !(uri.Scheme == Uri.UriSchemeHttp && uri.IsLoopback)) ||
+			!string.IsNullOrEmpty(uri.UserInfo) ||
+			!string.IsNullOrEmpty(uri.Query) ||
+			!string.IsNullOrEmpty(uri.Fragment))
+		{
+			logger?.LogWarning(
+				"{Setting} is not a safe absolute portal URL; no portal redirect will be offered",
+				settingName);
+			return null;
+		}
+
+		return uri.GetLeftPart(UriPartial.Path).TrimEnd('/');
+	}
+
+	/// <summary>
 	/// Configured portal origin, falling back to the request origin when the
-	/// setting is blank. The fallback is logged because a missing value silently
-	/// redirects users to the API host, which looks like a broken login.
+	/// setting is blank or invalid. The OAuth and reset flows need a base URL
+	/// on the same request; the fallback is logged because it silently points
+	/// users at the API host, which looks like a broken login.
 	/// </summary>
 	public static string ResolveBaseUrl(
 		IConfiguration configuration,
@@ -50,16 +87,16 @@ public static class AuthHandoff
 		string settingName,
 		ILogger? logger = null)
 	{
-		var configured = configuration[settingName];
+		var configured = TryResolveConfiguredBaseUrl(configuration, settingName);
 
-		if (!string.IsNullOrWhiteSpace(configured))
+		if (configured is not null)
 		{
-			return configured.TrimEnd('/');
+			return configured;
 		}
 
 		var origin = $"{request.Scheme}://{request.Host}";
 		logger?.LogWarning(
-			"{Setting} is not configured; the sign-in handoff falls back to the request origin {Origin}",
+			"{Setting} did not provide a safe portal origin; the handoff falls back to the request origin {Origin}",
 			settingName,
 			origin);
 

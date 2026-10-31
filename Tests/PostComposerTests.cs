@@ -126,6 +126,43 @@ public class PostComposerTests : IDisposable
 	}
 
 	[Fact]
+	public async Task Liking_a_post_notifies_its_author_once_per_liker()
+	{
+		var post = AddPost(DoctorId);
+		var notifications = new FakeNotificationSender(_context);
+		var patientService = CreateService(PatientId, "Client", notifications);
+
+		await patientService.SetLike(post.Id, true);
+		await patientService.SetLike(post.Id, false);
+		await patientService.SetLike(post.Id, true);
+
+		notifications.Sent.Should().ContainSingle();
+		var notification = notifications.Sent[0];
+		notification.AppUserId.Should().Be(DoctorId);
+		notification.Type.Should().Be(nameof(NotificationType.PostLike));
+		notification.RelatedResourceId.Should().Be(post.Id);
+		notification.ResourcesObject.Should().ContainKey("postId").WhoseValue.Should().Be(post.Id);
+		notification.Message.Should().NotContain("Content");
+
+		var selfNotifications = new FakeNotificationSender();
+		await CreateService(DoctorId, "Doctor", selfNotifications).SetLike(post.Id, true);
+		selfNotifications.Sent.Should().BeEmpty();
+	}
+
+	[Fact]
+	public async Task Anonymous_post_like_notifications_do_not_expose_the_liker()
+	{
+		var post = AddPost(DoctorId, isAnonymous: true);
+		var notifications = new FakeNotificationSender(_context);
+
+		await CreateService(PatientId, "Client", notifications).SetLike(post.Id, true);
+
+		notifications.Sent.Should().ContainSingle();
+		notifications.Sent[0].NotifierUserName.Should().BeNullOrEmpty();
+		notifications.Sent[0].Message.Should().Contain("Someone liked");
+	}
+
+	[Fact]
 	public async Task Anonymous_posts_redact_identity_and_flag_the_authors_own_post()
 	{
 		var post = AddPost(DoctorId, isAnonymous: true);
@@ -596,14 +633,18 @@ public class PostComposerTests : IDisposable
 		error.Should().Contain("at most 5 tags");
 	}
 
-	private PostService CreateService(string userId, string role) =>
+	private PostService CreateService(
+		string userId,
+		string role,
+		FakeNotificationSender? notificationSender = null) =>
 		new(
 			new RepositoryManager(_context),
 			_mapper,
 			new FakeClaims(userId, role),
 			new FakeHateSpeechDetector(),
 			new FakeCacheService(),
-			_storage);
+			_storage,
+			notificationSender ?? new FakeNotificationSender(_context));
 
 	private static CreatePostRequest NewRequest(PostVisibility visibility = PostVisibility.Public) =>
 		new()

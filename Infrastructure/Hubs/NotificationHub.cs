@@ -26,5 +26,6 @@ public class NotificationHub : Hub<INotificationClient>
 public interface INotificationClient
 {
 	Task ReceiveNotification(NotificationResponse notification);
+	Task NotificationUpdated(NotificationResponse notification);
 	Task ReceiveMessage(string message);
 }

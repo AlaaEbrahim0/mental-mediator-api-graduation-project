@@ -23,4 +23,6 @@ public record NotificationResponse
 	public string? Type { get; set; }
 
 	public int? RelatedResourceId { get; set; }
+
+	public int RelatedCount { get; set; } = 1;
 }

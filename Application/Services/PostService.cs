@@ -23,9 +23,10 @@ namespace Application.Services
 		private readonly IHateSpeechDetector _hateSpeechDetector;
 		private readonly IStorageService _storageService;
 		private readonly ICacheService _cacheService;
+		private readonly INotificationSender _notificationSender;
 		private readonly ILogger<PostService>? _logger;
 
-		public PostService(IRepositoryManager repos, IMapper mapper, IUserClaimsService userClaimsService, IHateSpeechDetector hateSpeechDetector, ICacheService cacheService, IStorageService storageService, ILogger<PostService>? logger = null)
+		public PostService(IRepositoryManager repos, IMapper mapper, IUserClaimsService userClaimsService, IHateSpeechDetector hateSpeechDetector, ICacheService cacheService, IStorageService storageService, INotificationSender notificationSender, ILogger<PostService>? logger = null)
 		{
 			_repos = repos;
 			_mapper = mapper;
@@ -33,6 +34,7 @@ namespace Application.Services
 			_hateSpeechDetector = hateSpeechDetector;
 			_cacheService = cacheService;
 			_storageService = storageService;
+			_notificationSender = notificationSender;
 			_logger = logger;
 		}
 
@@ -356,9 +358,64 @@ namespace Application.Services
 			await _repos.Posts.SetLike(id, userId, liked);
 			await _repos.SaveAsync();
 
+			if (liked)
+			{
+				await NotifyPostLikeAsync(post, userId);
+			}
+
 			var response = ToResponse(post, userId, role);
 			await PopulateLikeStateAsync(post, response);
 			return response;
+		}
+
+		/// <summary>
+		/// Tells the author once per liker and post. The notification carries the
+		/// post id and the liker's public name only; the post body, category and
+		/// audience are never copied into it.
+		/// </summary>
+		private async Task NotifyPostLikeAsync(Post post, string userId)
+		{
+			if (post.IsDraft ||
+				string.IsNullOrEmpty(post.AppUserId) ||
+				string.Equals(post.AppUserId, userId, StringComparison.Ordinal))
+			{
+				return;
+			}
+
+			var key = $"post-like:{post.Id}:{userId}";
+			if (await _repos.Notifications.ExistsByDeduplicationKeyAsync(post.AppUserId, key))
+			{
+				return;
+			}
+
+			var likerName = post.IsAnonymous ? string.Empty : _userClaimsService.GetUserName();
+			var likerPhoto = post.IsAnonymous ? string.Empty : _userClaimsService.GetPhotoUrl();
+			var notification = Notification.CreateNotification(
+				post.AppUserId,
+				"New like on your post",
+				post.IsAnonymous
+					? "Someone liked your anonymous post."
+					: $"{likerName} liked your post.",
+				new Dictionary<string, int> { { "postId", post.Id } },
+				likerName,
+				likerPhoto,
+				NotificationType.PostLike,
+				post.Id,
+				key);
+
+			try
+			{
+				await _notificationSender.SendNotificationAsync(notification);
+			}
+			catch (Exception ex)
+			{
+				// A like must not fail because its courtesy notification could
+				// not be stored or delivered.
+				_logger?.LogWarning(
+					ex,
+					"Could not send the like notification for post {PostId}",
+					post.Id);
+			}
 		}
 
 		public async Task<Result<StoredMedia>> UploadMediaAsync(IFormFile file)

@@ -59,6 +59,23 @@
             var message = document.getElementById("message");
             var status = document.getElementById("status");
 
+            // The API chooses the portal from the account role and configured
+            // origin. The client only accepts an absolute HTTP(S) URL without
+            // credentials, so a modified payload cannot become an open redirect.
+            function safeRedirect(value) {
+                if (typeof value !== "string" || !value) return null;
+                try {
+                    var url = new URL(value);
+                    var localHttp = url.protocol === "http:" &&
+                        ["localhost", "127.0.0.1", "[::1]", "::1"].indexOf(url.hostname) !== -1;
+                    if (url.protocol !== "https:" && !localHttp) return null;
+                    if (url.username || url.password) return null;
+                    return url.href;
+                } catch (error) {
+                    return null;
+                }
+            }
+
             if (!id || !token) {
                 message.textContent = "This confirmation link is incomplete or has already been used.";
                 return;
@@ -70,13 +87,21 @@
                 body: JSON.stringify({ id: id, token: token })
             })
                 .then(function (response) {
-                    if (response.ok) {
-                        window.location.replace("/successfulEmailConfirmation.html");
-                        return null;
+                    if (!response.ok) {
+                        return response.json().then(function (payload) {
+                            throw new Error(payload && (payload.detail || payload.title) ||
+                                "The confirmation link is invalid or has expired.");
+                        });
                     }
+
                     return response.json().then(function (payload) {
-                        throw new Error(payload && (payload.detail || payload.title) ||
-                            "The confirmation link is invalid or has expired.");
+                        var target = safeRedirect(payload && payload.redirectUrl);
+                        if (target) {
+                            window.location.replace(target);
+                            return;
+                        }
+
+                        window.location.replace("/successfulEmailConfirmation.html");
                     });
                 })
                 .catch(function (error) {
