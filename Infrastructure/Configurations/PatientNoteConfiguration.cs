@@ -37,5 +37,7 @@ public class PatientNoteConfiguration : IEntityTypeConfiguration<PatientNote>
 
 		builder.HasIndex(x => new { x.DoctorId, x.CreatedAtUtc });
 		builder.HasIndex(x => new { x.PatientId, x.CreatedAtUtc });
+		builder.Property(x => x.IsPatientVisible).HasDefaultValue(false);
+		builder.HasIndex(x => new { x.PatientId, x.IsPatientVisible });
 	}
 }

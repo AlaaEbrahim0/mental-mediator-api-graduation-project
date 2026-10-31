@@ -16,6 +16,16 @@ public interface IAppointmentRepository
 	Task<Appointment?> GetById(int appointmentId, bool trackChanges);
 
 	/// <summary>
+	/// Chronological history for one patient, optionally limited to one doctor.
+	/// Used by the patient-history views; the caller enforces who may ask.
+	/// </summary>
+	Task<IReadOnlyList<Appointment>> GetHistoryForPatientAsync(
+		string patientId,
+		string? doctorId,
+		int take,
+		bool trackChanges);
+
+	/// <summary>
 	/// Appointments that currently reserve the doctor's time: Pending requests
 	/// hold their slot until confirmed or rejected, and Confirmed appointments
 	/// are booked. Cancelled, rejected and completed appointments do not

@@ -32,7 +32,8 @@ public class CreatePostRequest
 	/// <summary>Required for SpecificGroup; a chat room the author belongs to.</summary>
 	public int? TargetGroupId { get; set; }
 
-	public bool IsAnonymous { get; set; }
+	/// <summary>Null on an edit preserves the stored anonymity preference.</summary>
+	public bool? IsAnonymous { get; set; }
 
 	/// <summary>
 	/// Drafts may be incomplete and are readable only by their owner and

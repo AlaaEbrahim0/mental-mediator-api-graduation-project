@@ -240,6 +240,7 @@ public static class DependencyInjection
 			.AddScoped<IAdminService, AdminService>()
 			.AddScoped<IChatService, ChatService>()
 			.AddScoped<IDoctorWorkspaceService, DoctorWorkspaceService>()
+			.AddScoped<IPatientHistoryService, PatientHistoryService>()
 			.AddScoped<IPatientDirectoryLookup, PatientDirectoryLookup>()
 			.AddSingleton<IChatConnectionRegistry, ChatConnectionRegistry>()
 			.AddSingleton<IChatRealtimeNotifier, ChatRealtimeNotifier>()

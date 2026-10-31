@@ -333,6 +333,46 @@ public class AppointmentRepository : RepositoryBase<Appointment>, IAppointmentRe
 		Update(appointment);
 	}
 
+	public async Task<IReadOnlyList<Appointment>> GetHistoryForPatientAsync(
+		string patientId,
+		string? doctorId,
+		int take,
+		bool trackChanges)
+	{
+		var query = FindByCondition(
+			appointment => appointment.UserId == patientId &&
+				 (string.IsNullOrWhiteSpace(doctorId) || appointment.DoctorId == doctorId),
+			trackChanges);
+
+		return await query
+			.Include(appointment => appointment.User)
+			.Include(appointment => appointment.Doctor)
+			.OrderByDescending(appointment => appointment.StartTime)
+			.ThenByDescending(appointment => appointment.Id)
+			.Take(take)
+			.Select(appointment => new Appointment
+			{
+				Id = appointment.Id,
+				DoctorId = appointment.DoctorId,
+				UserId = appointment.UserId,
+				Fees = appointment.Fees,
+				ClientName = appointment.User.FullName,
+				DoctorName = appointment.Doctor.FullName,
+				DoctorPhotoUrl = appointment.Doctor.PhotoUrl,
+				ClientPhotoUrl = appointment.User.PhotoUrl,
+				ClientEmail = appointment.User.Email!,
+				DoctorEmail = appointment.Doctor.Email!,
+				StartTime = appointment.StartTime,
+				Duration = appointment.Duration,
+				Status = appointment.Status,
+				Location = appointment.Location,
+				Reason = appointment.Reason,
+				CancellationReason = appointment.CancellationReason,
+				RejectionReason = appointment.RejectionReason,
+			})
+			.ToListAsync();
+	}
+
 	public async Task<(int totalAppointments, decimal totalProfit)> GetDoctorStats(string doctorId)
 	{
 		// A dashboard scalar must not materialize the doctor's appointment

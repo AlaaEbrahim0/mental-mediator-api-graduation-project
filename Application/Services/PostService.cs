@@ -145,6 +145,7 @@ namespace Application.Services
 			post.Visibility = visibility;
 			post.TargetChatRoomId = visibility == PostVisibility.SpecificGroup ? postRequest.TargetGroupId : null;
 			post.IsDraft = postRequest.IsDraft;
+			post.IsAnonymous = postRequest.IsAnonymous ?? false;
 
 			var mediaResult = await ResolveMediaAsync(postRequest.Media, postRequest.PhotoPost, Array.Empty<PostMediaRequest>());
 			if (mediaResult.IsFailure)
@@ -156,7 +157,7 @@ namespace Application.Services
 			post.AppUserId = userId;
 			post.PostedOn = DateTime.UtcNow;
 
-			if (!postRequest.IsAnonymous)
+			if (!(postRequest.IsAnonymous ?? false))
 			{
 				post.Username = _userClaimsService.GetUserName();
 			}
@@ -307,6 +308,11 @@ namespace Application.Services
 
 			var currentMedia = PostMediaCodec.ToRequestList(post.MediaJson);
 			await DetachAndDeleteRemovedMediaAsync(post, previousMedia, currentMedia);
+
+			if (updatePostRequest.IsAnonymous.HasValue)
+			{
+				post.IsAnonymous = updatePostRequest.IsAnonymous.Value;
+			}
 
 			_repos.Posts.UpdatePost(post);
 			await _repos.SaveAsync();

@@ -51,6 +51,22 @@ public class DoctorWorkspaceRepository : IDoctorWorkspaceRepository
 			.ToListAsync();
 	}
 
+	public async Task<IReadOnlyList<PatientNote>> GetVisibleNotesForPatientAsync(string patientId, int take) =>
+		await Notes(false)
+			.Where(note => note.PatientId == patientId && note.IsPatientVisible)
+			.OrderByDescending(note => note.UpdatedAtUtc ?? note.CreatedAtUtc)
+			.ThenByDescending(note => note.Id)
+			.Take(take)
+			.ToListAsync();
+
+	public async Task<IReadOnlyList<PatientNote>> GetNotesForDoctorPatientAsync(string doctorId, string patientId, int take) =>
+		await Notes(false)
+			.Where(note => note.DoctorId == doctorId && note.PatientId == patientId)
+			.OrderByDescending(note => note.CreatedAtUtc)
+			.ThenByDescending(note => note.Id)
+			.Take(take)
+			.ToListAsync();
+
 	public async Task<IReadOnlyList<FollowUp>> GetFollowUpsAsync(
 		string doctorId,
 		FollowUpStatus? status,
@@ -82,6 +98,22 @@ public class DoctorWorkspaceRepository : IDoctorWorkspaceRepository
 
 	public Task<int> CountOpenFollowUpsAsync(string doctorId) =>
 		FollowUps(false).CountAsync(x => x.DoctorId == doctorId && x.Status == FollowUpStatus.Open);
+
+	public async Task<IReadOnlyList<FollowUp>> GetVisibleFollowUpsForPatientAsync(string patientId, int take) =>
+		await FollowUps(false)
+			.Where(followUp => followUp.PatientId == patientId && followUp.IsPatientVisible)
+			.OrderByDescending(followUp => followUp.DueAtUtc ?? followUp.CreatedAtUtc)
+			.ThenByDescending(followUp => followUp.Id)
+			.Take(take)
+			.ToListAsync();
+
+	public async Task<IReadOnlyList<FollowUp>> GetFollowUpsForDoctorPatientAsync(string doctorId, string patientId, int take) =>
+		await FollowUps(false)
+			.Where(followUp => followUp.DoctorId == doctorId && followUp.PatientId == patientId)
+			.OrderByDescending(followUp => followUp.DueAtUtc ?? followUp.CreatedAtUtc)
+			.ThenByDescending(followUp => followUp.Id)
+			.Take(take)
+			.ToListAsync();
 
 	public async Task<IReadOnlyList<FollowUp>> GetDueOpenFollowUpsAsync(
 		string doctorId,

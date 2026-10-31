@@ -74,6 +74,8 @@ public class PatientNoteResponse
 	public DateTime CreatedAtUtc { get; set; }
 
 	public DateTime? UpdatedAtUtc { get; set; }
+
+	public bool IsPatientVisible { get; set; }
 }
 
 public class CreatePatientNoteRequest
@@ -85,6 +87,9 @@ public class CreatePatientNoteRequest
 	public string? Title { get; set; }
 
 	public string? Body { get; set; }
+
+	/// <summary>Share the note with the patient's own history.</summary>
+	public bool IsPatientVisible { get; set; }
 }
 
 public class UpdatePatientNoteRequest
@@ -92,6 +97,8 @@ public class UpdatePatientNoteRequest
 	public string? Title { get; set; }
 
 	public string? Body { get; set; }
+
+	public bool? IsPatientVisible { get; set; }
 }
 
 public class FollowUpResponse
@@ -113,6 +120,8 @@ public class FollowUpResponse
 	public DateTime CreatedAtUtc { get; set; }
 
 	public DateTime? ResolvedAtUtc { get; set; }
+
+	public bool IsPatientVisible { get; set; }
 }
 
 public class CreateFollowUpRequest
@@ -124,9 +133,15 @@ public class CreateFollowUpRequest
 	public string? Reason { get; set; }
 
 	public DateTime? DueAtUtc { get; set; }
+
+	/// <summary>Share the follow-up instructions with the patient.</summary>
+	public bool IsPatientVisible { get; set; }
 }
 
 public class UpdateFollowUpRequest
 {
-	public FollowUpStatus Status { get; set; }
+	/// <summary>Omitted leaves the current status unchanged.</summary>
+	public FollowUpStatus? Status { get; set; }
+
+	public bool? IsPatientVisible { get; set; }
 }

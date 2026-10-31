@@ -26,4 +26,7 @@ public class FollowUp
 	public DateTime CreatedAtUtc { get; set; }
 
 	public DateTime? ResolvedAtUtc { get; set; }
+
+	/// <summary>Explicitly shared with the patient; defaults to private.</summary>
+	public bool IsPatientVisible { get; set; }
 }

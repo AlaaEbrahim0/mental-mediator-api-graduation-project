@@ -628,6 +628,11 @@ namespace Infrastructure.Migrations
                     b.Property<DateTime?>("DueAtUtc")
                         .HasColumnType("datetime2");
 
+                    b.Property<bool>("IsPatientVisible")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(false);
+
                     b.Property<string>("PatientId")
                         .IsRequired()
                         .HasMaxLength(450)
@@ -647,6 +652,8 @@ namespace Infrastructure.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("AppointmentId");
+
+                    b.HasIndex("PatientId", "IsPatientVisible");
 
                     b.HasIndex("PatientId", "Status");
 
@@ -742,6 +749,11 @@ namespace Infrastructure.Migrations
                         .HasMaxLength(450)
                         .HasColumnType("nvarchar(450)");
 
+                    b.Property<bool>("IsPatientVisible")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(false);
+
                     b.Property<string>("PatientId")
                         .IsRequired()
                         .HasMaxLength(450)
@@ -762,6 +774,8 @@ namespace Infrastructure.Migrations
                     b.HasIndex("DoctorId", "CreatedAtUtc");
 
                     b.HasIndex("PatientId", "CreatedAtUtc");
+
+                    b.HasIndex("PatientId", "IsPatientVisible");
 
                     b.ToTable("PatientNotes");
                 });

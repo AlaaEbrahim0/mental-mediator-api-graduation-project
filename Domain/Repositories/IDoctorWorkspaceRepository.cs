@@ -19,6 +19,9 @@ public interface IDoctorWorkspaceRepository
 
 	Task<IReadOnlyList<PatientNote>> GetRecentNotesAsync(string doctorId, DateTime sinceUtc, int take);
 
+	Task<IReadOnlyList<PatientNote>> GetVisibleNotesForPatientAsync(string patientId, int take);
+	Task<IReadOnlyList<PatientNote>> GetNotesForDoctorPatientAsync(string doctorId, string patientId, int take);
+
 	Task<IReadOnlyList<FollowUp>> GetFollowUpsAsync(
 		string doctorId,
 		FollowUpStatus? status,
@@ -35,4 +38,7 @@ public interface IDoctorWorkspaceRepository
 
 	/// <summary>Open follow-ups that are due or overdue, oldest due date first.</summary>
 	Task<IReadOnlyList<FollowUp>> GetDueOpenFollowUpsAsync(string doctorId, DateTime nowUtc, int take);
+
+	Task<IReadOnlyList<FollowUp>> GetVisibleFollowUpsForPatientAsync(string patientId, int take);
+	Task<IReadOnlyList<FollowUp>> GetFollowUpsForDoctorPatientAsync(string doctorId, string patientId, int take);
 }

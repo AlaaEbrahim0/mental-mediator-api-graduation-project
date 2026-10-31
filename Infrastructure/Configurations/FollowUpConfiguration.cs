@@ -34,5 +34,7 @@ public class FollowUpConfiguration : IEntityTypeConfiguration<FollowUp>
 
 		builder.HasIndex(x => new { x.DoctorId, x.Status, x.DueAtUtc });
 		builder.HasIndex(x => new { x.PatientId, x.Status });
+		builder.Property(x => x.IsPatientVisible).HasDefaultValue(false);
+		builder.HasIndex(x => new { x.PatientId, x.IsPatientVisible });
 	}
 }

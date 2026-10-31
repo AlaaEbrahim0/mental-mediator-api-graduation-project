@@ -22,4 +22,10 @@ public class PatientNote
 	public DateTime CreatedAtUtc { get; set; }
 
 	public DateTime? UpdatedAtUtc { get; set; }
+
+	/// <summary>
+	/// Explicitly shared with the patient. Existing/legacy notes stay private
+	/// because the column defaults to false and is only set by a doctor.
+	/// </summary>
+	public bool IsPatientVisible { get; set; }
 }

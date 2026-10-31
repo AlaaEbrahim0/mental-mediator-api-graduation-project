@@ -243,6 +243,7 @@ public class DoctorWorkspaceService : IDoctorWorkspaceService
 			Title = title,
 			Body = body,
 			CreatedAtUtc = DateTime.UtcNow,
+			IsPatientVisible = request.IsPatientVisible,
 		};
 
 		_repos.DoctorWorkspace.CreateNote(note);
@@ -286,6 +287,11 @@ public class DoctorWorkspaceService : IDoctorWorkspaceService
 			}
 
 			note.Body = body;
+		}
+
+		if (request.IsPatientVisible.HasValue)
+		{
+			note.IsPatientVisible = request.IsPatientVisible.Value;
 		}
 
 		note.UpdatedAtUtc = DateTime.UtcNow;
@@ -358,6 +364,7 @@ public class DoctorWorkspaceService : IDoctorWorkspaceService
 			Status = FollowUpStatus.Open,
 			DueAtUtc = request.DueAtUtc,
 			CreatedAtUtc = now,
+			IsPatientVisible = request.IsPatientVisible,
 		};
 
 		_repos.DoctorWorkspace.CreateFollowUp(followUp);
@@ -377,7 +384,7 @@ public class DoctorWorkspaceService : IDoctorWorkspaceService
 			return DoctorWorkspaceErrors.NotAvailable();
 		}
 
-		if (!Enum.IsDefined(request.Status))
+		if (request.Status.HasValue && !Enum.IsDefined(request.Status.Value))
 		{
 			return DoctorWorkspaceErrors.InvalidFollowUpStatus();
 		}
@@ -388,13 +395,25 @@ public class DoctorWorkspaceService : IDoctorWorkspaceService
 			return DoctorWorkspaceErrors.FollowUpNotFound();
 		}
 
-		if (followUp.Status != request.Status)
+		var changed = false;
+		if (request.Status.HasValue && followUp.Status != request.Status.Value)
 		{
-			followUp.Status = request.Status;
-			followUp.ResolvedAtUtc = request.Status == FollowUpStatus.Open
+			followUp.Status = request.Status.Value;
+			followUp.ResolvedAtUtc = request.Status.Value == FollowUpStatus.Open
 				? null
 				: DateTime.UtcNow;
+			changed = true;
+		}
 
+		if (request.IsPatientVisible.HasValue &&
+			followUp.IsPatientVisible != request.IsPatientVisible.Value)
+		{
+			followUp.IsPatientVisible = request.IsPatientVisible.Value;
+			changed = true;
+		}
+
+		if (changed)
+		{
 			_repos.DoctorWorkspace.UpdateFollowUp(followUp);
 			await _repos.SaveAsync();
 		}
@@ -445,6 +464,7 @@ public class DoctorWorkspaceService : IDoctorWorkspaceService
 			Body = note.Body,
 			CreatedAtUtc = note.CreatedAtUtc,
 			UpdatedAtUtc = note.UpdatedAtUtc,
+			IsPatientVisible = note.IsPatientVisible,
 		};
 
 	private static FollowUpResponse MapFollowUp(FollowUp followUp, string? patientName) =>
@@ -459,5 +479,6 @@ public class DoctorWorkspaceService : IDoctorWorkspaceService
 			DueAtUtc = followUp.DueAtUtc,
 			CreatedAtUtc = followUp.CreatedAtUtc,
 			ResolvedAtUtc = followUp.ResolvedAtUtc,
+			IsPatientVisible = followUp.IsPatientVisible,
 		};
 }
