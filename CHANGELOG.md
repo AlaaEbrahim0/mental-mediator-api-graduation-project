@@ -11,6 +11,37 @@ release tags; entries are dated by the day the work landed on `master`.
 Nothing queued. Under the freeze, anything that is not a defect fix is recorded as a deferred
 item in [`docs/KNOWN_LIMITATIONS.md`](docs/KNOWN_LIMITATIONS.md) instead of being scheduled here.
 
+## [2026-11-01] — Google OAuth removal
+
+The patient portal's Google sign-in handoff could not establish a session, so the button was a
+dead end; per project decision the external-login path was removed entirely.
+Baseline: `dotnet build -c Release` → 0 errors, 6 warnings; `dotnet test -c Release` →
+**230 passed** (was 265 before the OAuth-flow tests went).
+
+### Removed
+
+- `GET /api/auth/external-login`, `GET /api/auth/external-login-callback` and
+  `GET /api/auth/exchange-token` from `AuthController`, plus `AuthService.ExternalLoginAsync`
+  and its private helpers, the two `IAuthService` contract members, the `AddGoogle`
+  registration and its `OnRemoteFailure` handler, `GoogleAuthenticationOptions`,
+  `ExternalAuthenticationErrors`, `ExternalLoginProfile`, and the `oauth-handoff` rate-limit
+  policy (commit `b4ef076`).
+- `GoogleAuthentication` sections from `appsettings*.json` and `.env.example`
+  (`GoogleAuthentication__Id` / `__Secret`).
+- The dead OAuth-handoff surface on `AuthHandoff` (`PublicErrorCode`,
+  `BuildFailureRedirect`, `BuildHandoffRedirect`, the `ExternalAuthentication.*` code map) and
+  its tests; `AuthHandoff` now only resolves portal origins for confirmation/reset links.
+- `PRODUCTION_GOOGLE_ID` / `PRODUCTION_GOOGLE_SECRET` from the CI pipeline: the env wiring,
+  the fail-if-missing checks, the generated `appsettings.Production.json` block, and the
+  publish-output validation. The GitHub secrets themselves can now be deleted from the repo.
+- The OAuth endpoints from `docs/openapi.json`.
+
+### Changed
+
+- Sign-in is password-only on both portals. [`docs/adr/0003`](docs/adr/0003-auth-channels-doctor-password-patient-google.md)
+  is superseded; `docs/ARCHITECTURE.md`, `DEPLOYMENT.md`, `RUNBOOK.md`, `KNOWN_LIMITATIONS.md`
+  and `README.md` were corrected in the same pass.
+
 ## [2026-11-01] — Stabilization pass
 
 Baseline before and after: `dotnet build -c Release` → **0 errors, 6 warnings** (the two NuGet

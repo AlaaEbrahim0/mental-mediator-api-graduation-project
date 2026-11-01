@@ -48,7 +48,7 @@ architecture, EF Core + SQL Server, SignalR, external ML moderation service.
 ```bash
 dotnet restore
 dotnet build -c Release                 # 0 errors, 6 warnings (NU1903 AutoMapper 12.0.1, NU1902 MailKit 4.3.0)
-dotnet test  -c Release                 # 265 passed, 0 failed
+dotnet test  -c Release                 # 230 passed, 0 failed
 dotnet run --project API --launch-profile https   # https://localhost:7235 + http://localhost:5184, /swagger
 ```
 
@@ -93,7 +93,7 @@ Infrastructure/     Data/ (AppDbContext, DbInitializer), Configurations/ (EF ent
                     HateSpeech*, ChatContentModerator, News, Resend), Hubs/, Caching/, Utilities/,
                     Migrations/ (37 migrations), BackgroundJobs/ (HostingRefresher — DORMANT)
 Shared/             Result.cs, Error.cs, ErrorType.cs, PagingExtensions.cs, RequestParameters/
-Tests/              xUnit + FluentAssertions + EF InMemory — 265 tests, registered in the solution
+Tests/              xUnit + FluentAssertions + EF InMemory — 230 tests, registered in the solution
 scripts/            reset-demo-data.sql (guarded), seed.sql (guarded, idempotent, fictional data)
 docs/               ARCHITECTURE.md, DEPLOYMENT.md, RUNBOOK.md, KNOWN_LIMITATIONS.md,
                     adr/0001–0004, openapi.json, migrations/ (idempotent SQL for hosts without
@@ -139,8 +139,8 @@ upward reference, never let `Application` know a DbContext or an HTTP type exist
   a keep-alive poller, and never let a timeout or an unreadable body be read as "safe".
 - **Auth invariants:** `MapInboundClaims = false`, `RoleClaimType = "roles"`,
   `NameClaimType = "name"`, `ValidateAudience = true`. Query-string tokens are accepted **only** on
-  `/chat-hub` and `/notification-hub`. Google is registered only when both client id and secret
-  exist. The real OAuth callback path is `/signin-google` (handler), not a controller route.
+  `/chat-hub` and `/notification-hub`. Sign-in is password-only on both portals; the Google
+  external-login flow was removed on 2026-11-01 and must not be re-added under freeze.
 - **External services go through typed clients / interfaces** (`IHttpClientFactory`, named
   `ml-client`), never a raw `new HttpClient`, and credentials come from configuration or the
   process environment (`CLOUDINARY_URL` is environment-only).
@@ -198,7 +198,7 @@ upward reference, never let `Application` know a DbContext or an HTTP type exist
 
 ```bash
 dotnet build -c Release            # 0 errors, exactly 6 warnings
-dotnet test  -c Release            # 265+ passing, no skipped
+dotnet test  -c Release            # 230+ passing, no skipped
 ```
 
 For anything touching auth, CORS, moderation, scheduling/booking, or the pipeline, also re-check

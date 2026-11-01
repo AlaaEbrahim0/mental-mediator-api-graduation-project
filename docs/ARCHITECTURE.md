@@ -5,7 +5,7 @@ architecture, EF Core + SQL Server, SignalR for realtime, external ML service fo
 moderation.
 
 Verified against the code on 2026-11-01 (`dotnet build -c Release`: 0 errors;
-`dotnet test -c Release`: 265 passing). Companion documents:
+`dotnet test -c Release`: 230 passing). Companion documents:
 [`../README.md`](../README.md) (endpoint and hosting surface),
 [`KNOWN_LIMITATIONS.md`](KNOWN_LIMITATIONS.md) (what is deliberate vs deferred — this
 document does not repeat it), [`DEPLOYMENT.md`](DEPLOYMENT.md),
@@ -89,7 +89,7 @@ Application/
                                 ChatService, DoctorSchedulingService, RoomAccessPolicy, …)
   Dtos/                         request/response records per domain, FluentValidation validators
   Community/                    PostTaxonomy, PostAccessPolicy (category, audience, visibility rules)
-  Options/                      JwtOptions, MailSettings, ResendSettings, GoogleAuthenticationOptions
+Options/ JwtOptions, MailSettings, ResendSettings
 Domain/
   Entities/                     BaseUser → User / Doctor / Admin, Appointment, Post, Comment, Reply,
                                 ChatRoom / ChatRoomMember / ChatMessage / ChatMessageReport,
@@ -135,8 +135,8 @@ disagrees with a document, the tree wins.
    `ConfigureServices`, `ConfigureRateLimiting`, `ConfigureCaching`, `ConfigureResend`,
    `ConfigureHttpClients`.
 3. `UseForwardedHeaders` (X-Forwarded-For / X-Forwarded-Proto) — first, because IIS puts
-   the app behind a proxy and scheme/host must be correct before HTTPS redirection,
-   OAuth callback construction, and outbound email links read them.
+the app behind a proxy and scheme/host must be correct before HTTPS redirection and
+outbound email links read them.
 4. `UseDeveloperExceptionPage` in Development, otherwise
    `UseExceptionHandler("/error")`. HSTS is deliberately not enabled.
 5. `UseSwagger` + `UseSwaggerUI` — unconditional (public in production by demo decision).
@@ -211,7 +211,7 @@ being down (moderation, storage, mail) is a **503 with a code**, not a stack tra
 - `BaseUser` derives `UserName` from the email local part and overrides
   `NormalizedEmail`/`NormalizedUserName`; because `NormalizedUserName` is unique, two
   addresses sharing a local part collide. `AuthService` surfaces that as
-  `?authError=identity_taken` instead of silently reusing an account.
+  a 409 conflict rather than silently reusing an account.
 - Account deletion is a soft delete: `UserService.DeleteUser` and `DoctorService` set
   `IsDeleted = true`. The former hard-delete `UserRepository.DeleteUser` was removed during
   stabilization, so no code path can hard-delete an account (see `Domain/Repositories/IUserRepository.cs`).
@@ -291,16 +291,12 @@ model **before** it is persisted.
 - SignalR: the access token is read from `?access_token=` **only** for paths starting with
   `/notification-hub` or `/chat-hub`; REST still requires the `Authorization` header, and
   production request logging stays at Warning so tokens are not written to logs.
-- Google OAuth is registered only when `GoogleAuthentication:Id` and `:Secret` are both
-  present. `OnRemoteFailure` redirects to an allow-listed portal URL with a generic error
-  code instead of dumping JSON into a top-level browser navigation. The real callback path
-  is the handler's own `/signin-google`, not a controller route. External sign-up can only
-  ever mint the `User` role ([`adr/0003`](adr/0003-auth-channels-doctor-password-patient-google.md)).
+- Authentication is password-only on both portals. The Google external-login path was removed on 2026-11-01, along with `ExternalLoginProfile`, `AddGoogle` and the `/signin-google` handler callback, so there is no redirect handoff and no one-time `temporaryToken` to exchange. See the superseded [`adr:0003`](adr/0003-auth-channels-doctor-password-patient-google.md) for why it existed and what it cost.
 - Authorization is server-side only: policies/roles on controllers plus per-resource checks
   inside services (`RoomAccessPolicy`, `PostAccessPolicy`, notification ownership). Frontend
   role checks are UX.
 - Rate limiting (`API/Configurations/RateLimitPolicies.cs`): `auth` 10/min per IP,
-  `oauth-handoff` 60/min per IP, `chat-messages` 30/min per user,
+  `chat-messages` 30/min per user,
   `chat-room-join` 10/5 min, `chat-reports` 10/h, `chat-room-creation` partitioned by role
   tier (5/h staff, 2/h everyone else). Rejection is a 429 `ProblemDetails` with
   `Retry-After`.
@@ -323,10 +319,10 @@ model **before** it is persisted.
 - **DataProtection** keys are persisted to a `keys/` folder next to the assembly
   (`AppContext.BaseDirectory`) inside a `try/catch` that downgrades to the ephemeral
   default on failure. Without this, an IIS app pool with no user profile regenerates keys
-  on every restart and invalidates OAuth correlation cookies. `keys/` is gitignored and
+  on every restart and invalidates issued refresh cookies. `keys/` is gitignored and
   survives deploys via msdeploy's `DoNotDeleteRule`.
 - **Caching**: `ICacheService` → `InMemoryCacheService` over `IMemoryCache`. Process-local,
-  which is why the app runs as a single instance (the Google handoff token lives there).
+  which is why the app runs as a single instance: the cache is per process.
 - **Storage**: `IStorageService` → `CloudinaryStorageService`, configured from the
   `CLOUDINARY_URL` environment variable only. Unconfigured uploads return a controlled 503.
   Media URLs embedded in posts are validated against the managed cloud

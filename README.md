@@ -29,7 +29,7 @@ The backend is built with **ASP.NET Core 8**, following **Clean Architecture** p
 | Area | Achievement |
 |------|-------------|
 | **Architecture** | Clean/Layered architecture with boundary-constrained dependency injection |
-| **Security** | JWT + Google OAuth auth, role-based access, input validation, no hardcoded secrets, production exception handling, PBKDF2-SHA256 room passphrases (150k iterations), per-IP rate limiting on auth endpoints, Cloudinary URL allowlist preventing external media embedding |
+| **Security** | JWT auth, role-based access, input validation, no hardcoded secrets, production exception handling, PBKDF2-SHA256 room passphrases (150k iterations), per-IP rate limiting on auth endpoints, Cloudinary URL allowlist preventing external media embedding |
 | **Performance** | Database indexes on FK/status/search columns, projection-based repository reads, structured logging, HTTP client factory, ML service cold-start probe (`MLServiceProbe`), fixed-window rate limiters on chat/auth endpoints |
 | **Reliability** | `Result<T>` pattern, global validation filter, configurable exception handler, structured logging |
 | **DevOps** | GitHub Actions CI/CD pipeline, Docker multi-stage builds, MonsterASP (WebDeploy) hosting |
@@ -41,7 +41,7 @@ The backend is built with **ASP.NET Core 8**, following **Clean Architecture** p
 ### Core Functionalities
 - **Community Support** — Users post thoughts, comment, and reply; doctors and other users can advise
 - **Anonymity Mode** — Posts and comments can be shared anonymously to protect privacy
-- **Role-Based Access Control** — Four roles: `User`, `Doctor`, `Admin`, `Anonymous` (JWT + Google OAuth)
+- **Role-Based Access Control** — Four roles: `User`, `Doctor`, `Admin`, `Anonymous` (JWT password sign-in)
 - **Rich Profiles** — Public doctor and user profiles with certificates, structured education, languages, interests, social links, and optional public contact details
 - **Appointment System** — Doctors set weekly schedules; users book available time slots; confirm/reject/cancel with notifications
 - **Real-Time Notifications** — SignalR hub for instant in-app notifications
@@ -144,7 +144,6 @@ cp .env.example .env
 # Edit API/.env with your actual values:
 #   - ConnectionStrings (SQL Server)
 #   - JwtSettings (secret key, issuer, audience)
-#   - GoogleAuthentication (client ID, secret)
 #   - MailSettings (SMTP credentials)
 #   - NewsApi (API key)
 #   - ML Services (if using external detection endpoints)
@@ -192,9 +191,6 @@ https://<your-deploy-url>/swagger
 |----------|----------|-------------|
 | **Auth** | `POST /api/auth/register` | Register new user |
 | **Auth** | `POST /api/auth/signin` | Authenticate & receive JWT |
-| **Auth** | `GET /api/auth/external-login` | Start Google OAuth (patient accounts only) |
-| **Auth** | `GET /signin-google` | OAuth handler callback (validates `state`/PKCE, then continues to `external-login-callback`) |
-| **Auth** | `GET /api/auth/exchange-token` | Turn a one-time Google handoff token into a JWT |
 | **Posts** | `GET /api/posts` | List posts (paginated, filterable; doctors-only posts are hidden from non-doctors) |
 | **Posts** | `POST /api/posts` | Create post (optional title, predefined category, tags, audience, optional media) |
 | **Posts** | `POST /api/posts/media` | Upload one image or short video for the composer (`multipart/form-data`, field `File`) |
@@ -289,9 +285,9 @@ The pipeline runs on every push to `master` and on manual `workflow_dispatch`:
 
 1. **Build** — `dotnet restore`, `dotnet build --configuration Release --no-restore`
 2. **Test** — `dotnet test --configuration Release --no-build --verbosity normal`. This runs the
-   265 tests in `Tests/MentalMediator.Tests.csproj` covering booking validation, slot calculation,
+   230 tests in `Tests/MentalMediator.Tests.csproj` covering booking validation, slot calculation,
    schedule mutation, profile validation, content moderation, room passphrase hashing, chat room
-   privacy, notification ownership, auth security, OAuth handoff, and post composition. The
+   privacy, notification ownership, auth security, and post composition. The
    project is registered in `MentalMediator.sln`, so solution-level `dotnet test` discovers and runs
    the full suite.
 3. **Publish** — Build and push `systematicmess/nexus_api:latest` to Docker Hub
@@ -312,7 +308,7 @@ MonsterASP, so a registry failure cannot take the site down.
 |------|-----------------|
 | Restore | `dotnet restore` |
 | Build | `dotnet build --configuration Release --no-restore` |
-| Test | `dotnet test --configuration Release --no-build --verbosity normal` (265 tests in `Tests/`, registered in `MentalMediator.sln`) |
+| Test | `dotnet test --configuration Release --no-build --verbosity normal` (230 tests in `Tests/`, registered in `MentalMediator.sln`) |
 | Docker Login | `docker/login-action@v3` using `DOCKER_USERNAME` / `DOCKER_PASSWORD` |
 | Docker Build & Push | `docker/build-push-action@v5` → `systematicmess/nexus_api:latest` |
 | Publish for IIS | `dotnet publish API/API.csproj -c Release --output ./publish --runtime win-x86 --self-contained false -p:UseAppHost=false` |
@@ -349,7 +345,6 @@ surfaces as a red build rather than a site that mysteriously stops answering.
 | `MONSTERASP_MSDEPLOY_PASSWORD` | WebDeploy password from the MonsterASP **Deploy → Visual Studio access** card (user name is the site id, `site101103`) |
 | `PRODUCTION_CONSTR_SOMEE` | SQL Server connection string for the hosted MonsterASP MSSQL database (the `constr_somee` key is what the app reads outside Development) |
 | `PRODUCTION_JWT_KEY` | JWT signing key (must be ≥32 bytes for HS256) |
-| `PRODUCTION_GOOGLE_ID` / `PRODUCTION_GOOGLE_SECRET` | Google OAuth client credentials |
 | `PRODUCTION_MAIL_USERNAME` / `PRODUCTION_MAIL_PASSWORD` | Gmail SMTP credentials — must be an **app password**, not the account password |
 | `PRODUCTION_NEWS_API_KEY` | News API key |
 | `PRODUCTION_CLOUDINARY_URL` ✅ **configured** | `cloudinary://<key>:<secret>@<cloud>` — injected into generated `web.config` so image uploads work on the host |
@@ -578,7 +573,7 @@ keypress. See `Tests/ModerationClientTests.cs` for the behaviours covered.
 | Production error details | ✅ Disabled (`EnableDetailedErrors` only in Development) |
 | Sensitive data logging | ✅ Disabled in production |
 | Input validation | ✅ Global `ValidateModelStateFilter` applied |
-| Role-based auth | ✅ JWT + Google OAuth + claims extraction |
+| Role-based auth | ✅ JWT + claims extraction |
 | Database indexes | ✅ Added on FK/status/search columns |
 | Secure HTTP client usage | ✅ `IHttpClientFactory` with `using` disposal |
 | Email service | ✅ Resend (primary) with MailKit SMTP fallback; structured logging; no secret fields in errors |
@@ -617,48 +612,6 @@ honest state is `docs/KNOWN_LIMITATIONS.md`.
   "throttled". Private rooms are deliberately listable — name, cover, member count and owner badge
   are public, the description and conversation are member-only. The seeded `Visibility=1` room in
   `scripts/seed.sql` therefore becomes visible at deploy time.
-- **Google sign-in is wired end to end on the patient portal; the doctor portal is password-only by
-  design.** The flow is `GET /api/auth/external-login` → Google → the OAuth handler's own
-  `GET /signin-google` → `GET /api/auth/external-login-callback` → `GET /api/auth/exchange-token`.
-  `patient-ui` starts it from its sign-in screen and consumes `?temporaryToken=` in
-  `src/auth/ExternalLoginGate.js`, which writes the session
-  before the router's first render. Every account created through Google gets the `User` role, so a
-  clinician or administrator is refused with `?authError=role_unsupported` before any token is
-  minted: the patient shell mounts the notifications provider (and a SignalR connection) for
-  whatever token it holds, and `NotificationController` has no role filter. Two operator-side
-  requirements:
-  1. The authorized redirect URI in Google Cloud Console must be
-     `https://nexus-api.runasp.net/signin-google`. Earlier text here said
-     `/api/auth/external-login-callback`; registering that guarantees `redirect_uri_mismatch`,
-     because `redirect_uri` is built from the handler's `CallbackPath`, not from our controller
-     route. Add the same path per environment (locally `http://localhost:5184/signin-google`, and
-     `https://<origin>/signin-google` for any other host that starts the flow).
-  2. The consent screen must stay **Published**. In "Testing" Google only signs in allow-listed test
-     users; the `email` scope is also sensitive, so an unverified app shows its "Google hasn't
-     verified this app" interstitial.
-  Two limits of the current account model, both measured rather than assumed:
-  * A database that has never run `scripts/seed.sql` has no `User` role. Identity *throws* for an
-    unknown role name, so sign-up checks for the role first and answers
-    `?authError=account_incomplete` while deleting the half-created account — no 500 in the middle
-    of the redirect, no role-less user left behind.
-  * `BaseUser` derives `UserName` from the email's local part and `NormalizedUserName` is unique, so
-    `ali@gmail.com` cannot be created by Google once `ali@outlook.com` exists: the sign-up answers
-    `?authError=identity_taken` instead of silently reusing the other person's account. Making the
-    external identity the key (or storing the full address in `UserName`) is the real fix and is not
-    part of this flow.
-  Two things this rules out. A Vercel **preview** deployment cannot finish the flow: its random
-  preview origin is not in `ConfigureCors`, so the exchange call is blocked by the browser — verify
-  against the fixed production alias (or add the preview origin temporarily). And locally, the
-  correlation cookie is issued `secure; samesite=none` even over plain HTTP, so the callback rejects
-  it and the browser sees "Correlation failed"; run the API under its https profile
-  (`https://localhost:7235`) when testing sign-in.
-- **The Google handoff requires a single API instance.** The one-time `temporaryToken` lives in
-  `IMemoryCache`, which is process-local: with more than one instance the browser can be routed to a
-  second one that has never heard of the token, and every sign-in fails at the exchange. The
-  WebDeploy's `-enableRule:AppOffline` also drops the cache on each release, so a handoff in flight
-  across a deploy is dead and the user gets `?authError=expired` — rare, and recoverable by pressing
-  the button again. Moving the handoff to `IDistributedCache` (Redis) is the fix if the app ever
-  scales out.
 - **`JwtSettings:Audience` differs per environment and must not be "corrected".** Production issues
   and validates tokens with `https://mental-mediator-doctor-ui-graduation-project.vercel.app` (the
   pipeline's generated settings); the committed `appsettings.json` now carries the patient portal
@@ -697,5 +650,5 @@ This project is licensed under the **MIT License** — see the [LICENSE.txt](LIC
 Built as a **final-year undergraduate project** in Computer Science. Special thanks to:
 - **Faculty advisors** for guidance and mentorship
 - **Open-source communities** — ASP.NET Core, EF Core, SignalR, Cloudinary, MailKit, Bogus, AutoMapper
-- **External service providers** — Google OAuth, Google SMTP, News API, Cloudinary, ML detection services
+- **External service providers** — Google SMTP, News API, Cloudinary, ML detection services
 - **GitHub Actions** for CI/CD and **MonsterASP** for production hosting (WebDeploy)

@@ -20,7 +20,6 @@ using Infrastructure.Repositories;
 using Infrastructure.Services;
 using Infrastructure.Utilities;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.AspNetCore.Authentication.OAuth;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Identity;
@@ -253,14 +252,14 @@ public static class DependencyInjection
 				options.PayloadSerializerOptions.Converters.Add(new CloudinaryUrlJsonConverter());
 			});
 
-		// On shared IIS hosting the app pool has neither a user profile nor the
-		// HKLM registry, so the default data-protection provider warns that it
-		// is falling back to an ephemeral in-memory key repository: keys die
-		// with the worker process and every restart invalidates issued cookies
-		// and OAuth state payloads. Persist the keys to a folder in the app's
-		// physical directory instead. The folder is outside the app's static
-		// web root, so the keys are never served as files, and the deploy
-		// pipeline keeps it across releases with the DoNotDeleteRule.
+		// On shared IIS hosting the app pool has neither a user profile nor
+		// the HKLM registry, so the default data-protection provider warns it is
+		// falling back to an ephemeral in-memory key repository: keys die with
+		// the worker process and every restart invalidates issued cookies.
+		// Persist the keys to a folder in the app's physical directory instead.
+		// That folder sits outside the app's static web root, so keys are never
+		// served as files, and the deploy pipeline keeps it across releases via
+		// DoNotDeleteRule.
 		// A failure here (for example an unwritable folder) downgrades to the
 		// previous ephemeral behaviour instead of blocking startup.
 		try

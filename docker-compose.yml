@@ -35,8 +35,6 @@ services:
       # variable expansion across multiple -e/-env entries reliably).
       - JwtSettings__Issuer=http://localhost:5184
       - JwtSettings__Audience=http://localhost:3000
-      - GoogleAuthentication__Id=
-      - GoogleAuthentication__Secret=
       - NewsApi__ApiKey=
       # Image uploads. CloudinaryStorageService reads CLOUDINARY_URL from the
       # process environment only (there is no appsettings fallback), so without

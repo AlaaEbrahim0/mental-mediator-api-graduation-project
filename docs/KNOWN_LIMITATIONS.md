@@ -74,8 +74,8 @@ localhost dev origins, and accepts `CORS_ALLOWED_ORIGINS` / `Cors:AllowedOrigins
 at deploy time. Stale/unverified third-party origins were removed during
 stabilization.
 - **Note:** Vercel *preview* URLs are intentionally not listed, so a preview build
-  cannot call the API (by design — Google sign-in on previews also fails for this
-  reason). Add a preview origin via the env var only temporarily.
+  cannot call the API. Add a preview origin via the env var only
+  temporarily.
 
 ---
 

@@ -112,8 +112,6 @@ jobs:
         env:
           CONSTR_SOMEE: ${{ secrets.PRODUCTION_CONSTR_SOMEE }}
           JWT_KEY: ${{ secrets.PRODUCTION_JWT_KEY }}
-          GOOGLE_ID: ${{ secrets.PRODUCTION_GOOGLE_ID }}
-          GOOGLE_SECRET: ${{ secrets.PRODUCTION_GOOGLE_SECRET }}
           MAIL_USERNAME: ${{ secrets.PRODUCTION_MAIL_USERNAME }}
           MAIL_PASSWORD: ${{ secrets.PRODUCTION_MAIL_PASSWORD }}
           NEWS_API_KEY: ${{ secrets.PRODUCTION_NEWS_API_KEY }}
@@ -126,12 +124,6 @@ jobs:
           }
           if ([string]::IsNullOrWhiteSpace($env:JWT_KEY)) {
             throw "GitHub Actions secret PRODUCTION_JWT_KEY is not configured."
-          }
-          if ([string]::IsNullOrWhiteSpace($env:GOOGLE_ID)) {
-            throw "GitHub Actions secret PRODUCTION_GOOGLE_ID is not configured."
-          }
-          if ([string]::IsNullOrWhiteSpace($env:GOOGLE_SECRET)) {
-            throw "GitHub Actions secret PRODUCTION_GOOGLE_SECRET is not configured."
           }
           if ([string]::IsNullOrWhiteSpace($env:MAIL_USERNAME)) {
             throw "GitHub Actions secret PRODUCTION_MAIL_USERNAME is not configured."
@@ -170,10 +162,6 @@ jobs:
               Audience = "https://mental-mediator-doctor-ui-graduation-project.vercel.app"
               Key = $env:JWT_KEY
               Duration = 30
-            }
-            GoogleAuthentication = @{
-              Id = $env:GOOGLE_ID
-              Secret = $env:GOOGLE_SECRET
             }
             MailSettings = @{
               Host = "smtp.gmail.com"
@@ -291,8 +279,6 @@ jobs:
           $checks = [ordered]@{
             'ConnectionStrings:constr_somee' = $settings.ConnectionStrings.constr_somee
             'JwtSettings:Key'                = $settings.JwtSettings.Key
-            'GoogleAuthentication:Id'        = $settings.GoogleAuthentication.Id
-            'GoogleAuthentication:Secret'    = $settings.GoogleAuthentication.Secret
             'MailSettings:Username'          = $settings.MailSettings.Username
             'MailSettings:Password'          = $settings.MailSettings.Password
             'NewsApi:ApiKey'                 = $settings.NewsApi.ApiKey

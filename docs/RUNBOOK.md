@@ -71,9 +71,7 @@ curl -sS http://localhost:5184/health
 
 `launchSettings.json` defines `http` (`http://localhost:5184`) and `https`
 (`https://localhost:7235;http://localhost:5184`), both with `ASPNETCORE_ENVIRONMENT=Development`
-and `launchUrl: swagger`. **Use the `https` profile when testing Google sign-in** — the
-correlation cookie is issued `secure; samesite=none`, so over plain HTTP the callback rejects
-it and the browser shows "Correlation failed".
+and `launchUrl: swagger`. Use the `https` profile when checking anything that depends on secure cookies — notably the authenticated flows and the SignalR hubs — because cookies are issued `secure; samesite=none`, so over plain HTTP the browser silently drops them.
 
 The Docker stack (API + SQL Server + one portal) is `./start-stack.sh up | down | logs`, with
 the API on `http://localhost:5184`, SQL on `localhost:1433`, and the web container on `3000`.
@@ -100,10 +98,9 @@ Things worth grepping for in a startup incident:
   every data endpoint will fail. Check `ConnectionStrings:constr_somee`.
 - `Applying N pending migration(s): …` — startup migration ran; expected after a schema change.
 - `ML request to /predict_HS did not answer within 45s` — cold or down model, not a code fault.
-- `Google handshake failed before the callback` — OAuth state/correlation problem, logged by
-  the `GoogleOAuth` category before redirecting the browser back to the portal.
-- `500.30` / `500.31` / `500.32` in the host's log — ANCM startup / hosting-bundle / wrong
-  bitness. See §5.
+- `{Setting} did not provide a safe portal origin; handoff falls back to request origin` —
+  `ClientUI` / `DoctorUI` missing or not an absolute http(s) URL, so the confirmation
+  link points at the API host. Set the setting rather than relying on the fallback.
 
 There is no file or centralized log sink: stdout plus the host's own log viewer.
 
@@ -203,18 +200,11 @@ changing it (see [`KNOWN_LIMITATIONS.md`](KNOWN_LIMITATIONS.md) "No refresh toke
 | Pipeline fails: "Publish output is N MB, unexpectedly large" | Something got vendored into the publish folder | Check for added large assets before retrying; the gate exists to fail loudly |
 | Every `[Authorize]` endpoint returns 403 for a valid token | Inbound claim mapping rewrote `roles` | `MapInboundClaims = false` and `RoleClaimType = "roles"` are required in `ConfigureAuthentication`; do not remove them |
 | All users signed out at once | `JwtSettings:Audience` or `:Key` changed on a deployed environment | Restore the previous value and redeploy, or accept the sign-out and re-issue tokens; see `adr/0002` |
-| Sign-in via Google ends in `?authError=redirect_uri_mismatch` (Google's page) | The registered redirect URI is wrong | In Google Cloud Console add `https://nexus-api.runasp.net/signin-google` — the OAuth handler's path, **not** `/api/auth/external-login-callback`. Locally add `http://localhost:5184/signin-google` and/or `https://localhost:7235/signin-google` |
-| Google consent screen shows "Google hasn't verified this app" or only some accounts can sign in | Consent screen is in **Testing** | Publish the consent screen; the `email` scope is sensitive |
-| Sign-in works but the token exchange 404s/fails on a Vercel **preview** URL | Preview origins are intentionally not in the CORS allowlist | Verify against the fixed production alias, or temporarily set `CORS_ALLOWED_ORIGINS` |
-| "Correlation failed" on the local Google callback | Correlation cookie is `secure; samesite=none` over plain HTTP | Run the `https` launch profile |
-| `?authError=account_incomplete` during Google sign-up | The database has never had the `User` role seeded (Identity throws for unknown role names) | Run `scripts/seed.sql` (or create the Identity roles); sign-up deletes the half-created account instead of returning 500 |
-| `?authError=identity_taken` | `UserName` is derived from the email local part and `NormalizedUserName` is unique, so `ali@gmail.com` collides with `ali@outlook.com` | Expected with the current account model; use a distinct local part or fix the mapping deliberately (not under freeze) |
-| `?authError=expired` right after a deploy | The one-time handoff token lives in `IMemoryCache`; `AppOffline` clears it | Re-press the sign-in button. Structural fix would be `IDistributedCache` |
 | Image upload returns 503 `ExternalServices.StorageServiceUnavailable` | `CLOUDINARY_URL` missing from `web.config` `<environmentVariables>` | Add the `PRODUCTION_CLOUDINARY_URL` secret and redeploy; note the interface has no delete operation, so replaced assets stay in Cloudinary |
 | A post/comment/chat message fails with "could not finish the safety check" | ML model cold/down/unreachable — fail-closed | §3 warm-up; if it persists, the model host is down. Never switch to allow-on-write |
 | `/api/posts` 500 on a fallback host | Schema drift (that host's `Posts` table predates `AddPostAudienceAndMedia`) | Apply pending migrations there or stop using it; the primary host is healthy |
 | Chat room join: same error for a wrong and a throttled passphrase | `RoomJoinThrottle`: 5 wrong attempts per account+room blocks guessing for 15 minutes | Intended. Wait, or use a different account |
-| `429 Too Many Requests` with `Retry-After` | Fixed-window rate limit (`auth` 10/min/IP, `oauth-handoff` 60/min/IP, `chat-messages` 30/min, `chat-room-join` 10/5 min, `chat-reports` 10/h, `chat-room-creation` 5/h staff · 2/h others) | Wait for the window. Repeated 429 during a demo usually means two portals are hammering one IP |
+| `429 Too Many Requests` with `Retry-After` | Fixed-window rate limit (`auth` 10/min/IP, `chat-messages` 30/min, `chat-room-join` 10/5 min, `chat-reports` 10/h, `chat-room-creation` 5/h staff · 2/h others) | Wait for the window. Repeated 429 during a demo usually means two portals are hammering one IP |
 | Booked slot accepted twice / double booking | Booking without the per-doctor lock | All booking and schedule-mutation paths must hold `AcquireBookingLockAsync(doctorId)` — see `ARCHITECTURE.md` §4.5 |
 | Appointment report "total" looks low | `GetDoctorStats` counts **completed** appointments only | Intended; the report also exposes the full status breakdown (`KNOWN_LIMITATIONS.md`) |
 | SignalR cannot connect | Wrong hub path or token | Hubs are `/chat-hub` and `/notification-hub` (no `/hubs` prefix), token via `?access_token=`; `API_BASE_URL` must have no trailing slash or the concatenation yields `//…` and a 404 |
@@ -279,7 +269,7 @@ maintainer's own, and is recoverable only from a backup.
 cp .env.example .env                      # fill in values; .env is gitignored, never committed
 dotnet restore
 dotnet build -c Release                   # expect 0 errors, 6 warnings (package advisories)
-dotnet test  -c Release                   # expect 265 passed
+dotnet test  -c Release                   # expect 230 passed
 dotnet run --project API --launch-profile https
 ```
 
@@ -293,7 +283,7 @@ dotnet ef database update        --project Infrastructure --startup-project API
 ```
 
 Configuration the app reads: `ConnectionStrings:constr` (Development) / `constr_somee`
-(everywhere else), `JwtSettings:{Issuer,Audience,Key,Duration}`, `GoogleAuthentication:{Id,Secret}`,
+(everywhere else), `JwtSettings:{Issuer,Audience,Key,Duration}`,
 `MailSettings`, `Resend` (or `RESEND_API_KEY`), `CLOUDINARY_URL` (process environment only),
 `MLServerAddress` + `MLServer:*`, `NewsApi`, `BaseAddress`, `ClientUI`, `DoctorUI`,
 `RequireHttps`, and the CORS allowlist via `Cors:AllowedOrigins` or `CORS_ALLOWED_ORIGINS`

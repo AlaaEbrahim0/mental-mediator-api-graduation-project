@@ -35,7 +35,7 @@ flowchart LR
 
 | Job | Runner | Condition | What it does |
 |---|---|---|---|
-| `build` ("Build and test") | `ubuntu-latest` | always | `actions/checkout@v4`, `actions/setup-dotnet@v4` with `dotnet-version: 8.0.x`, then `dotnet restore`, `dotnet build --configuration Release --no-restore`, `dotnet test --configuration Release --no-build --verbosity normal` (265 tests) |
+| `build` ("Build and test") | `ubuntu-latest` | always | `actions/checkout@v4`, `actions/setup-dotnet@v4` with `dotnet-version: 8.0.x`, then `dotnet restore`, `dotnet build --configuration Release --no-restore`, `dotnet test --configuration Release --no-build --verbosity normal` (230 tests) |
 | `publish` ("Publish Docker image to Docker Hub") | `ubuntu-latest` | `needs: build` | `docker/login-action@v3`, `docker/setup-buildx-action@v3`, `docker/build-push-action@v5` pushing `systematicmess/nexus_api:latest` |
 | `deploy` ("Publish and deploy to MonsterASP.net (WebDeploy)") | `windows-latest` | `needs: build` **and** (`workflow_dispatch` with `inputs.deploy_to_production`, **or** `push` with repo variable `vars.AUTO_DEPLOY_MONSTERASP == 'true'`); `environment: production` | publish, generate production settings, validate output, `msdeploy.exe -verb:sync`, poll `/health` |
 
@@ -67,7 +67,7 @@ registry outage fails the `publish` job without touching the deployed site.
    `publish/API.dll` exist; `publish/API.exe` **does not** exist; `web.config` contains
    `processPath="dotnet"`, `hostingModel="inprocess"` and `name="ASPNETCORE_ENVIRONMENT"`;
    `publish/appsettings.Production.json` exists and every secret-backed field
-   (`ConnectionStrings:constr_somee`, `JwtSettings:Key`, `GoogleAuthentication:Id`/`:Secret`,
+   (`ConnectionStrings:constr_somee`, `JwtSettings:Key`,
    `MailSettings:Username`/`:Password`, `NewsApi:ApiKey`) is non-empty — **lengths/emptiness
    only, values are never logged**; and the publish folder is under 120 MB as a bloat gate.
 5. **Deploy via WebDeploy** — locates `msdeploy.exe` on the runner, then builds the argument
@@ -120,7 +120,6 @@ secrets come from the GitHub Actions secrets below):
 | `JwtSettings:Audience` | `https://mental-mediator-doctor-ui-graduation-project.vercel.app` — **do not change**, see [`adr/0002`](adr/0002-jwt-audience-per-environment.md) |
 | `JwtSettings:Key` | secret `PRODUCTION_JWT_KEY` |
 | `JwtSettings:Duration` | `30` |
-| `GoogleAuthentication:Id` / `:Secret` | secrets `PRODUCTION_GOOGLE_ID` / `PRODUCTION_GOOGLE_SECRET` |
 | `MailSettings` | `smtp.gmail.com:587`, `PRODUCTION_MAIL_USERNAME` / `PRODUCTION_MAIL_PASSWORD` (must be a Gmail **app password**), `SenderName = "Mental Mediator"` |
 | `ClientUI` | `https://mental-health-ochre-xi.vercel.app` (patient portal production alias; the un-suffixed name belongs to a different Vercel account) |
 | `DoctorUI` | `https://mental-mediator-doctor-ui-graduation-project.vercel.app` |
@@ -144,8 +143,6 @@ Secrets read by `ci_cd_pipeline.yml`:
 |---|---|---|
 | `PRODUCTION_CONSTR_SOMEE` | deploy | SQL Server connection string for the hosted MonsterASP database |
 | `PRODUCTION_JWT_KEY` | deploy | JWT signing key (HS256, ≥32 bytes) |
-| `PRODUCTION_GOOGLE_ID` | deploy | Google OAuth client id |
-| `PRODUCTION_GOOGLE_SECRET` | deploy | Google OAuth client secret |
 | `PRODUCTION_MAIL_USERNAME` | deploy | SMTP account (Gmail) |
 | `PRODUCTION_MAIL_PASSWORD` | deploy | Gmail **app** password; a normal account password is rejected with `534 5.7.9` |
 | `PRODUCTION_NEWS_API_KEY` | deploy | newsapi.org key |
@@ -190,7 +187,7 @@ consoles, not to this repository.
 | WebSockets | supported | SignalR uses its default WebSocket transport with fallbacks |
 | HTTPS | automatic on `*.runasp.net` | `RequireHttps=true` is safe; HSTS is still deliberately off |
 | Activity | free sites need periodic visits | an untouched free site is suspended or deleted |
-| Instances | one | the Google handoff token and `ICacheService` are process-local (`IMemoryCache`) |
+| Instances | one | the `ICacheService` is process-local (`IMemoryCache`), so caches do not survive a restart |
 
 Site coordinates used by the pipeline: site id `site101103`, WebDeploy endpoint
 `https://site101103.siteasp.net:8172/msdeploy.axd?site=site101103`, and the entire publish

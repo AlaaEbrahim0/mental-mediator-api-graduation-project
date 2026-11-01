@@ -1,6 +1,16 @@
-# ADR 0003 — Password-only doctor sign-in, Google sign-in for patient accounts only
+# ADR 0003 — Password-only sign-in for both portals (Google sign-in removed)
 
-**Status:** accepted · **Date recorded:** 2026-11-01
+**Status:** superseded · **Date recorded:** 2026-11-01 · **Superseded:** 2026-11-01 — external login removed from API and patient-ui
+
+> **Superseded.** This decision no longer describes the running system.
+> Google sign-in was removed end to end on 2026-11-01. The API dropped
+> `/api/auth/external-login`, `/external-login-callback` and `/exchange-token`,
+> along with `AddGoogle`, `ExternalLoginProfile` and the `ExternalAuthentication.*`
+> error codes. The `patient-ui` portal dropped `ExternalLoginGate`,
+> `externalSession.js` and the Google button.
+> Both portals are password-only. The reasoning below is kept as the
+> historical record of why the flow existed and what it cost.
+
 **Code:** `Infrastructure/Services/AuthService.cs`, `Infrastructure/Utilities/AuthHandoff.cs`,
 `Domain/Errors/ExternalAuthenticationErrors.cs`, `API/Controllers/AuthController.cs`,
 `API/Configurations/DependencyInjection.cs` (`ConfigureAuthentication`, `ConfigureRateLimiting`)
