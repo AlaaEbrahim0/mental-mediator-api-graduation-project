@@ -21,6 +21,16 @@ public class ChatMessage
 
 	public string Content { get; set; } = string.Empty;
 
+	/// <summary>
+	/// Optional image or video attached to the message. The URL always points at
+	/// a managed storage asset: the send path rejects any URL the storage service
+	/// did not itself issue, so a client cannot smuggle in a third-party link.
+	/// </summary>
+	public string? MediaUrl { get; set; }
+
+	/// <summary>"image" or "video", or null when the message carries no media.</summary>
+	public string? MediaType { get; set; }
+
 	public Guid ClientMessageId { get; set; }
 
 	public DateTime SentAtUtc { get; set; }

@@ -70,6 +70,9 @@ public static class ChatErrors
 	public static Error InvalidMessageContent() => Error.Validation(
 		"Chat.InvalidMessageContent", "Message content must be between 1 and 2000 characters.");
 
+	public static Error InvalidMessageMedia() => Error.Validation(
+		"Chat.InvalidMessageMedia", "Attach an image or video uploaded through this room's media endpoint.");
+
 	public static Error InvalidClientMessageId() => Error.Validation(
 		"Chat.InvalidClientMessageId", "clientMessageId must be a non-empty GUID.");
 

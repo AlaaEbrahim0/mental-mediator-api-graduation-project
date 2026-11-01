@@ -614,8 +614,28 @@ public class ChatService : IChatService
 		}
 
 		var content = request.Content?.Trim() ?? string.Empty;
-		if (content.Length == 0 || content.Length > 2000)
+		if (content.Length > 2000)
 		{
+			return ChatErrors.InvalidMessageContent();
+		}
+
+		var mediaUrl = NormalizeMediaUrl(request.MediaUrl);
+		var mediaType = request.MediaType?.Trim().ToLowerInvariant();
+		var hasMedia = mediaUrl is not null;
+
+		if (hasMedia)
+		{
+			// The URL must be one this storage service issued. That is what stops
+			// a client from attaching an arbitrary third-party link and having it
+			// rendered to every member of the room.
+			if (mediaType is not ("image" or "video") || !_storageService.IsManagedMediaUrl(mediaUrl!))
+			{
+				return ChatErrors.InvalidMessageMedia();
+			}
+		}
+		else if (content.Length == 0)
+		{
+			// No media and no text is an empty message.
 			return ChatErrors.InvalidMessageContent();
 		}
 
@@ -629,13 +649,17 @@ public class ChatService : IChatService
 
 		if (existing is not null)
 		{
-			return HandleDuplicateMessage(existing, roomId, content);
+			return HandleDuplicateMessage(existing, roomId, content, mediaUrl, mediaType);
 		}
 
-		var moderation = await _contentModerator.EnsureAllowedAsync(content);
-		if (moderation.IsFailure)
+		// A media-only message has nothing to moderate. Text is still checked.
+		if (content.Length > 0)
 		{
-			return moderation.Error;
+			var moderation = await _contentModerator.EnsureAllowedAsync(content);
+			if (moderation.IsFailure)
+			{
+				return moderation.Error;
+			}
 		}
 
 		// Moderation can take up to a few seconds. Recheck the room state before
@@ -665,6 +689,8 @@ public class ChatService : IChatService
 			SenderDisplayName = membership.DisplayName,
 			SenderIsDoctor = membership.IsDoctor,
 			Content = content,
+			MediaUrl = mediaUrl,
+			MediaType = hasMedia ? mediaType : null,
 			ClientMessageId = request.ClientMessageId,
 			SentAtUtc = DateTime.UtcNow,
 			IsDeleted = false
@@ -675,7 +701,7 @@ public class ChatService : IChatService
 		var duplicate = await _repos.ChatMessages.CreateMessageIfAbsentAsync(message);
 		if (duplicate is not null)
 		{
-			return HandleDuplicateMessage(duplicate, roomId, content);
+			return HandleDuplicateMessage(duplicate, roomId, content, mediaUrl, mediaType);
 		}
 
 		var trackedRoom = await _repos.ChatRooms.GetRoomByIdAsync(roomId, true);
@@ -708,6 +734,36 @@ public class ChatService : IChatService
 		await _realtimeNotifier.MessageCreatedAsync(roomId, MapMessage(message));
 
 		return MapMessage(message);
+	}
+
+	public async Task<Result<StoredMedia>> UploadMessageMediaAsync(int roomId, IFormFile? file)
+	{
+		var currentUser = await GetCurrentUserAsync();
+		if (currentUser.IsFailure)
+		{
+			return currentUser.Error;
+		}
+
+		var room = await _repos.ChatRooms.GetRoomByIdAsync(roomId, false);
+		if (room is null)
+		{
+			return ChatErrors.RoomNotFound();
+		}
+
+		var membership = await _repos.ChatRooms.GetMembershipAsync(roomId, currentUser.Value.Id, false);
+		if (!IsActiveMember(membership))
+		{
+			// Only a member may push a file into a room, and a non-member gets the
+			// same 404 the read paths use so membership state is not confirmed.
+			return ChatErrors.RoomNotFound();
+		}
+
+		if (file is null || file.Length == 0)
+		{
+			return ChatErrors.InvalidMessageMedia();
+		}
+
+		return await _storageService.UploadMedia(file);
 	}
 
 	public async Task<Result<ChatMessageResponse>> DeleteMessageAsync(long messageId)
@@ -1666,10 +1722,16 @@ public class ChatService : IChatService
 	private static Result<ChatMessageResponse> HandleDuplicateMessage(
 		ChatMessage existing,
 		int roomId,
-		string content)
+		string content,
+		string? mediaUrl,
+		string? mediaType)
 	{
+		var sameMedia = string.Equals(existing.MediaUrl, mediaUrl, StringComparison.Ordinal) &&
+			string.Equals(existing.MediaType, NormalizeType(mediaType), StringComparison.Ordinal);
+
 		if (existing.RoomId != roomId ||
-			!string.Equals(existing.Content, content, StringComparison.Ordinal))
+			!string.Equals(existing.Content, content, StringComparison.Ordinal) ||
+			!sameMedia)
 		{
 			return ChatErrors.ClientMessageIdConflict();
 		}
@@ -1859,6 +1921,30 @@ public class ChatService : IChatService
 	private static string Truncate(string value, int maxLength) =>
 		value.Length <= maxLength ? value : value[..maxLength];
 
+	/// <summary>
+	/// Trims a submitted media URL and upgrades a plain-HTTP Cloudinary URL to
+	/// HTTPS. Returns null for an absent URL so callers can treat "no media" and
+	/// "empty media" identically.
+	/// </summary>
+	private static string? NormalizeMediaUrl(string? url)
+	{
+		var trimmed = url?.Trim();
+		if (string.IsNullOrWhiteSpace(trimmed))
+		{
+			return null;
+		}
+
+		return trimmed.StartsWith("http://res.cloudinary.com/", StringComparison.OrdinalIgnoreCase)
+			? string.Concat("https://", trimmed.AsSpan("http://".Length))
+			: trimmed;
+	}
+
+	private static string? NormalizeType(string? mediaType)
+	{
+		var trimmed = mediaType?.Trim().ToLowerInvariant();
+		return string.IsNullOrEmpty(trimmed) ? null : trimmed;
+	}
+
 	internal static ChatRoomResponse MapRoom(
 		ChatRoom room,
 		ChatRoomMember? membership,
@@ -1897,7 +1983,7 @@ public class ChatService : IChatService
 			// A preview is conversation content, so it is only shown to active
 			// members. Non-members can still see the room metadata and join.
 			LastMessagePreview = activeMembership is not null && latestMessage is not null && !latestMessage.IsDeleted
-				? BuildPreview(latestMessage.Content)
+				? BuildPreview(latestMessage)
 				: null,
 			UnreadCount = activeMembership is not null ? unreadCount : 0
 		};
@@ -1927,6 +2013,9 @@ public class ChatService : IChatService
 			SenderDisplayName = message.SenderDisplayName,
 			SenderIsDoctor = message.SenderIsDoctor,
 			Content = message.IsDeleted && !includeDeletedContent ? string.Empty : message.Content,
+			// A deleted message hides its media too: the URL would still resolve.
+			MediaUrl = message.IsDeleted && !includeDeletedContent ? null : message.MediaUrl,
+			MediaType = message.IsDeleted && !includeDeletedContent ? null : message.MediaType,
 			SentAtUtc = message.SentAtUtc,
 			IsDeleted = message.IsDeleted
 		};
@@ -1948,12 +2037,27 @@ public class ChatService : IChatService
 			Message = MapMessage(message, includeDeletedContent)
 		};
 
-	private static string BuildPreview(string content)
+	private static string BuildPreview(ChatMessage message)
 	{
-		var singleLine = content.Replace('\r', ' ').Replace('\n', ' ').Trim();
-		return singleLine.Length <= MaxPreviewLength
+		var mediaLabel = message.MediaType switch
+		{
+			"image" => "Sent a photo",
+			"video" => "Sent a video",
+			_ => null
+		};
+
+		var singleLine = message.Content.Replace('\r', ' ').Replace('\n', ' ').Trim();
+
+		if (singleLine.Length == 0)
+		{
+			return mediaLabel ?? string.Empty;
+		}
+
+		var text = singleLine.Length <= MaxPreviewLength
 			? singleLine
 			: $"{singleLine[..MaxPreviewLength]}...";
+
+		return mediaLabel is null ? text : $"{mediaLabel}: {text}";
 	}
 
 	private sealed record ChatUser(BaseUser User, bool IsDoctor, bool IsAdmin);

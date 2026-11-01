@@ -23,6 +23,12 @@ public class ChatMessageResponse
 
 	public string Content { get; set; } = string.Empty;
 
+	/// <summary>Managed URL of an attached image/video, or null. Hidden when the message is deleted.</summary>
+	public string? MediaUrl { get; set; }
+
+	/// <summary>"image" or "video", or null.</summary>
+	public string? MediaType { get; set; }
+
 	public DateTime SentAtUtc { get; set; }
 
 	public bool IsDeleted { get; set; }

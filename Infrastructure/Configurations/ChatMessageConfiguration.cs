@@ -11,6 +11,8 @@ public class ChatMessageConfiguration : IEntityTypeConfiguration<ChatMessage>
 		builder.Property(x => x.SenderId).HasMaxLength(450).IsRequired();
 		builder.Property(x => x.SenderDisplayName).HasMaxLength(100).IsRequired();
 		builder.Property(x => x.Content).HasMaxLength(2000).IsRequired();
+		builder.Property(x => x.MediaUrl).HasMaxLength(1000);
+		builder.Property(x => x.MediaType).HasMaxLength(10);
 		builder.Property(x => x.DeletedById).HasMaxLength(450);
 
 		builder

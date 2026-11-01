@@ -50,6 +50,13 @@ public interface IChatService
 
 	Task<Result<ChatMessageResponse>> SendMessageAsync(int roomId, SendChatMessageRequest request);
 
+	/// <summary>
+	/// Uploads one image or short video into a room and returns the managed URL
+	/// plus its kind. Only an active member may upload, so a non-member cannot
+	/// push files through a room they cannot post in.
+	/// </summary>
+	Task<Result<StoredMedia>> UploadMessageMediaAsync(int roomId, IFormFile? file);
+
 	Task<Result<ChatMessageResponse>> DeleteMessageAsync(long messageId);
 
 	Task<Result<ChatMessageReportResponse>> ReportMessageAsync(long messageId, ReportChatMessageRequest request);

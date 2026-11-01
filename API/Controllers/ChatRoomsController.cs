@@ -180,6 +180,28 @@ public class ChatRoomsController : ControllerBase
 		return Ok(result.Value);
 	}
 
+	/// <summary>
+	/// Uploads one image or short video for a message in this room. The returned
+	/// URL is then sent with the message; uploads are separated so the composer
+	/// can show real progress per file. Member-only, like posting.
+	/// </summary>
+	[HttpPost("{roomId:int}/media")]
+	[Consumes("multipart/form-data")]
+	[RequestSizeLimit(25 * 1024 * 1024)]
+	[EnableRateLimiting(RateLimitPolicies.ChatMessages)]
+	public async Task<IActionResult> UploadMessageMedia(
+		int roomId,
+		[FromForm] UploadRoomMediaRequest request)
+	{
+		var result = await _chatService.UploadMessageMediaAsync(roomId, request.File);
+		if (result.IsFailure)
+		{
+			return result.ToProblemDetails();
+		}
+
+		return Ok(new { url = result.Value.Url, type = result.Value.Type });
+	}
+
 	[HttpGet("{roomId:int}/reports")]
 	public async Task<IActionResult> GetReports(
 		int roomId,
