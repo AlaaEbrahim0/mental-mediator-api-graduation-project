@@ -39,7 +39,6 @@ public static class DependencyInjection
 	{
 		"https://mental-health-ochre-xi.vercel.app",
 		"https://mental-mediator-doctor-ui-graduation-project.vercel.app",
-		"https://mental-mediator-doctor-ui-graduation-project-lms6panp1.vercel.app",
 	};
 
 	private static readonly string[] LocalDevelopmentOrigins =
