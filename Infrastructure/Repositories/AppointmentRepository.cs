@@ -417,12 +417,12 @@ public class AppointmentRepository : RepositoryBase<Appointment>, IAppointmentRe
 
 		var monthlyCounts = appointments
 			.GroupBy(x => x.StartTime.Month)
-			.Select(x => new MonthlyAppointmentCount
+			.OrderBy(group => group.Key)
+			.Select(group => new MonthlyAppointmentCount
 			{
-				Month = CultureInfo.CurrentCulture.DateTimeFormat.GetAbbreviatedMonthName(x.Key),
-				Count = x.Count()
+				Month = CultureInfo.CurrentCulture.DateTimeFormat.GetAbbreviatedMonthName(group.Key),
+				Count = group.Count()
 			})
-			.OrderBy(x => DateTime.ParseExact(x.Month, "MMM", CultureInfo.CurrentCulture).Month)
 			.ToList();
 
 		return (weekdayCounts, monthlyCounts);
