@@ -22,18 +22,26 @@ XSS yields a usable token until it expires.
   freeze.
 - **Recommended fix:** HttpOnly cookie + anti-CSRF token; keep the `Authorization`
   header path for SignalR. Requires coordinated deploy of API + both portals.
-- **Mitigations in place:** 30-minute expiry limits the theft window; CSP and the
-  fact that content is rendered as text (no `dangerouslySetInnerHTML`) reduce XSS
-  surface; Cloudinary-only media URLs block injected external content.
+- **Mitigations in place:** CSP and the fact that content is rendered as text (no
+  `dangerouslySetInnerHTML`) reduce XSS surface; Cloudinary-only media URLs block
+  injected external content. ⚠️ Token expiry does **not** meaningfully limit the theft
+  window — see the lifetime note below (tokens last ~30 days, not 30 minutes).
 
-### No refresh token; 30-minute expiry with silent 401 — deferred
-`JwtSettings:Duration` is 30 minutes and there is no renewal endpoint. A session
-that outlives 30 minutes gets a 401 and the user re-authenticates.
-- **Why not fixed now:** a refresh-token system is new product behavior (explicitly
-  out of scope).
-- **Recommended fix:** short-lived access token + rotating refresh token in an
-  HttpOnly cookie; silent refresh on 401.
-- **Demo impact:** re-login before a demo (see `DEMO_GUIDE.md`).
+### No refresh token; long-lived JWT (≈30 days) — deferred + needs a decision
+`JwtSettings:Duration` is `30`, but `JwtTokenGenerator.cs` sets expiry with
+`DateTime.Now.AddDays(Duration)` — so tokens live **~30 days**, not the "30 minutes"
+stated in older docs and the audit. This is a likely **unit bug** (`AddMinutes` was
+probably intended); a 30-day bearer token in `localStorage` materially widens the XSS
+theft window.
+- **Why not fixed now:** changing the unit is a user-visible behavior change (sessions
+  drop from ~30 days to ~30 minutes, and there is no refresh token to renew them) — it
+  needs a product decision, not a silent freeze-time edit.
+- **Recommended fix:** decide the intended lifetime; if short-lived, use
+  `AddMinutes(Duration)` (or `AddSeconds`) and add a refresh-token flow so users are not
+  logged out constantly. Also switch `DateTime.Now` → `DateTime.UtcNow` for expiry.
+- **Demo impact:** with the current ~30-day lifetime, sessions do **not** expire
+  mid-demo; the "re-login before presenting" note in `DEMO_GUIDE.md` is precautionary,
+  not required.
 
 ### SignalR passes the JWT via `?access_token=` query string — accepted risk
 The chat/notification hubs authenticate with a query-string token (the standard
