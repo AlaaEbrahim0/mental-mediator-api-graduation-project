@@ -69,7 +69,7 @@ The backend is built with **ASP.NET Core 8**, following **Clean Architecture** p
 ```
 MentalMediator.sln
 ├── API/                     # Presentation Layer (ASP.NET Core Web API)
-│   ├── Controllers/         # REST endpoints (16 controllers) + Validation Filter
+│   ├── Controllers/         # REST endpoints (18 controllers) + Validation Filter
 │   ├── Configurations/      # DI, CORS, Swagger, Validation Filter, Mapping Profile
 │   ├── Program.cs           # Pipeline setup, exception handling, CORS, auth
 │   └── appsettings.json     # Configuration (secrets via .env / environment variables)
@@ -86,13 +86,13 @@ MentalMediator.sln
 │   ├── Repositories/        # Repository interfaces
 │   └── States/              # State pattern for Appointment lifecycle
 ├── Infrastructure/          # Data & External Services
-│   ├── Data/                # AppDbContext, DbInitializer, 20 Migrations
+│   ├── Data/                # AppDbContext, DbInitializer, 37 migrations
 │   ├── Configurations/      # EF Core entity configurations + indexes
-│   ├── Clients/             # External service clients (ML/HateSpeech, News, Cloudinary, Resend)
-│   ├── Repositories/        # EF Core implementations (RepositoryBase + 12 repos)
+│   ├── Clients/             # External service clients (ML/HateSpeech + MLServiceProbe, News, Cloudinary, Resend)
+│   ├── Repositories/        # EF Core implementations (RepositoryBase + 16 repos)
 │   ├── Services/            # AuthService, ProfileService, ChatService, NotificationSender, CloudinaryStorageService, ResendMailService, ChatRealtimeNotifier
 │   ├── Hubs/                # SignalR hub implementations
-│   ├── Caching/             # InMemoryCacheService, MLServiceProbe (cold-start probe)
+│   ├── Caching/             # InMemoryCacheService
 │   └── Utilities/           # JWT Token Generator, AuthHandoff, RoomPassphraseHasher, RoomJoinThrottle
 └── Shared/                  # Shared utilities (Result<T>, Error, Paging, RequestParameters, Extensions, Enums)
 ```
@@ -139,7 +139,7 @@ cd mental-mediator-api-graduation-project
 
 ```bash
 # Copy the template and fill in your values
-cp API/.env.example API/.env
+cp .env.example .env
 
 # Edit API/.env with your actual values:
 #   - ConnectionStrings (SQL Server)
@@ -168,7 +168,7 @@ dotnet ef database update --project Infrastructure
 dotnet run --project API
 ```
 
-The API will be available at `https://localhost:7221` (or the port shown in output).
+The API will be available at `https://localhost:7235` (or the port shown in output).
 
 ### 6. Verify the Build
 
@@ -352,15 +352,15 @@ surfaces as a red build rather than a site that mysteriously stops answering.
 | `PRODUCTION_GOOGLE_ID` / `PRODUCTION_GOOGLE_SECRET` | Google OAuth client credentials |
 | `PRODUCTION_MAIL_USERNAME` / `PRODUCTION_MAIL_PASSWORD` | Gmail SMTP credentials — must be an **app password**, not the account password |
 | `PRODUCTION_NEWS_API_KEY` | News API key |
-| `PRODUCTION_CLOUDINARY_URL` ⚠️ **not configured** | `cloudinary://<key>:<secret>@<cloud>` — injected into the generated `web.config` so image uploads work on the host |
+| `PRODUCTION_CLOUDINARY_URL` ✅ **configured** | `cloudinary://<key>:<secret>@<cloud>` — injected into generated `web.config` so image uploads work on the host |
 
-`PRODUCTION_CLOUDINARY_URL` is the only optional secret, and it is **currently absent from the
-repository's secrets**, so image uploads on `nexus-api.runasp.net` return the controlled 503 until it
-is added (`gh secret set PRODUCTION_CLOUDINARY_URL`). Without it the API starts and everything except
-uploads works. The setting is read from the process environment only
-(`Infrastructure/Services/StorageService.cs`), so the pipeline writes it, together with
-`ASPNETCORE_ENVIRONMENT=Production`, into the generated `publish/web.config`
-`<environmentVariables>` block.
+`PRODUCTION_CLOUDINARY_URL` is **already set** in the repository's secrets, so avatar and
+media uploads on `nexus-api.runasp.net` work (verified against the live host). If the secret
+is ever removed, uploads return a controlled 503 while the rest of the API keeps running —
+restore it with `gh secret set PRODUCTION_CLOUDINARY_URL`. The setting is read from the
+process environment only (`Infrastructure/Services/StorageService.cs`), so the pipeline
+writes it, together with `ASPNETCORE_ENVIRONMENT=Production`, into the generated
+`publish/web.config` `<environmentVariables>` block.
 
 Gmail rejects plain account passwords with `534 5.7.9 Please log in with your web browser`.
 `MailSettings:SenderName` is optional and non-secret; when set it becomes the display name on the
