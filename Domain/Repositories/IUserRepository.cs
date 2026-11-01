@@ -9,5 +9,4 @@ public interface IUserRepository
 	Task<User?> GetById(string id, bool trackChanges);
 	Task<int> GetCount();
 	void UpdateUserInfo(User user);
-	void DeleteUser(User user);
 }

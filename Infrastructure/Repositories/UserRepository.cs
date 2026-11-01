@@ -23,11 +23,6 @@ public class UserRepository : RepositoryBase<User>, IUserRepository
 		Update(user);
 	}
 
-	public void DeleteUser(User user)
-	{
-		Delete(user);
-	}
-
 	public async Task<IEnumerable<User>> GetAll(UserRequestParameters requestParameters, bool trackChanges)
 	{
 		var userQuery = FindAll(trackChanges);
