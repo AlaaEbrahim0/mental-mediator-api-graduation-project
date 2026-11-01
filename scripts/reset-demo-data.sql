@@ -39,7 +39,8 @@ END
 
 IF CHARINDEX(DB_NAME() + N',', @AllowedDbs + N',') = 0
 BEGIN
-    RAISERROR(N'Reset aborted: current database "%s" is not in the allowed demo list.', 16, 1, DB_NAME());
+    DECLARE @db nvarchar(256) = DB_NAME();
+    RAISERROR(N'Reset aborted: current database "%s" is not in the allowed demo list.', 16, 1, @db);
     RETURN;
 END
 
