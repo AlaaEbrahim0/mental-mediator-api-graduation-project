@@ -289,7 +289,7 @@ The pipeline runs on every push to `master` and on manual `workflow_dispatch`:
 
 1. **Build** — `dotnet restore`, `dotnet build --configuration Release --no-restore`
 2. **Test** — `dotnet test --configuration Release --no-build --verbosity normal`. This runs the
-   193 tests in `Tests/MentalMediator.Tests.csproj` covering booking validation, slot calculation,
+   265 tests in `Tests/MentalMediator.Tests.csproj` covering booking validation, slot calculation,
    schedule mutation, profile validation, content moderation, room passphrase hashing, chat room
    privacy, notification ownership, auth security, OAuth handoff, and post composition. The
    project is registered in `MentalMediator.sln`, so solution-level `dotnet test` discovers and runs
@@ -312,7 +312,7 @@ MonsterASP, so a registry failure cannot take the site down.
 |------|-----------------|
 | Restore | `dotnet restore` |
 | Build | `dotnet build --configuration Release --no-restore` |
-| Test | `dotnet test --configuration Release --no-build --verbosity normal` (193 tests in `Tests/`, registered in `MentalMediator.sln`) |
+| Test | `dotnet test --configuration Release --no-build --verbosity normal` (265 tests in `Tests/`, registered in `MentalMediator.sln`) |
 | Docker Login | `docker/login-action@v3` using `DOCKER_USERNAME` / `DOCKER_PASSWORD` |
 | Docker Build & Push | `docker/build-push-action@v5` → `systematicmess/nexus_api:latest` |
 | Publish for IIS | `dotnet publish API/API.csproj -c Release --output ./publish --runtime win-x86 --self-contained false -p:UseAppHost=false` |
@@ -583,23 +583,29 @@ keypress. See `Tests/ModerationClientTests.cs` for the behaviours covered.
 | Secure HTTP client usage | ✅ `IHttpClientFactory` with `using` disposal |
 | Email service | ✅ Resend (primary) with MailKit SMTP fallback; structured logging; no secret fields in errors |
 
-### Known security issues (tracked for remediation)
+### Security & correctness status (verified 2026-11-01)
 
-| Issue | Status | Tracking |
+The original audit (`audit/NEXUS_ENGINEERING_AUDIT.md`) listed these as open. Many
+were since fixed; the remaining ones are deliberate or need new behavior and are
+tracked in [`docs/KNOWN_LIMITATIONS.md`](docs/KNOWN_LIMITATIONS.md).
+
+| Issue | Status | Notes |
 |---|---|---|
-| Swagger UI exposed in production (no `IsDevelopment()` gate) | Open | `Program.cs:78-80` |
-| JWT bearer token stored in `localStorage` (XSS token theft) | Open | both portals' auth contexts |
-| No refresh token; 30-min JWT expiry with no renewal | Open | `JwtTokenGenerator.cs` |
-| CORS allowlist includes unverified third-party origins | Open | `DependencyInjection.cs:51-57` |
-| `RepositoryBase.FindByCondition`/`FindAll` inverted `trackChanges` logic | Open | `RepositoryBase.cs:20-37` |
-| `InitializeDatabaseAsync().Wait()` synchronous startup | Open | `Program.cs:126` |
-| `GetDoctorStats` sums fees for all statuses (incl. cancelled/rejected) | Open | `AppointmentRepository.cs:325-326` |
-| `GetDoctorStats`/`GetDoctorAppointmentCounts` load full history into memory | Open | `AppointmentRepository.cs:319-329`, `339-365` |
-| `PopulateLikeState` N+1: one DB query per post in a listing | Open | `PostService.cs:347-352` |
-| `ResendMailService` passes `CancellationToken.None` | Open | `ResendMailService.cs:62` |
-| `output.txt` debug artifact tracked in git | Open | Repo root |
+| Swagger UI exposed in production | **Intentional (demo)** | Kept public for reviewers; gate behind `IsDevelopment()` post-demo. See KNOWN_LIMITATIONS. |
+| JWT bearer token stored in `localStorage` | **Deferred** | HttpOnly-cookie migration is a cross-repo redesign. |
+| No refresh token; 30-min JWT expiry | **Deferred** | Refresh flow is new behavior. |
+| CORS allowlist unverified origins | **Fixed** | Now project origins + localhost, env-overridable via `CORS_ALLOWED_ORIGINS`. |
+| `RepositoryBase` inverted `trackChanges` | **Fixed** | `trackChanges ? tracked : AsNoTracking()`; pinned by `AppointmentStatsTests`. |
+| `InitializeDatabaseAsync().Wait()` | **Fixed** | Now `await app.InitializeDatabaseAsync()` (async top-level Main). |
+| `GetDoctorStats` summed all statuses / loaded history | **Fixed** | SQL aggregate, `Completed`-only profit. |
+| `GetDoctorAppointmentCounts` loads history in memory | **Open (perf)** | Correct but not SQL-aggregated; low priority under freeze. |
+| `PopulateLikeState` N+1 | **Fixed** | Listing batches via `GetLikeStates`. |
+| `ResendMailService` `CancellationToken.None` | **Fixed** | Token threaded through `IMailService`. |
+| `output.txt` debug artifact tracked | **Fixed** | Removed from the repo. |
+| HTTPS redirection opt-in | **Fixed** | On by default outside Development. |
 
-A full audit report is available at `audit/NEXUS_ENGINEERING_AUDIT.md`.
+A full audit report is available at `audit/NEXUS_ENGINEERING_AUDIT.md`; the current,
+honest state is `docs/KNOWN_LIMITATIONS.md`.
 
 ### Known integration limitations
 
