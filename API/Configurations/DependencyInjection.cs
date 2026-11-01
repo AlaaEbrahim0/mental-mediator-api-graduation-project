@@ -362,21 +362,6 @@ public static class DependencyInjection
 						AutoReplenishment = true
 					}));
 
-			// Google sign-in is three browser navigations per login and the
-			// rejected response is unreadable to a user mid-redirect, so this
-			// window is deliberately wider than the credential one. It still
-			// caps fast automation from a single address.
-			options.AddPolicy(RateLimitPolicies.OAuthHandoff, context =>
-				RateLimitPartition.GetFixedWindowLimiter(
-					context.Connection.RemoteIpAddress?.ToString() ?? "anonymous",
-					_ => new FixedWindowRateLimiterOptions
-					{
-						PermitLimit = 60,
-						Window = TimeSpan.FromMinutes(1),
-						QueueLimit = 0,
-						AutoReplenishment = true
-					}));
-
 			options.OnRejected = async (context, cancellationToken) =>
 			{
 				context.HttpContext.Response.StatusCode = StatusCodes.Status429TooManyRequests;
@@ -493,46 +478,6 @@ public static class DependencyInjection
 				};
 			});
 			
-			var googleClientId = configuration["GoogleAuthentication:Id"];
-			if (!string.IsNullOrEmpty(googleClientId) && !string.IsNullOrEmpty(configuration["GoogleAuthentication:Secret"]))
-			{
-					authenticationBuilder.AddGoogle(options =>
-				{
-					options.ClientId = googleClientId;
-					options.ClientSecret = configuration["GoogleAuthentication:Secret"]!;
-
-					// A rejected, expired or missing state/correlation cookie fails
-					// inside the OAuth handler, before any controller runs, and the
-					// default response is a 500 rendered as raw JSON in a top-level
-					// browser navigation. Send the same allow-listed redirect shape the
-					// callback uses so the portal can show readable copy.
-					options.Events = new OAuthEvents
-					{
-						OnRemoteFailure = context =>
-						{
-							context.HandleResponse();
-
-							context.HttpContext.RequestServices
-								.GetRequiredService<ILoggerFactory>()
-								.CreateLogger("GoogleOAuth")
-								.LogWarning(
-									"Google handshake failed before the callback: {Error}",
-									context.Failure?.Message);
-
-							var portal = AuthHandoff.ResolveBaseUrl(
-								configuration,
-								context.HttpContext.Request,
-								AuthHandoff.PatientSetting);
-
-							context.Response.Redirect(AuthHandoff.BuildFailureRedirect(
-								portal,
-								AuthHandoff.GenericFailureCode));
-
-							return Task.CompletedTask;
-						}
-					};
-				});
-			}
 
 
 		return services;
@@ -586,7 +531,6 @@ public static class DependencyInjection
 	public static IServiceCollection ConfigureOptions(this IServiceCollection services, IConfiguration configuration)
 	{
 		services.Configure<JwtOptions>(configuration.GetSection("JwtSettings"));
-		services.Configure<GoogleAuthenticationOptions>(configuration.GetSection("GoogleAuthentication"));
 		services.Configure<MailSettings>(configuration.GetSection("MailSettings"));
 
 		var resendSection = configuration.GetSection("Resend");

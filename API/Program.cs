@@ -59,8 +59,8 @@ var app = builder.Build();
 
 // IIS and the shared host put the app behind a reverse proxy, so the forwarded
 // scheme and proto have to be applied before anything reads Request.Scheme:
-// UseHttpsRedirection below, the Google OAuth callback URL, and the email links
-// built from the request origin would otherwise see plain HTTP.
+// UseHttpsRedirection below and email links built from the request origin
+// would otherwise see plain HTTP.
 app.UseForwardedHeaders();
 
 if (app.Environment.IsDevelopment())
