@@ -852,6 +852,23 @@ UPDATE ChatRooms
 SET PasswordHash = N'pbkdf2-sha256$150000$Lbdig7hHV1KEGYz83rwASA==$5VCxjLVh0mM8ZuteXU9PMHjttko25rmbSULJ/SPwT2w='
 WHERE Visibility = 1 AND (PasswordHash IS NULL OR PasswordHash = N'');
 
+-- ----------------------------------------------------------------------------
+-- Demo avatars. Abstract, illustrated (gradient + monogram) portraits hosted on
+-- the project's own Cloudinary cloud - never photorealistic faces of fictional
+-- patients. Idempotent: only fills accounts that still have no photo.
+-- ----------------------------------------------------------------------------
+UPDATE AspNetUsers SET PhotoUrl = N'https://res.cloudinary.com/dlt0e09e7/image/upload/v1793541814/nexus-demo/nexus-avatar-11w6o3w.png' WHERE Email = N'admin@example.com' AND PhotoUrl IS NULL;
+UPDATE AspNetUsers SET PhotoUrl = N'https://res.cloudinary.com/dlt0e09e7/image/upload/v1793541815/nexus-demo/nexus-avatar-n6aee4.png' WHERE Email = N'doctor@example.com' AND PhotoUrl IS NULL;
+UPDATE AspNetUsers SET PhotoUrl = N'https://res.cloudinary.com/dlt0e09e7/image/upload/v1793541816/nexus-demo/nexus-avatar-ngz3yk.png' WHERE Email = N'omar@example.com' AND PhotoUrl IS NULL;
+UPDATE AspNetUsers SET PhotoUrl = N'https://res.cloudinary.com/dlt0e09e7/image/upload/v1793541817/nexus-demo/nexus-avatar-15b4qax.png' WHERE Email = N'hana@example.com' AND PhotoUrl IS NULL;
+UPDATE AspNetUsers SET PhotoUrl = N'https://res.cloudinary.com/dlt0e09e7/image/upload/v1793541819/nexus-demo/nexus-avatar-mddh0l.png' WHERE Email = N'yusuf@example.com' AND PhotoUrl IS NULL;
+UPDATE AspNetUsers SET PhotoUrl = N'https://res.cloudinary.com/dlt0e09e7/image/upload/v1793541820/nexus-demo/nexus-avatar-18lsxin.png' WHERE Email = N'salma@example.com' AND PhotoUrl IS NULL;
+UPDATE AspNetUsers SET PhotoUrl = N'https://res.cloudinary.com/dlt0e09e7/image/upload/v1793541820/nexus-demo/nexus-avatar-1r3le21.png' WHERE Email = N'amira@example.com' AND PhotoUrl IS NULL;
+UPDATE AspNetUsers SET PhotoUrl = N'https://res.cloudinary.com/dlt0e09e7/image/upload/v1793541821/nexus-demo/nexus-avatar-78t3k1.png' WHERE Email = N'marek@example.com' AND PhotoUrl IS NULL;
+UPDATE AspNetUsers SET PhotoUrl = N'https://res.cloudinary.com/dlt0e09e7/image/upload/v1793541822/nexus-demo/nexus-avatar-nccxcv.png' WHERE Email = N'sofia@example.com' AND PhotoUrl IS NULL;
+UPDATE AspNetUsers SET PhotoUrl = N'https://res.cloudinary.com/dlt0e09e7/image/upload/v1793541823/nexus-demo/nexus-avatar-41ur3h.png' WHERE Email = N'dana@example.com' AND PhotoUrl IS NULL;
+UPDATE AspNetUsers SET PhotoUrl = N'https://res.cloudinary.com/dlt0e09e7/image/upload/v1793541824/nexus-demo/nexus-avatar-1whad6w.png' WHERE Email = N'rami@example.com' AND PhotoUrl IS NULL;
+
 COMMIT TRANSACTION;
 
 -- ----------------------------------------------------------------------------
