@@ -843,6 +843,15 @@ WHERE NOT EXISTS (SELECT 1 FROM Notifications n
                   WHERE n.AppUserId = rk.Id AND n.Type = a.Type
                     AND n.Resources = CONCAT(N'{"postId": ', po.Id, N', "commentId": ', cm.Id, N'}'));
 
+-- ----------------------------------------------------------------------------
+-- Private-room passphrase. The demo passphrase is "opensesame" for the
+-- Visibility=1 room. Stored as the app's real PBKDF2-SHA256 hash
+-- (pbkdf2-sha256$150000$salt$key) - never plaintext. Re-running keeps it stable.
+-- ----------------------------------------------------------------------------
+UPDATE ChatRooms
+SET PasswordHash = N'pbkdf2-sha256$150000$Lbdig7hHV1KEGYz83rwASA==$5VCxjLVh0mM8ZuteXU9PMHjttko25rmbSULJ/SPwT2w='
+WHERE Visibility = 1 AND (PasswordHash IS NULL OR PasswordHash = N'');
+
 COMMIT TRANSACTION;
 
 -- ----------------------------------------------------------------------------
