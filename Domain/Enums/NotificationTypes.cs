@@ -11,5 +11,6 @@ public enum NotificationType
 	PostLike,
 	FollowUp,
 	PatientNote,
-	RoomMessage
+	RoomMessage,
+	RoomInvitation
 }

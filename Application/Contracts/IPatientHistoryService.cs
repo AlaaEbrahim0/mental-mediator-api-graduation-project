@@ -6,7 +6,12 @@ namespace Application.Contracts;
 public interface IPatientHistoryService
 {
 	/// <summary>The signed-in patient's own authorized history.</summary>
-	Task<Result<PatientHistoryResponse>> GetMyHistoryAsync(int pageNumber, int pageSize);
+	Task<Result<PatientHistoryResponse>> GetMyHistoryAsync(
+		int pageNumber,
+		int pageSize,
+		string? category = null,
+		DateTime? fromUtc = null,
+		DateTime? toUtc = null);
 
 	/// <summary>
 	/// One patient's history as visible to a doctor with an existing care
@@ -15,5 +20,8 @@ public interface IPatientHistoryService
 	Task<Result<PatientHistoryResponse>> GetPatientHistoryAsync(
 		string patientId,
 		int pageNumber,
-		int pageSize);
+		int pageSize,
+		string? category = null,
+		DateTime? fromUtc = null,
+		DateTime? toUtc = null);
 }

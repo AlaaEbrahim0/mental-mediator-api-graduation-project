@@ -36,6 +36,12 @@ public interface IDoctorWorkspaceRepository
 
 	Task<int> CountOpenFollowUpsAsync(string doctorId);
 
+	Task<int> CountOverdueFollowUpsAsync(string doctorId, DateTime nowUtc);
+
+	Task<int> CountDueSoonFollowUpsAsync(string doctorId, DateTime fromUtc, DateTime toUtc);
+
+	Task<int> CountCompletedFollowUpsSinceAsync(string doctorId, DateTime sinceUtc);
+
 	/// <summary>Open follow-ups that are due or overdue, oldest due date first.</summary>
 	Task<IReadOnlyList<FollowUp>> GetDueOpenFollowUpsAsync(string doctorId, DateTime nowUtc, int take);
 

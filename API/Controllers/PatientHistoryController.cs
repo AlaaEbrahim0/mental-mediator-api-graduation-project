@@ -20,9 +20,12 @@ public class PatientHistoryController : ControllerBase
 	[Authorize(Roles = "User,Admin")]
 	public async Task<IActionResult> GetMyHistory(
 		[FromQuery] int pageNumber = 1,
-		[FromQuery] int pageSize = 20)
+		[FromQuery] int pageSize = 20,
+		[FromQuery] string? category = null,
+		[FromQuery] DateTime? from = null,
+		[FromQuery] DateTime? to = null)
 	{
-		var result = await _historyService.GetMyHistoryAsync(pageNumber, pageSize);
+		var result = await _historyService.GetMyHistoryAsync(pageNumber, pageSize, category, from, to);
 		return result.IsFailure ? result.ToProblemDetails() : Ok(result.Value);
 	}
 
@@ -31,9 +34,12 @@ public class PatientHistoryController : ControllerBase
 	public async Task<IActionResult> GetPatientHistory(
 		string patientId,
 		[FromQuery] int pageNumber = 1,
-		[FromQuery] int pageSize = 20)
+		[FromQuery] int pageSize = 20,
+		[FromQuery] string? category = null,
+		[FromQuery] DateTime? from = null,
+		[FromQuery] DateTime? to = null)
 	{
-		var result = await _historyService.GetPatientHistoryAsync(patientId, pageNumber, pageSize);
+		var result = await _historyService.GetPatientHistoryAsync(patientId, pageNumber, pageSize, category, from, to);
 		return result.IsFailure ? result.ToProblemDetails() : Ok(result.Value);
 	}
 }

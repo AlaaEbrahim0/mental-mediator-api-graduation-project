@@ -35,6 +35,55 @@ public class DoctorDashboardResponse
 	/// <summary>Rooms the doctor hosts with recent conversation; member counts,
 	/// never "online" users.</summary>
 	public List<ChatRoomResponse> LiveRooms { get; set; } = new();
+
+	// ---- Date-range analytics (see RangeDays) -----------------------------
+
+	/// <summary>The reporting window every ranged metric below uses.</summary>
+	public int RangeDays { get; set; }
+
+	public int AppointmentsInRange { get; set; }
+
+	public int CompletedInRange { get; set; }
+
+	public int CancelledInRange { get; set; }
+
+	public int PendingInRange { get; set; }
+
+	public int ConfirmedInRange { get; set; }
+
+	public List<DashboardTrendPoint> Trend { get; set; } = new();
+
+	public int FollowUpsOverdue { get; set; }
+
+	public int FollowUpsDueSoon { get; set; }
+
+	public int FollowUpsCompletedInRange { get; set; }
+
+	public int NewPatients { get; set; }
+
+	public int ReturningPatients { get; set; }
+
+	public List<UpcomingAppointmentItem> UpcomingAppointments { get; set; } = new();
+}
+
+public sealed class DashboardTrendPoint
+{
+	public DateTime DateUtc { get; set; }
+
+	public int Completed { get; set; }
+
+	public int Cancelled { get; set; }
+}
+
+public sealed class UpcomingAppointmentItem
+{
+	public int AppointmentId { get; set; }
+
+	public string PatientName { get; set; } = string.Empty;
+
+	public DateTime StartTimeUtc { get; set; }
+
+	public string Status { get; set; } = string.Empty;
 }
 
 public class DoctorActivityItemResponse

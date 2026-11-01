@@ -347,7 +347,8 @@ public class ChatService : IChatService
 			isActiveMember,
 			supplied,
 			matches,
-			blocked));
+			blocked,
+			DateTime.UtcNow));
 
 		if (decision.IsFailure)
 		{
@@ -1327,6 +1328,326 @@ public class ChatService : IChatService
 		return user;
 	}
 
+	// ---- Room invitations -------------------------------------------------
+
+	public async Task<Result<IReadOnlyList<InviteCandidateResponse>>> GetInviteCandidatesAsync(
+		int roomId,
+		string? search)
+	{
+		var moderator = await GetModeratorContextAsync(roomId);
+		if (moderator.IsFailure)
+		{
+			return moderator.Error;
+		}
+
+		var activeMembers = await _repos.ChatRooms.GetActiveMembersAsync(roomId, false);
+		var pending = await _repos.ChatRoomInvitations.GetPendingUserIdsAsync(roomId);
+		var excluded = activeMembers
+			.Select(member => member.UserId)
+			.Concat(pending)
+			.Distinct(StringComparer.Ordinal)
+			.ToList();
+
+		var candidates = await _repos.ChatRoomInvitations.SearchInviteCandidatesAsync(search, excluded, 20);
+		IReadOnlyList<InviteCandidateResponse> response = candidates
+			.Select(user => new InviteCandidateResponse
+			{
+				Id = user.Id,
+				DisplayName = string.Join(" ", new[] { user.FirstName, user.LastName }.Where(part => !string.IsNullOrWhiteSpace(part))).Trim(),
+				PhotoUrl = user.PhotoUrl,
+				IsDoctor = user is Doctor
+			})
+			.ToList();
+
+		return Result<IReadOnlyList<InviteCandidateResponse>>.Success(response);
+	}
+
+	public async Task<Result<IReadOnlyList<RoomInvitationResponse>>> InviteToRoomAsync(
+		int roomId,
+		IReadOnlyCollection<string> userIds)
+	{
+		var moderator = await GetModeratorContextAsync(roomId);
+		if (moderator.IsFailure)
+		{
+			return moderator.Error;
+		}
+
+		var room = moderator.Value.Room;
+		if (room.IsArchived)
+		{
+			return ChatErrors.RoomArchived();
+		}
+
+		var inviterId = moderator.Value.Membership!.UserId;
+		var inviterName = _userClaimsService.GetUserName();
+		var targets = userIds
+			.Where(id => !string.IsNullOrWhiteSpace(id))
+			.Select(id => id.Trim())
+			.Distinct(StringComparer.Ordinal)
+			.ToList();
+
+		if (targets.Count == 0)
+		{
+			return Result<IReadOnlyList<RoomInvitationResponse>>.Success(Array.Empty<RoomInvitationResponse>());
+		}
+
+		var memberIds = (await _repos.ChatRooms.GetActiveMembersAsync(roomId, false))
+			.Select(member => member.UserId)
+			.ToHashSet(StringComparer.Ordinal);
+
+		var now = DateTime.UtcNow;
+		var created = new List<ChatRoomInvitation>();
+
+		foreach (var targetId in targets)
+		{
+			// Skip the inviter, existing members, unknown accounts and anyone
+			// who already has a pending invitation. The unique filtered index is
+			// the real guard against a race; these checks just avoid pointless work.
+			if (string.Equals(targetId, inviterId, StringComparison.Ordinal) ||
+				memberIds.Contains(targetId))
+			{
+				continue;
+			}
+
+			var user = await _userManager.FindByIdAsync(targetId);
+			if (user is null)
+			{
+				continue;
+			}
+
+			var existing = await _repos.ChatRoomInvitations.GetPendingAsync(roomId, targetId, false);
+			if (existing is not null)
+			{
+				continue;
+			}
+
+			var invitation = new ChatRoomInvitation
+			{
+				RoomId = roomId,
+				InvitedUserId = targetId,
+				InvitedById = inviterId,
+				Status = InvitationStatus.Pending,
+				CreatedAtUtc = now,
+			};
+			_repos.ChatRoomInvitations.Create(invitation);
+			created.Add(invitation);
+		}
+
+		await _repos.SaveAsync();
+
+		foreach (var invitation in created)
+		{
+			await NotifyInvitationAsync(room, invitation, inviterName);
+		}
+
+		var pendingInvitations = await _repos.ChatRoomInvitations.GetPendingForRoomAsync(roomId, false);
+		IReadOnlyList<RoomInvitationResponse> response = pendingInvitations
+			.Select(invitation => MapInvitation(invitation, room.Name))
+			.ToList();
+		return Result<IReadOnlyList<RoomInvitationResponse>>.Success(response);
+	}
+
+	public async Task<Result<IReadOnlyList<RoomInvitationResponse>>> GetRoomInvitationsAsync(int roomId)
+	{
+		var moderator = await GetModeratorContextAsync(roomId);
+		if (moderator.IsFailure)
+		{
+			return moderator.Error;
+		}
+
+		var pending = await _repos.ChatRoomInvitations.GetPendingForRoomAsync(roomId, false);
+		IReadOnlyList<RoomInvitationResponse> response = pending
+			.Select(invitation => MapInvitation(invitation, moderator.Value.Room.Name))
+			.ToList();
+		return Result<IReadOnlyList<RoomInvitationResponse>>.Success(response);
+	}
+
+	public async Task<Result> CancelRoomInvitationAsync(int roomId, int invitationId)
+	{
+		var moderator = await GetModeratorContextAsync(roomId);
+		if (moderator.IsFailure)
+		{
+			return moderator.Error;
+		}
+
+		var invitation = await _repos.ChatRoomInvitations.GetByIdAsync(invitationId, true);
+		if (invitation is null || invitation.RoomId != roomId)
+		{
+			return ChatErrors.InvitationNotFound();
+		}
+
+		if (invitation.Status == InvitationStatus.Cancelled)
+		{
+			return Result.Success();
+		}
+
+		if (invitation.Status != InvitationStatus.Pending)
+		{
+			return ChatErrors.InvitationNotPending();
+		}
+
+		invitation.Status = InvitationStatus.Cancelled;
+		invitation.RespondedAtUtc = DateTime.UtcNow;
+		_repos.ChatRoomInvitations.Update(invitation);
+		await _repos.SaveAsync();
+		return Result.Success();
+	}
+
+	public async Task<Result<IReadOnlyList<RoomInvitationResponse>>> GetMyInvitationsAsync()
+	{
+		var chatUserResult = await GetCurrentChatUserAsync();
+		if (chatUserResult.IsFailure)
+		{
+			return chatUserResult.Error;
+		}
+
+		var pending = await _repos.ChatRoomInvitations.GetPendingForUserAsync(chatUserResult.Value.User.Id, false);
+		IReadOnlyList<RoomInvitationResponse> response = pending
+			.Select(invitation => MapInvitation(invitation, invitation.Room?.Name ?? string.Empty))
+			.ToList();
+		return Result<IReadOnlyList<RoomInvitationResponse>>.Success(response);
+	}
+
+	public async Task<Result<RoomInvitationResponse>> RespondToInvitationAsync(int invitationId, bool accept)
+	{
+		var chatUserResult = await GetCurrentChatUserAsync();
+		if (chatUserResult.IsFailure)
+		{
+			return chatUserResult.Error;
+		}
+
+		var chatUser = chatUserResult.Value;
+		var invitation = await _repos.ChatRoomInvitations.GetByIdAsync(invitationId, true);
+		if (invitation is null)
+		{
+			return ChatErrors.InvitationNotFound();
+		}
+
+		if (!string.Equals(invitation.InvitedUserId, chatUser.User.Id, StringComparison.Ordinal))
+		{
+			return ChatErrors.InvitationNotYours();
+		}
+
+		var room = await _repos.ChatRooms.GetRoomByIdAsync(invitation.RoomId, false);
+		if (room is null || room.IsArchived)
+		{
+			return ChatErrors.RoomNotFound();
+		}
+
+		if (invitation.Status == InvitationStatus.Accepted)
+		{
+			return MapInvitation(invitation, room.Name);
+		}
+
+		if (invitation.Status != InvitationStatus.Pending)
+		{
+			return ChatErrors.InvitationNotPending();
+		}
+
+		var now = DateTime.UtcNow;
+
+		if (!accept)
+		{
+			invitation.Status = InvitationStatus.Declined;
+			invitation.RespondedAtUtc = now;
+			_repos.ChatRoomInvitations.Update(invitation);
+			await _repos.SaveAsync();
+			return MapInvitation(invitation, room.Name);
+		}
+
+		// Acceptance is what grants membership. The invitation replaces the
+		// passphrase and the scheduled-start gate, so the invited user joins
+		// directly as an active member.
+		var membership = await _repos.ChatRooms.GetMembershipAsync(invitation.RoomId, chatUser.User.Id, true);
+		if (IsActiveMember(membership))
+		{
+			// already a member
+		}
+		else if (membership is not null)
+		{
+			membership.LeftAtUtc = null;
+			membership.JoinedAtUtc = now;
+			membership.LastReadAtUtc = now;
+			membership.DisplayName = GetNewMemberDisplayName(chatUser);
+			membership.IsDoctor = chatUser.IsDoctor;
+			_repos.ChatRooms.UpdateMembership(membership);
+		}
+		else
+		{
+			var owner = await _repos.ChatRooms.GetOwnerAsync(invitation.RoomId, false);
+			var fresh = new ChatRoomMember
+			{
+				RoomId = invitation.RoomId,
+				UserId = chatUser.User.Id,
+				Role = chatUser.IsDoctor && owner is not null && !owner.IsDoctor
+					? ChatRoomRole.Moderator
+					: ChatRoomRole.Member,
+				DisplayName = GetNewMemberDisplayName(chatUser),
+				IsDoctor = chatUser.IsDoctor,
+				JoinedAtUtc = now,
+				LastReadAtUtc = now,
+			};
+			var concurrent = await _repos.ChatRooms.CreateMembershipIfAbsentAsync(fresh);
+			membership = concurrent ?? fresh;
+		}
+
+		invitation.Status = InvitationStatus.Accepted;
+		invitation.RespondedAtUtc = now;
+		_repos.ChatRoomInvitations.Update(invitation);
+		await _repos.SaveAsync();
+
+		if (membership is not null)
+		{
+			await _realtimeNotifier.MemberUpdatedAsync(invitation.RoomId, MapMember(membership));
+		}
+
+		return MapInvitation(invitation, room.Name);
+	}
+
+	private async Task NotifyInvitationAsync(ChatRoom room, ChatRoomInvitation invitation, string inviterName)
+	{
+		var notification = Notification.CreateNotification(
+			invitation.InvitedUserId,
+			"You were invited to a room",
+			$"{inviterName} invited you to join \"{room.Name}\".",
+			new Dictionary<string, int>
+			{
+				{ "roomId", room.Id },
+				{ "invitationId", invitation.Id },
+			},
+			inviterName,
+			_userClaimsService.GetPhotoUrl(),
+			NotificationType.RoomInvitation,
+			invitation.Id,
+			$"room-invite:{room.Id}:{invitation.InvitedUserId}");
+
+		try
+		{
+			await _notificationSender.SendNotificationAsync(notification);
+		}
+		catch
+		{
+			// The invitation row is already persisted; a failed push is recovered
+			// from REST, so it must not fail the invite.
+		}
+	}
+
+	private static RoomInvitationResponse MapInvitation(ChatRoomInvitation invitation, string roomName) =>
+		new()
+		{
+			Id = invitation.Id,
+			RoomId = invitation.RoomId,
+			RoomName = roomName,
+			InvitedUserId = invitation.InvitedUserId,
+			InvitedUserName = invitation.InvitedUser is not null
+				? string.Join(" ", new[] { invitation.InvitedUser.FirstName, invitation.InvitedUser.LastName }.Where(part => !string.IsNullOrWhiteSpace(part))).Trim()
+				: null,
+			InvitedById = invitation.InvitedById,
+			InvitedByName = invitation.InvitedBy?.FullName,
+			Status = invitation.Status.ToString(),
+			CreatedAtUtc = invitation.CreatedAtUtc,
+		};
+
 	private async Task<Result<ChatUser>> GetCurrentChatUserAsync()
 	{
 		var userResult = await GetCurrentUserAsync();
@@ -1544,10 +1865,12 @@ public class ChatService : IChatService
 		int memberCount,
 		ChatMessage? latestMessage,
 		ChatRoomMember? owner = null,
-		int unreadCount = 0)
+		int unreadCount = 0,
+		DateTime? nowUtc = null)
 	{
 		var activeMembership = IsActiveMember(membership) ? membership : null;
 		var canSeeContent = RoomAccessPolicy.CanSeeContent(room, activeMembership is not null);
+		var now = nowUtc ?? DateTime.UtcNow;
 
 		return new ChatRoomResponse
 		{
@@ -1563,6 +1886,8 @@ public class ChatService : IChatService
 			IsLocked = room.IsLocked,
 			CoverImageUrl = room.CoverImageUrl,
 			ScheduledStartAtUtc = room.ScheduledStartAtUtc,
+			CanJoin = !room.IsArchived && !room.IsLocked &&
+				!RoomAccessPolicy.IsScheduledAndNotStarted(room, now),
 			MemberCount = memberCount,
 			IsMember = activeMembership is not null,
 			MyRole = activeMembership?.Role,

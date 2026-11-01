@@ -39,6 +39,10 @@ public class DoctorController : ControllerBase
 		if (errors.Count > 0)
 			return BadRequest(new ValidationProblemDetails(errors) { Status = StatusCodes.Status400BadRequest, Title = "Validation Failed" });
 
+		// The total matching the current filters rides in a header so the body
+		// stays a plain array for every existing consumer.
+		Response.Headers["X-Total-Count"] = (await _doctorService.CountAsync(request)).ToString();
+
 		var result = await _doctorService.GetAll(request);
 		if (result.IsFailure)
 		{

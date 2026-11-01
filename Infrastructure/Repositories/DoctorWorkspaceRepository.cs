@@ -99,6 +99,28 @@ public class DoctorWorkspaceRepository : IDoctorWorkspaceRepository
 	public Task<int> CountOpenFollowUpsAsync(string doctorId) =>
 		FollowUps(false).CountAsync(x => x.DoctorId == doctorId && x.Status == FollowUpStatus.Open);
 
+	public Task<int> CountOverdueFollowUpsAsync(string doctorId, DateTime nowUtc) =>
+		FollowUps(false).CountAsync(x =>
+			x.DoctorId == doctorId &&
+			x.Status == FollowUpStatus.Open &&
+			x.DueAtUtc != null &&
+			x.DueAtUtc < nowUtc);
+
+	public Task<int> CountDueSoonFollowUpsAsync(string doctorId, DateTime fromUtc, DateTime toUtc) =>
+		FollowUps(false).CountAsync(x =>
+			x.DoctorId == doctorId &&
+			x.Status == FollowUpStatus.Open &&
+			x.DueAtUtc != null &&
+			x.DueAtUtc >= fromUtc &&
+			x.DueAtUtc < toUtc);
+
+	public Task<int> CountCompletedFollowUpsSinceAsync(string doctorId, DateTime sinceUtc) =>
+		FollowUps(false).CountAsync(x =>
+			x.DoctorId == doctorId &&
+			x.Status == FollowUpStatus.Done &&
+			x.ResolvedAtUtc != null &&
+			x.ResolvedAtUtc >= sinceUtc);
+
 	public async Task<IReadOnlyList<FollowUp>> GetVisibleFollowUpsForPatientAsync(string patientId, int take) =>
 		await FollowUps(false)
 			.Where(followUp => followUp.PatientId == patientId && followUp.IsPatientVisible)

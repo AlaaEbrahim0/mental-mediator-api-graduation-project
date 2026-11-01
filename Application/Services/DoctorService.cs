@@ -114,6 +114,9 @@ public class DoctorService : IDoctorService
 		return response;
 	}
 
+	public Task<int> CountAsync(DoctorRequestParameters requestParameters) =>
+		_repoManager.Doctors.GetFilteredCount(requestParameters);
+
 	public async Task<Result<DoctorInfoResponse>> DeleteDoctor(string doctorId)
 	{
 		var doctor = await _repoManager.Doctors.GetById(doctorId, true);

@@ -28,7 +28,8 @@ public static class RoomAccessPolicy
 		bool IsActiveMember,
 		bool PassphraseSupplied,
 		bool PassphraseMatches,
-		bool BlockedByThrottle);
+		bool BlockedByThrottle,
+		DateTime NowUtc);
 
 	public static Result EvaluateJoin(ChatRoom room, JoinAttempt attempt)
 	{
@@ -45,6 +46,14 @@ public static class RoomAccessPolicy
 		if (attempt.IsActiveMember)
 		{
 			return Result.Success();
+		}
+
+		// A scheduled room is a real gate, not a label: a non-member cannot join
+		// before its start. Members (the owner included) are already handled
+		// above, so the room is usable by its creator while it is "upcoming".
+		if (IsScheduledAndNotStarted(room, attempt.NowUtc))
+		{
+			return ChatErrors.RoomNotStarted();
 		}
 
 		if (room.IsLocked)
@@ -85,6 +94,21 @@ public static class RoomAccessPolicy
 	/// </summary>
 	public static string RedactDescription(ChatRoom room, bool canSeeContent) =>
 		canSeeContent ? room.Description : string.Empty;
+
+	/// <summary>
+	/// True while a room has a start time in the future. Compared in UTC; the
+	/// stored value is written from DateTime.UtcNow and serialized with a "Z".
+	/// </summary>
+	public static bool IsScheduledAndNotStarted(ChatRoom room, DateTime nowUtc) =>
+		room.ScheduledStartAtUtc.HasValue &&
+		ToUtc(room.ScheduledStartAtUtc.Value) > ToUtc(nowUtc);
+
+	private static DateTime ToUtc(DateTime value) => value.Kind switch
+	{
+		DateTimeKind.Utc => value,
+		DateTimeKind.Local => value.ToUniversalTime(),
+		_ => DateTime.SpecifyKind(value, DateTimeKind.Utc),
+	};
 
 	public static bool IsValidPassphrase(string? passphrase) =>
 		!string.IsNullOrWhiteSpace(passphrase) &&

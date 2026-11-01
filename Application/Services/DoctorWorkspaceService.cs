@@ -49,7 +49,7 @@ public class DoctorWorkspaceService : IDoctorWorkspaceService
 		_logger = logger;
 	}
 
-	public async Task<Result<DoctorDashboardResponse>> GetDashboardAsync()
+	public async Task<Result<DoctorDashboardResponse>> GetDashboardAsync(int days = 30)
 	{
 		var doctorId = _claims.GetUserId();
 		if (string.IsNullOrWhiteSpace(doctorId))
@@ -57,7 +57,9 @@ public class DoctorWorkspaceService : IDoctorWorkspaceService
 			return DoctorWorkspaceErrors.NotAvailable();
 		}
 
+		var rangeDays = Math.Clamp(days, 1, 365);
 		var now = DateTime.UtcNow;
+		var rangeStart = now.AddDays(-rangeDays);
 		var activeSince = now.AddDays(-ActiveLookbackDays);
 		var windowStart = now.AddDays(-AverageWindowDays);
 
@@ -74,6 +76,17 @@ public class DoctorWorkspaceService : IDoctorWorkspaceService
 			doctorId, windowStart);
 		var completedDurations = await _repos.Appointments.GetCompletedDurationsSinceAsync(
 			doctorId, windowStart);
+
+		// Date-range analytics all share `rangeStart..now` so the numbers on the
+		// cards, the trend and the patient split describe the same window.
+		var breakdown = await _repos.Appointments.GetStatusBreakdownAsync(doctorId, rangeStart, now);
+		var trend = await _repos.Appointments.GetDailyTrendAsync(doctorId, rangeStart, now);
+		var (newPatients, returningPatients) = await _repos.Appointments.CountNewVsReturningAsync(doctorId, rangeStart);
+		var upcomingList = await _repos.Appointments.GetUpcomingListAsync(doctorId, now, 8);
+
+		var followUpsOverdue = await _repos.DoctorWorkspace.CountOverdueFollowUpsAsync(doctorId, now);
+		var followUpsDueSoon = await _repos.DoctorWorkspace.CountDueSoonFollowUpsAsync(doctorId, now, now.AddDays(14));
+		var followUpsCompleted = await _repos.DoctorWorkspace.CountCompletedFollowUpsSinceAsync(doctorId, rangeStart);
 
 		var totalRoomsHosted = await _repos.ChatRooms.CountRoomsCreatedAsync(doctorId, includeArchived: true);
 		var activeRoomsHosted = await _repos.ChatRooms.CountRoomsCreatedAsync(doctorId, includeArchived: false);
@@ -97,6 +110,11 @@ public class DoctorWorkspaceService : IDoctorWorkspaceService
 
 		var mapped = await MapRoomsAsync(doctorId, liveRooms.Concat(scheduledRooms));
 
+		breakdown.TryGetValue(AppointmentStatus.Completed, out var completedInRange);
+		breakdown.TryGetValue(AppointmentStatus.Cancelled, out var cancelledInRange);
+		breakdown.TryGetValue(AppointmentStatus.Pending, out var pendingInRange);
+		breakdown.TryGetValue(AppointmentStatus.Confirmed, out var confirmedInRange);
+
 		return new DoctorDashboardResponse
 		{
 			ActiveConsultations = activeConsultations,
@@ -114,9 +132,36 @@ public class DoctorWorkspaceService : IDoctorWorkspaceService
 			AverageConsultationWindowDays = AverageWindowDays,
 			LiveRooms = liveRooms.Select(room => mapped[room.Id]).ToList(),
 			UpcomingScheduledRooms = scheduledRooms.Select(room => mapped[room.Id]).ToList(),
+			RangeDays = rangeDays,
+			AppointmentsInRange = breakdown.Values.Sum(),
+			CompletedInRange = completedInRange,
+			CancelledInRange = cancelledInRange,
+			PendingInRange = pendingInRange,
+			ConfirmedInRange = confirmedInRange,
+			Trend = trend
+				.Select(day => new DashboardTrendPoint
+				{
+					DateUtc = day.DateUtc,
+					Completed = day.Completed,
+					Cancelled = day.Cancelled,
+				})
+				.ToList(),
+			FollowUpsOverdue = followUpsOverdue,
+			FollowUpsDueSoon = followUpsDueSoon,
+			FollowUpsCompletedInRange = followUpsCompleted,
+			NewPatients = newPatients,
+			ReturningPatients = returningPatients,
+			UpcomingAppointments = upcomingList
+				.Select(item => new UpcomingAppointmentItem
+				{
+					AppointmentId = item.AppointmentId,
+					PatientName = item.PatientName,
+					StartTimeUtc = DateTime.SpecifyKind(item.StartTimeUtc, DateTimeKind.Utc),
+					Status = item.Status.ToString(),
+				})
+				.ToList(),
 		};
 	}
-
 	public async Task<Result<IReadOnlyList<DoctorActivityItemResponse>>> GetActivityAsync(int limit)
 	{
 		var doctorId = _claims.GetUserId();

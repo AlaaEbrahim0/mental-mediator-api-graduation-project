@@ -495,5 +495,103 @@ public class AppointmentRepository : RepositoryBase<Appointment>, IAppointmentRe
 			.Select(appointment => appointment.Duration)
 			.ToListAsync();
 	}
-}
 
+	public async Task<IReadOnlyDictionary<AppointmentStatus, int>> GetStatusBreakdownAsync(
+		string doctorId,
+		DateTime fromUtc,
+		DateTime toUtc)
+	{
+		var rows = await FindByCondition(
+				appointment => appointment.DoctorId == doctorId &&
+					appointment.StartTime >= fromUtc &&
+					appointment.StartTime < toUtc,
+				false)
+			.GroupBy(appointment => appointment.Status)
+			.Select(group => new { Status = group.Key, Count = group.Count() })
+			.ToListAsync();
+
+		return rows.ToDictionary(row => row.Status, row => row.Count);
+	}
+
+	public async Task<IReadOnlyList<DashboardDayCount>> GetDailyTrendAsync(
+		string doctorId,
+		DateTime fromUtc,
+		DateTime toUtc)
+	{
+		var rows = await FindByCondition(
+				appointment => appointment.DoctorId == doctorId &&
+					appointment.StartTime >= fromUtc &&
+					appointment.StartTime < toUtc &&
+					(appointment.Status == AppointmentStatus.Completed ||
+					 appointment.Status == AppointmentStatus.Cancelled),
+				false)
+			.GroupBy(appointment => appointment.StartTime.Date)
+			.Select(group => new
+			{
+				Date = group.Key,
+				Completed = group.Count(x => x.Status == AppointmentStatus.Completed),
+				Cancelled = group.Count(x => x.Status == AppointmentStatus.Cancelled),
+			})
+			.OrderBy(row => row.Date)
+			.ToListAsync();
+
+		return rows
+			.Select(row => new DashboardDayCount(row.Date, row.Completed, row.Cancelled))
+			.ToList();
+	}
+
+	public async Task<IReadOnlyList<DashboardUpcomingAppointment>> GetUpcomingListAsync(
+		string doctorId,
+		DateTime fromUtc,
+		int take)
+	{
+		return await FindByCondition(
+				appointment => appointment.DoctorId == doctorId &&
+					appointment.StartTime >= fromUtc &&
+					(appointment.Status == AppointmentStatus.Pending ||
+					 appointment.Status == AppointmentStatus.Confirmed),
+				false)
+			.Include(appointment => appointment.User)
+			.OrderBy(appointment => appointment.StartTime)
+			.Take(take)
+			.Select(appointment => new DashboardUpcomingAppointment(
+				appointment.Id,
+				appointment.User.FirstName + " " + appointment.User.LastName,
+				appointment.StartTime,
+				appointment.Status))
+			.ToListAsync();
+	}
+
+	public async Task<(int New, int Returning)> CountNewVsReturningAsync(string doctorId, DateTime fromUtc)
+	{
+		// A patient is "returning" when they also had a real (non-cancelled,
+		// non-rejected) appointment before the window opened.
+		var patientsInWindow = await FindByCondition(
+				appointment => appointment.DoctorId == doctorId &&
+					appointment.StartTime >= fromUtc &&
+					appointment.Status != AppointmentStatus.Cancelled &&
+					appointment.Status != AppointmentStatus.Rejected,
+				false)
+			.Select(appointment => appointment.UserId)
+			.Distinct()
+			.ToListAsync();
+
+		if (patientsInWindow.Count == 0)
+		{
+			return (0, 0);
+		}
+
+		var returningSet = await FindByCondition(
+				appointment => appointment.DoctorId == doctorId &&
+					appointment.StartTime < fromUtc &&
+					appointment.Status != AppointmentStatus.Cancelled &&
+					appointment.Status != AppointmentStatus.Rejected,
+				false)
+			.Select(appointment => appointment.UserId)
+			.Distinct()
+			.ToListAsync();
+
+		var returning = patientsInWindow.Count(returningSet.Contains);
+		return (patientsInWindow.Count - returning, returning);
+	}
+}

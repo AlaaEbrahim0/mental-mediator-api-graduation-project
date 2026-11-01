@@ -19,6 +19,7 @@ public class RepositoryManager : IRepositoryManager
 	private readonly Lazy<IChatRoomRepository> chatRoomRepository;
 	private readonly Lazy<IChatMessageRepository> chatMessageRepository;
 	private readonly Lazy<IChatMessageReportRepository> chatMessageReportRepository;
+	private readonly Lazy<IChatRoomInvitationRepository> chatRoomInvitationRepository;
 	private readonly Lazy<IDoctorSchedulingRepository> doctorSchedulingRepository;
 	private readonly Lazy<IProfileRepository> profileRepository;
 	private readonly Lazy<IDoctorWorkspaceRepository> doctorWorkspaceRepository;
@@ -38,6 +39,7 @@ public class RepositoryManager : IRepositoryManager
 		chatRoomRepository = new(() => new ChatRoomRepository(dbContext));
 		chatMessageRepository = new(() => new ChatMessageRepository(dbContext));
 		chatMessageReportRepository = new(() => new ChatMessageReportRepository(dbContext));
+		chatRoomInvitationRepository = new(() => new ChatRoomInvitationRepository(dbContext));
 		doctorSchedulingRepository = new(() => new DoctorSchedulingRepository(dbContext));
 		profileRepository = new(() => new ProfileRepository(dbContext));
 		doctorWorkspaceRepository = new(() => new DoctorWorkspaceRepository(dbContext));
@@ -51,6 +53,7 @@ public class RepositoryManager : IRepositoryManager
 	public IChatRoomRepository ChatRooms => chatRoomRepository.Value;
 	public IChatMessageRepository ChatMessages => chatMessageRepository.Value;
 	public IChatMessageReportRepository ChatMessageReports => chatMessageReportRepository.Value;
+	public IChatRoomInvitationRepository ChatRoomInvitations => chatRoomInvitationRepository.Value;
 	public IDoctorRepository Doctors => doctorRepository.Value;
 	public IUserRepository Users => userRepository.Value;
 	public IAppointmentRepository Appointments => appointementRepository.Value;

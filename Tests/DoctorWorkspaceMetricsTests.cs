@@ -357,4 +357,58 @@ public class DoctorWorkspaceMetricsTests : IDisposable
 		feed[2].Type.Should().Be("follow_up_due");
 		feed[2].PatientName.Should().Be("Bob Patient");
 	}
+
+	[Fact]
+	public async Task Dashboard_reports_range_metrics_and_isolates_other_doctors()
+	{
+		var now = DateTime.UtcNow;
+		AddPatient("p1", "Pat", "One");
+		AddPatient("p2", "Pat", "Two");
+
+		AddAppointment("p1", AppointmentStatus.Completed, now.AddDays(-2));
+		AddAppointment("p1", AppointmentStatus.Completed, now.AddDays(-3));
+		// A session before the 30-day window makes p1 a returning patient.
+		AddAppointment("p1", AppointmentStatus.Confirmed, now.AddDays(-40));
+		AddAppointment("p2", AppointmentStatus.Cancelled, now.AddDays(-1));
+		// A brand-new patient with only an in-range session counts as "new".
+		AddPatient("p3", "Pat", "Three");
+		AddAppointment("p3", AppointmentStatus.Completed, now.AddDays(-1));
+		// Another doctor's data must never leak into this dashboard.
+		AddAppointment("p2", AppointmentStatus.Completed, now.AddDays(-5), doctorId: OtherDoctorId);
+
+		_context.FollowUps.Add(new FollowUp { DoctorId = DoctorId, PatientId = "p1", Reason = "overdue", Status = FollowUpStatus.Open, DueAtUtc = now.AddDays(-2), CreatedAtUtc = now.AddDays(-10) });
+		_context.FollowUps.Add(new FollowUp { DoctorId = DoctorId, PatientId = "p2", Reason = "soon", Status = FollowUpStatus.Open, DueAtUtc = now.AddDays(3), CreatedAtUtc = now.AddDays(-4) });
+		_context.FollowUps.Add(new FollowUp { DoctorId = DoctorId, PatientId = "p1", Reason = "done", Status = FollowUpStatus.Done, DueAtUtc = now.AddDays(-6), CreatedAtUtc = now.AddDays(-12), ResolvedAtUtc = now.AddDays(-5) });
+		await _context.SaveChangesAsync();
+
+		var dashboard = await _service.GetDashboardAsync(30);
+
+		dashboard.IsSuccess.Should().BeTrue();
+		dashboard.Value.RangeDays.Should().Be(30);
+		dashboard.Value.CompletedInRange.Should().Be(3);
+		dashboard.Value.CancelledInRange.Should().Be(1);
+		dashboard.Value.AppointmentsInRange.Should().Be(4);
+		dashboard.Value.NewPatients.Should().Be(1);
+		dashboard.Value.ReturningPatients.Should().Be(1);
+		dashboard.Value.FollowUpsOverdue.Should().Be(1);
+		dashboard.Value.FollowUpsDueSoon.Should().Be(1);
+		dashboard.Value.FollowUpsCompletedInRange.Should().Be(1);
+		dashboard.Value.UpcomingAppointments.Should().BeEmpty();
+	}
+
+	[Fact]
+	public async Task Upcoming_appointments_exclude_cancelled_and_other_doctors()
+	{
+		var now = DateTime.UtcNow;
+		AddPatient("p9", "Pat", "Nine");
+		AddAppointment("p9", AppointmentStatus.Confirmed, now.AddDays(1));
+		AddAppointment("p9", AppointmentStatus.Cancelled, now.AddDays(2));
+		AddAppointment("p9", AppointmentStatus.Confirmed, now.AddDays(3), doctorId: OtherDoctorId);
+		await _context.SaveChangesAsync();
+
+		var dashboard = await _service.GetDashboardAsync(30);
+
+		dashboard.Value.UpcomingAppointments.Should().ContainSingle()
+			.Which.Status.Should().Be("Confirmed");
+	}
 }

@@ -23,6 +23,7 @@ public class PatientHistoryTests : IDisposable
 	private const string DoctorOne = "doctor-1";
 	private const string DoctorTwo = "doctor-2";
 	private const string DoctorThree = "doctor-3";
+	private const string DoctorFour = "doctor-4";
 	private const string PatientOne = "patient-1";
 	private const string PatientTwo = "patient-2";
 
@@ -90,6 +91,134 @@ public class PatientHistoryTests : IDisposable
 		allowed.Value.Items.Should().NotContain(item => item.Title == "Private note");
 	}
 
+	[Fact]
+	public async Task History_is_ordered_by_event_date_newest_first()
+	{
+		var history = await CreateService(PatientOne).GetMyHistoryAsync(1, 50);
+
+		history.IsSuccess.Should().BeTrue();
+		history.Value.Items.Select(item => item.OccurredAtUtc)
+			.Should().BeInDescendingOrder();
+	}
+
+	[Fact]
+	public async Task A_follow_up_sorts_at_its_due_date_not_its_creation_order()
+	{
+		// A follow-up created recently but due far in the past must not sit at
+		// the top of the timeline; its event date is the due date.
+		_context.FollowUps.Add(new FollowUp
+		{
+			DoctorId = DoctorOne,
+			PatientId = PatientOne,
+			Reason = "Old due date",
+			Status = FollowUpStatus.Open,
+			CreatedAtUtc = DateTime.UtcNow,
+			DueAtUtc = DateTime.UtcNow.AddDays(-30),
+			IsPatientVisible = true,
+		});
+		await _context.SaveChangesAsync();
+
+		var history = await CreateService(PatientOne).GetMyHistoryAsync(1, 50);
+
+		var old = history.Value.Items.Single(item => item.Title.Contains("Old due date"));
+		old.OccurredAtUtc.Should().BeCloseTo(old.DueAtUtc!.Value, TimeSpan.FromSeconds(1));
+		history.Value.Items.IndexOf(old).Should().BeGreaterThan(0);
+	}
+
+	[Fact]
+	public async Task A_note_linked_to_an_appointment_is_dated_by_the_consultation()
+	{
+		var appointment = _context.Appointments.First(item => item.Id == 1);
+		_context.PatientNotes.Add(new PatientNote
+		{
+			DoctorId = DoctorOne,
+			PatientId = PatientOne,
+			Title = "Linked note",
+			Body = "Written today about an old session",
+			CreatedAtUtc = DateTime.UtcNow,
+			UpdatedAtUtc = DateTime.UtcNow,
+			AppointmentId = appointment.Id,
+			IsPatientVisible = true,
+		});
+		await _context.SaveChangesAsync();
+
+		var history = await CreateService(PatientOne).GetMyHistoryAsync(1, 50);
+
+		var linked = history.Value.Items.Single(item => item.Title == "Linked note");
+		linked.OccurredAtUtc.Should().BeCloseTo(
+			DateTime.SpecifyKind(appointment.StartTime, DateTimeKind.Utc), TimeSpan.FromSeconds(1));
+	}
+
+	[Fact]
+	public async Task Equal_timestamps_have_a_deterministic_order()
+	{
+		var sameInstant = DateTime.UtcNow.AddDays(-9);
+		_context.PatientNotes.AddRange(
+			new PatientNote { DoctorId = DoctorOne, PatientId = PatientOne, Title = "Tie A", Body = "a", CreatedAtUtc = sameInstant, IsPatientVisible = true },
+			new PatientNote { DoctorId = DoctorOne, PatientId = PatientOne, Title = "Tie B", Body = "b", CreatedAtUtc = sameInstant, IsPatientVisible = true });
+		await _context.SaveChangesAsync();
+
+		var first = await CreateService(PatientOne).GetMyHistoryAsync(1, 50);
+		var second = await CreateService(PatientOne).GetMyHistoryAsync(1, 50);
+
+		var firstTie = first.Value.Items.Where(item => item.Title.StartsWith("Tie ")).Select(item => item.Title).ToList();
+		var secondTie = second.Value.Items.Where(item => item.Title.StartsWith("Tie ")).Select(item => item.Title).ToList();
+		secondTie.Should().Equal(firstTie);
+		firstTie.Should().HaveCount(2);
+		// Higher source id wins the tie, so the order is stable across refreshes.
+		first.Value.Items.First(item => item.Title.StartsWith("Tie ")).SourceId
+			.Should().BeGreaterThan(first.Value.Items.Last(item => item.Title.StartsWith("Tie ")).SourceId);
+	}
+
+	[Fact]
+	public async Task Category_filter_returns_only_that_type_and_keeps_order()
+	{
+		var notes = await CreateService(PatientOne).GetMyHistoryAsync(1, 50, "notes");
+		notes.Value.Items.Should().OnlyContain(item => item.Type == "note");
+		notes.Value.Items.Should().Contain(item => item.Title == "Shared note");
+		notes.Value.Items.Should().NotContain(item => item.Title == "Private note");
+
+		var appts = await CreateService(PatientOne).GetMyHistoryAsync(1, 50, "appointments");
+		appts.Value.Items.Should().OnlyContain(item => item.Type == "appointment");
+	}
+
+	[Fact]
+	public async Task Date_range_filter_excludes_records_outside_the_window()
+	{
+		var from = DateTime.UtcNow.AddDays(-2).Date;
+		var to = DateTime.UtcNow.Date;
+
+		var history = await CreateService(PatientOne).GetMyHistoryAsync(1, 50, "all", from, to);
+
+		history.Value.Items.Should().NotBeEmpty();
+		history.Value.Items.Should().OnlyContain(item =>
+			item.OccurredAtUtc >= from && item.OccurredAtUtc <= to.AddDays(1).AddTicks(-1));
+	}
+
+	[Fact]
+	public async Task Pagination_preserves_the_global_ordering()
+	{
+		var all = await CreateService(PatientOne).GetMyHistoryAsync(1, 50);
+		var pageOne = await CreateService(PatientOne).GetMyHistoryAsync(1, 1);
+		var pageTwo = await CreateService(PatientOne).GetMyHistoryAsync(2, 1);
+
+		pageOne.Value.Items.Should().HaveCount(1);
+		all.Value.Items[0].Type.Should().Be(pageOne.Value.Items[0].Type);
+		all.Value.Items[0].SourceId.Should().Be(pageOne.Value.Items[0].SourceId);
+		all.Value.Items[1].SourceId.Should().Be(pageTwo.Value.Items[0].SourceId);
+	}
+
+	[Fact]
+	public async Task A_category_filter_does_not_hide_an_existing_relationship()
+	{
+		// DoctorFour has only an appointment with PatientOne; filtering to notes
+		// must return an empty page, not a 404 that pretends there is no patient.
+		var history = await CreateService(DoctorFour).GetPatientHistoryAsync(PatientOne, 1, 20, "notes");
+
+		history.IsSuccess.Should().BeTrue();
+		history.Value.Items.Should().BeEmpty();
+	}
+
 	private PatientHistoryService CreateService(string userId) =>
 		new(
 			new RepositoryManager(_context),
@@ -101,7 +230,8 @@ public class PatientHistoryTests : IDisposable
 		_context.Doctors.AddRange(
 			MakeDoctor(DoctorOne, "Dana", "One"),
 			MakeDoctor(DoctorTwo, "Drew", "Two"),
-			MakeDoctor(DoctorThree, "Dee", "Three"));
+			MakeDoctor(DoctorThree, "Dee", "Three"),
+			MakeDoctor(DoctorFour, "Dot", "Four"));
 		_context.Clients.AddRange(
 			MakePatient(PatientOne, "Pat", "One"),
 			MakePatient(PatientTwo, "Pat", "Two"));
@@ -110,7 +240,8 @@ public class PatientHistoryTests : IDisposable
 		_context.Appointments.AddRange(
 			MakeAppointment(1, PatientOne, DoctorOne, AppointmentStatus.Completed, DateTime.UtcNow.AddDays(-3)),
 			MakeAppointment(2, PatientOne, DoctorTwo, AppointmentStatus.Confirmed, DateTime.UtcNow.AddDays(-2)),
-			MakeAppointment(3, PatientTwo, DoctorOne, AppointmentStatus.Completed, DateTime.UtcNow.AddDays(-1)));
+			MakeAppointment(3, PatientTwo, DoctorOne, AppointmentStatus.Completed, DateTime.UtcNow.AddDays(-1)),
+			MakeAppointment(4, PatientOne, DoctorFour, AppointmentStatus.Completed, DateTime.UtcNow.AddDays(-5)));
 
 		_context.PatientNotes.AddRange(
 			new PatientNote

@@ -25,6 +25,9 @@ public class PatientHistoryItemResponse
 
 	/// <summary>For doctor views only; the patient endpoint returns visible records only.</summary>
 	public bool IsPatientVisible { get; set; }
+
+	/// <summary>The source record id; gives the timeline a stable key and a deterministic tie-break.</summary>
+	public int SourceId { get; set; }
 }
 
 public class PatientHistoryResponse

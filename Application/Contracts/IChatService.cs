@@ -37,6 +37,13 @@ public interface IChatService
 	/// </summary>
 	Task<Result> MarkRoomReadAsync(int roomId);
 
+	Task<Result<IReadOnlyList<InviteCandidateResponse>>> GetInviteCandidatesAsync(int roomId, string? search);
+	Task<Result<IReadOnlyList<RoomInvitationResponse>>> InviteToRoomAsync(int roomId, IReadOnlyCollection<string> userIds);
+	Task<Result<IReadOnlyList<RoomInvitationResponse>>> GetRoomInvitationsAsync(int roomId);
+	Task<Result> CancelRoomInvitationAsync(int roomId, int invitationId);
+	Task<Result<IReadOnlyList<RoomInvitationResponse>>> GetMyInvitationsAsync();
+	Task<Result<RoomInvitationResponse>> RespondToInvitationAsync(int invitationId, bool accept);
+
 	Task<Result<IReadOnlyList<ChatRoomMemberResponse>>> GetRoomMembersAsync(int roomId);
 
 	Task<Result<ChatMessagePageResponse>> GetMessagesAsync(int roomId, ChatMessageRequestParameters parameters);

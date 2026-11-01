@@ -70,5 +70,20 @@ public interface IAppointmentRepository
 	Task<IReadOnlyList<TimeSpan>> GetCompletedDurationsSinceAsync(string doctorId, DateTime since);
 	Task<(List<WeekdayAppointmentCount> weekdayCounts, List<MonthlyAppointmentCount> monthlyCounts)> GetDoctorAppointmentCounts(string doctorId);
 	Task<List<AppointmentStatusCount>> GetAppointmentStatusCounts(string doctorId);
+	/// <summary>Appointment counts grouped by status within a start-time window.</summary>
+	Task<IReadOnlyDictionary<Domain.Enums.AppointmentStatus, int>> GetStatusBreakdownAsync(
+		string doctorId, DateTime fromUtc, DateTime toUtc);
+
+	/// <summary>Completed and cancelled appointment counts per calendar day (UTC).</summary>
+	Task<IReadOnlyList<DashboardDayCount>> GetDailyTrendAsync(
+		string doctorId, DateTime fromUtc, DateTime toUtc);
+
+	/// <summary>The next scheduled appointments for the upcoming list.</summary>
+	Task<IReadOnlyList<DashboardUpcomingAppointment>> GetUpcomingListAsync(
+		string doctorId, DateTime fromUtc, int take);
+
+	/// <summary>Patients seen in the window, split into first-ever and returning.</summary>
+	Task<(int New, int Returning)> CountNewVsReturningAsync(string doctorId, DateTime fromUtc);
+
 	Task<int> GetTotalAppointments();
 }

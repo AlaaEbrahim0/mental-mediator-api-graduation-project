@@ -199,6 +199,7 @@ public class NotificationOwnershipTests
 		public ICommentRepository Comments => throw new NotImplementedException();
 		public IReplyRepository Replies => throw new NotImplementedException();
 		public IChatRoomRepository ChatRooms => throw new NotImplementedException();
+		public IChatRoomInvitationRepository ChatRoomInvitations => throw new NotImplementedException();
 		public IChatMessageRepository ChatMessages => throw new NotImplementedException();
 		public IChatMessageReportRepository ChatMessageReports => throw new NotImplementedException();
 		public IDoctorRepository Doctors => throw new NotImplementedException();

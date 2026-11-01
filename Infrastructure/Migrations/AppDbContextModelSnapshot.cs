@@ -413,6 +413,49 @@ namespace Infrastructure.Migrations
                     b.ToTable("ChatRooms");
                 });
 
+            modelBuilder.Entity("Domain.Entities.ChatRoomInvitation", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("InvitedById")
+                        .IsRequired()
+                        .HasMaxLength(450)
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<string>("InvitedUserId")
+                        .IsRequired()
+                        .HasMaxLength(450)
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<DateTime?>("RespondedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("RoomId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("InvitedById");
+
+                    b.HasIndex("InvitedUserId", "Status");
+
+                    b.HasIndex("RoomId", "InvitedUserId")
+                        .IsUnique()
+                        .HasFilter("[Status] = 0");
+
+                    b.ToTable("ChatRoomInvitations");
+                });
+
             modelBuilder.Entity("Domain.Entities.ChatRoomMember", b =>
                 {
                     b.Property<int>("Id")
@@ -1323,6 +1366,33 @@ namespace Infrastructure.Migrations
                         .HasForeignKey("CreatedById")
                         .OnDelete(DeleteBehavior.NoAction)
                         .IsRequired();
+                });
+
+            modelBuilder.Entity("Domain.Entities.ChatRoomInvitation", b =>
+                {
+                    b.HasOne("Domain.Entities.BaseUser", "InvitedBy")
+                        .WithMany()
+                        .HasForeignKey("InvitedById")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+
+                    b.HasOne("Domain.Entities.BaseUser", "InvitedUser")
+                        .WithMany()
+                        .HasForeignKey("InvitedUserId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+
+                    b.HasOne("Domain.Entities.ChatRoom", "Room")
+                        .WithMany()
+                        .HasForeignKey("RoomId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("InvitedBy");
+
+                    b.Navigation("InvitedUser");
+
+                    b.Navigation("Room");
                 });
 
             modelBuilder.Entity("Domain.Entities.ChatRoomMember", b =>

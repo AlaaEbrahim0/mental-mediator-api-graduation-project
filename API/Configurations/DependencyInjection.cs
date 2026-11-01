@@ -151,6 +151,7 @@ public static class DependencyInjection
 		services.AddScoped<IChatRoomRepository, ChatRoomRepository>();
 		services.AddScoped<IChatMessageRepository, ChatMessageRepository>();
 		services.AddScoped<IChatMessageReportRepository, ChatMessageReportRepository>();
+		services.AddScoped<IChatRoomInvitationRepository, ChatRoomInvitationRepository>();
 		services.AddScoped<IDoctorRepository, DoctorRepository>();
 		services.AddScoped<IUserRepository, UserRepository>();
 		services.AddScoped<IProfileRepository, ProfileRepository>();

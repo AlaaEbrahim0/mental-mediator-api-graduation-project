@@ -123,6 +123,34 @@ public class ChatRoomsController : ControllerBase
 		return Ok(result.Value);
 	}
 
+	[HttpGet("{roomId:int}/invite-candidates")]
+	public async Task<IActionResult> GetInviteCandidates(int roomId, [FromQuery] string? search)
+	{
+		var result = await _chatService.GetInviteCandidatesAsync(roomId, search);
+		return result.IsFailure ? result.ToProblemDetails() : Ok(result.Value);
+	}
+
+	[HttpPost("{roomId:int}/invitations")]
+	public async Task<IActionResult> InviteToRoom(int roomId, [FromBody] InviteToRoomRequest request)
+	{
+		var result = await _chatService.InviteToRoomAsync(roomId, request.UserIds ?? new List<string>());
+		return result.IsFailure ? result.ToProblemDetails() : Ok(result.Value);
+	}
+
+	[HttpGet("{roomId:int}/invitations")]
+	public async Task<IActionResult> GetRoomInvitations(int roomId)
+	{
+		var result = await _chatService.GetRoomInvitationsAsync(roomId);
+		return result.IsFailure ? result.ToProblemDetails() : Ok(result.Value);
+	}
+
+	[HttpDelete("{roomId:int}/invitations/{invitationId:int}")]
+	public async Task<IActionResult> CancelRoomInvitation(int roomId, int invitationId)
+	{
+		var result = await _chatService.CancelRoomInvitationAsync(roomId, invitationId);
+		return result.IsFailure ? result.ToProblemDetails() : NoContent();
+	}
+
 	[HttpGet("{roomId:int}/messages")]
 	public async Task<IActionResult> GetMessages(
 		int roomId,

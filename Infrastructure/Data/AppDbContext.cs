@@ -30,6 +30,7 @@ public class AppDbContext : IdentityDbContext<BaseUser>
 	public DbSet<ChatRoomMember> ChatRoomMembers { get; set; }
 	public DbSet<ChatMessage> ChatMessages { get; set; }
 	public DbSet<ChatMessageReport> ChatMessageReports { get; set; }
+	public DbSet<ChatRoomInvitation> ChatRoomInvitations { get; set; }
 	public DbSet<PatientNote> PatientNotes { get; set; }
 	public DbSet<FollowUp> FollowUps { get; set; }
 	public DbSet<User> AppUsers { get; set; }

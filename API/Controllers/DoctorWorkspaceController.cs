@@ -24,9 +24,9 @@ public class DoctorWorkspaceController : ControllerBase
 	}
 
 	[HttpGet("dashboard")]
-	public async Task<IActionResult> GetDashboard()
+	public async Task<IActionResult> GetDashboard([FromQuery] int days = 30)
 	{
-		var result = await _workspaceService.GetDashboardAsync();
+		var result = await _workspaceService.GetDashboardAsync(days);
 		if (result.IsFailure)
 		{
 			return result.ToProblemDetails();

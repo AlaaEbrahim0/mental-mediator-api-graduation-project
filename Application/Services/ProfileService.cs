@@ -51,6 +51,15 @@ public class ProfileService : IProfileService
 		var response = new PublicProfileResponse();
 		await FillCommonAsync(response, profile);
 
+		// A public profile is a display card, not a directory of private
+		// contact details: the owner and administrators are the only viewers
+		// who receive the contact block. This is what makes "public" safe for a
+		// patient who opts in.
+		if (!isOwner && !isAdmin)
+		{
+			response.Contact = new ContactInfoResponse();
+		}
+
 		return response;
 	}
 

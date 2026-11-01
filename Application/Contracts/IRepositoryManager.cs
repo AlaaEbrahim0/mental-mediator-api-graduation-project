@@ -11,6 +11,7 @@ public interface IRepositoryManager
 	IChatRoomRepository ChatRooms { get; }
 	IChatMessageRepository ChatMessages { get; }
 	IChatMessageReportRepository ChatMessageReports { get; }
+	IChatRoomInvitationRepository ChatRoomInvitations { get; }
 	IDoctorRepository Doctors { get; }
 	IUserRepository Users { get; }
 	IProfileRepository Profiles { get; }

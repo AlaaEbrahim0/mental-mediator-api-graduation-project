@@ -18,7 +18,8 @@ public class RoomAccessPolicyTests
         ChatRoomVisibility visibility = ChatRoomVisibility.Public,
         bool isArchived = false,
         bool isLocked = false,
-        string? passwordHash = null) =>
+        string? passwordHash = null,
+        DateTime? scheduledStartUtc = null) =>
         new()
         {
             Id = 1,
@@ -28,14 +29,74 @@ public class RoomAccessPolicyTests
             IsArchived = isArchived,
             IsLocked = isLocked,
             PasswordHash = passwordHash,
+            ScheduledStartAtUtc = scheduledStartUtc,
         };
 
     private static RoomAccessPolicy.JoinAttempt Attempt(
         bool isActiveMember = false,
         bool supplied = false,
         bool matches = false,
-        bool blocked = false) =>
-        new(isActiveMember, supplied, matches, blocked);
+        bool blocked = false,
+        DateTime? nowUtc = null) =>
+        new(isActiveMember, supplied, matches, blocked, nowUtc ?? DateTime.UtcNow);
+
+    [Fact]
+    public void A_scheduled_room_rejects_a_non_member_before_its_start()
+    {
+        var now = new DateTime(2026, 5, 1, 12, 0, 0, DateTimeKind.Utc);
+        var result = RoomAccessPolicy.EvaluateJoin(
+            Room(scheduledStartUtc: now.AddDays(2)),
+            Attempt(nowUtc: now));
+
+        result.IsFailure.Should().BeTrue();
+        result.Error.Code.Should().Be("Chat.RoomNotStarted");
+    }
+
+    [Fact]
+    public void A_scheduled_room_still_admits_its_member_before_the_start()
+    {
+        var now = new DateTime(2026, 5, 1, 12, 0, 0, DateTimeKind.Utc);
+        var result = RoomAccessPolicy.EvaluateJoin(
+            Room(scheduledStartUtc: now.AddDays(2)),
+            Attempt(isActiveMember: true, nowUtc: now));
+
+        result.IsSuccess.Should().BeTrue();
+    }
+
+    [Fact]
+    public void A_scheduled_room_opens_at_its_start_time()
+    {
+        var now = new DateTime(2026, 5, 3, 12, 0, 0, DateTimeKind.Utc);
+        var result = RoomAccessPolicy.EvaluateJoin(
+            Room(scheduledStartUtc: now),
+            Attempt(nowUtc: now));
+
+        result.IsSuccess.Should().BeTrue();
+    }
+
+    [Fact]
+    public void An_unscheduled_start_is_treated_as_utc_regardless_of_kind()
+    {
+        // SQL Server hands back an Unspecified DateTime; it must not be shifted.
+        var start = new DateTime(2026, 5, 3, 0, 0, 0, DateTimeKind.Unspecified);
+        RoomAccessPolicy.IsScheduledAndNotStarted(
+            Room(scheduledStartUtc: start),
+            new DateTime(2026, 5, 2, 23, 59, 59, DateTimeKind.Utc)).Should().BeTrue();
+        RoomAccessPolicy.IsScheduledAndNotStarted(
+            Room(scheduledStartUtc: start),
+            new DateTime(2026, 5, 3, 0, 0, 1, DateTimeKind.Utc)).Should().BeFalse();
+    }
+
+    [Fact]
+    public void An_archived_scheduled_room_reports_archived_first()
+    {
+        var now = new DateTime(2026, 5, 1, 12, 0, 0, DateTimeKind.Utc);
+        var result = RoomAccessPolicy.EvaluateJoin(
+            Room(isArchived: true, scheduledStartUtc: now.AddDays(2)),
+            Attempt(nowUtc: now));
+
+        result.Error.Code.Should().Be("Chat.RoomArchived");
+    }
 
     [Fact]
     public void An_archived_room_rejects_even_an_active_member()

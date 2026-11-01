@@ -42,6 +42,22 @@ public static class ChatErrors
 	public static Error InvalidRoomPassphrase() => Error.Validation(
 		"Chat.InvalidRoomPassphrase", "A room passphrase must be between 8 and 128 characters and cannot contain control characters.");
 
+	public static Error NotRoomModerator() => Error.Forbidden(
+		"Chat.NotRoomModerator", "Only a room owner or moderator can invite members.");
+
+	public static Error InvitationNotFound() => Error.NotFound(
+		"Chat.InvitationNotFound", "That invitation was not found.");
+
+	public static Error InvitationNotPending() => Error.Conflict(
+		"Chat.InvitationNotPending", "This invitation is no longer pending.");
+
+	public static Error InvitationNotYours() => Error.Forbidden(
+		"Chat.InvitationNotYours", "You can only respond to your own invitation.");
+
+	/// <summary>A scheduled room exists but its start time has not arrived.</summary>
+	public static Error RoomNotStarted() => Error.Conflict(
+		"Chat.RoomNotStarted", "This room has not opened yet, so it cannot be joined.");
+
 	public static Error InvalidScheduledStart() => Error.Validation(
 		"Chat.InvalidScheduledStart", "A scheduled start must be in the future and no more than 90 days ahead.");
 

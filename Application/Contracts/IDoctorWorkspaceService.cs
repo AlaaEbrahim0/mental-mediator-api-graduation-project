@@ -11,7 +11,7 @@ namespace Application.Contracts;
 /// </summary>
 public interface IDoctorWorkspaceService
 {
-	Task<Result<DoctorDashboardResponse>> GetDashboardAsync();
+	Task<Result<DoctorDashboardResponse>> GetDashboardAsync(int days = 30);
 
 	Task<Result<IReadOnlyList<DoctorActivityItemResponse>>> GetActivityAsync(int limit);
 

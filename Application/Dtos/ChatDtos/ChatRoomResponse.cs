@@ -36,6 +36,13 @@ public class ChatRoomResponse
 
 	public DateTime? ScheduledStartAtUtc { get; set; }
 
+	/// <summary>
+	/// Server-decided joinability for the Join control: false while archived,
+	/// paused, or before a scheduled start. A passphrase may still be required
+	/// even when this is true.
+	/// </summary>
+	public bool CanJoin { get; set; }
+
 	public int MemberCount { get; set; }
 
 	public bool IsMember { get; set; }
