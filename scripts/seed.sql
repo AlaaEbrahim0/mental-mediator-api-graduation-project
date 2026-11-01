@@ -26,6 +26,7 @@
 --
 -- DEMO LOGINS (demo databases only - never a production credential)
 --   Password for every seeded account: Password1!
+--
 --     doctor@example.com  Nadia Rahman   Doctor  - Mon-Fri 09:30-17:00, 45 min
 --     omar@example.com    Omar El-Sharif Doctor  - Mon/Wed/Fri + Tue/Thu evening, 60 min
 --     hana@example.com    Hana Farouk    Doctor  - weekends only, 30 min
@@ -37,6 +38,10 @@
 --     dana@example.com    Dana Hasan     User    - room moderator, cancelled a slot
 --     rami@example.com    Rami Nasser    User    - a declined request, weekend slot
 --     admin@example.com   Portal Admin   Admin   - administrator
+-- Permanent demo / recruiter logins - the two accounts a visitor is told to use.
+-- They carry no extra privileges; each reaches only its own portal.
+--   user@example.com    Layla Mansour   User    -> patient portal
+--   doctor@example.com  Nadia Rahman    Doctor  -> doctor portal
 --
 --   Only admin@example.com holds the Admin role; no public demo account is given
 --   elevated privileges. Prefer these per-role logins over one shared account so
@@ -153,7 +158,11 @@ INSERT INTO @Users VALUES
   N'Cairo', N'Freelance translator', NULL, N'Arabic,English,French', N'Gardening', 0, N'User', 1),
  (11, N'rami@example.com', N'Rami', N'Nasser', '2002-05-19', N'male',
   N'Final-year engineering student. Exam season is a recurring villain.',
-  N'Cairo', NULL, NULL, N'Arabic,English', N'Football,Robotics', 0, N'User', 5);
+  N'Cairo', NULL, NULL, N'Arabic,English', N'Football,Robotics', 0, N'User', 5),
+ (12, N'user@example.com', N'Layla', N'Mansour', '1997-08-12', N'female',
+  N'Marketing coordinator. Started therapy this year for work anxiety and I am learning to pace myself instead of pushing through.',
+  N'Cairo', N'Marketing coordinator', N'she/her',
+  N'Arabic,English', N'Running,Podcasts,Cooking', 1, N'User', 2);
 
 -- Deterministic key per demo account: its ordinal, zero padded into the same
 -- shape the earlier revisions used.
@@ -423,7 +432,12 @@ INSERT INTO @Appointments VALUES
  (N'sofia@example.com', N'hana@example.com',   N'Talking through a difficult placement',    6,  660, 0, 2, NULL, NULL),
  -- Salma - Mon/Tue/Thu 12:00-18:00, 45 min. Past history only; her list is closed.
  (N'dana@example.com',  N'salma@example.com',  N'Stress and blood pressure',                4,  810, 0, 2, NULL, NULL),
- (N'rami@example.com',  N'salma@example.com',  N'Questions about a sibling diagnosis',      1,  765, 0, 3, N'Cancelled by the clinic - doctor on emergency leave', NULL);
+ (N'rami@example.com',  N'salma@example.com',  N'Questions about a sibling diagnosis',      1,  765, 0, 3, N'Cancelled by the clinic - doctor on emergency leave', NULL),
+ -- Demo / recruiter account (user@example.com): a realistic mix of
+ -- statuses so the patient portal has content on first sign-in.
+ (N'user@example.com', N'doctor@example.com', N'Work anxiety and difficulty switching off', 1, 615, 1, 1, NULL, NULL),
+ (N'user@example.com', N'omar@example.com', N'Second opinion on sleep routine', 3, 1020, 1, 0, NULL, NULL),
+ (N'user@example.com', N'doctor@example.com', N'First session - intake and goals', 1, 615, 0, 2, NULL, NULL);
 
 -- Resolve every spec row once, so the insert and the re-anchoring update below
 -- share one definition of what each demo appointment is.
@@ -482,6 +496,9 @@ INSERT INTO @Posts VALUES
  (N'doctor@example.com', N'How to prepare for your first counseling session',
   N'You do not need a perfect script - just bring the moment that pushed you to book, the nights that felt hardest, and one small question you keep carrying. Everything else we build together, at your pace.',
   N'Guidance', N'counseling,tips,first-session', 0, 74),
+ (N'user@example.com', N'Two months in: the boring things that actually helped',
+  N'I kept waiting for a breakthrough and it never arrived. What did arrive was duller and more useful: the same bedtime most nights, a short walk before the meeting I dread, and telling one friend the truth instead of "fine". Two months ago I would have called that too small to count. It counts.',
+  N'Journey', N'therapy,progress,routine', 0, 30),
  (N'amira@example.com', N'One month of therapy, what actually changed',
   N'First session was frightening and the second was boring - turns out that is normal. What changed: I sleep before 2am, I stopped rereading every message five times, and I have actual scripts for the moments that used to spiral. Progress is quieter than I expected.',
   N'Journey', N'therapy,experience,progress', 0, 52),
