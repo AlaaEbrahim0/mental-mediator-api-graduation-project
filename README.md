@@ -8,7 +8,7 @@
 [![Commit](https://img.shields.io/github/last-commit/AlaaEbrahim0/mental-mediator-api-graduation-project)](https://github.com/AlaaEbrahim0/mental-mediator-api-graduation-project/commits/master)
 
 **Production API:** https://nexus-api.runasp.net/  
-**Swagger UI:** https://nexus-api.runasp.net/swagger/index.html ⚠️ (currently exposed without an `IsDevelopment()` gate — see [SEC audit finding](audit/NEXUS_ENGINEERING_AUDIT.md))  
+**Swagger UI:** https://nexus-api.runasp.net/swagger/index.html ⚠️ (currently exposed without an `IsDevelopment()` gate — see [SEC audit finding](docs/audit/NEXUS_ENGINEERING_AUDIT.md))  
 
 | Frontend | URL | Repository |
 |----------|-----|-----------|
@@ -585,7 +585,7 @@ keypress. See `Tests/ModerationClientTests.cs` for the behaviours covered.
 
 ### Security & correctness status (verified 2026-11-01)
 
-The original audit (`audit/NEXUS_ENGINEERING_AUDIT.md`) listed these as open. Many
+The original audit (`docs/audit/NEXUS_ENGINEERING_AUDIT.md`) listed these as open. Many
 were since fixed; the remaining ones are deliberate or need new behavior and are
 tracked in [`docs/KNOWN_LIMITATIONS.md`](docs/KNOWN_LIMITATIONS.md).
 
@@ -604,7 +604,7 @@ tracked in [`docs/KNOWN_LIMITATIONS.md`](docs/KNOWN_LIMITATIONS.md).
 | `output.txt` debug artifact tracked | **Fixed** | Removed from the repo. |
 | HTTPS redirection opt-in | **Fixed** | On by default outside Development. |
 
-A full audit report is available at `audit/NEXUS_ENGINEERING_AUDIT.md`; the current,
+A full audit report is available at `docs/audit/NEXUS_ENGINEERING_AUDIT.md`; the current,
 honest state is `docs/KNOWN_LIMITATIONS.md`.
 
 ### Known integration limitations
