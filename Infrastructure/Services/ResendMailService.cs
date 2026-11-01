@@ -34,7 +34,7 @@ public class ResendMailService : IMailService
 		_logger = logger;
 	}
 
-	public async Task<Result> SendEmailAsync(MailRequest mailRequest)
+	public async Task<Result> SendEmailAsync(MailRequest mailRequest, CancellationToken cancellationToken = default)
 	{
 		if (!_settings.IsConfigured)
 		{
@@ -42,7 +42,7 @@ public class ResendMailService : IMailService
 			_logger.LogDebug(
 				"Resend is not configured; falling back to SMTP for \"{Subject}\"",
 				mailRequest.Subject);
-			return await _fallback.SendEmailAsync(mailRequest);
+			return await _fallback.SendEmailAsync(mailRequest, cancellationToken);
 		}
 
 		// Build the "From" header: "Display Name <email@domain.com>".
@@ -60,7 +60,7 @@ public class ResendMailService : IMailService
 				mailRequest.Subject!,
 				mailRequest.Body!,
 				mailRequest.TextBody,
-				CancellationToken.None);
+				cancellationToken);
 			responseId = response?.Id;
 		}
 		catch (Exception ex) when (!(ex is OperationCanceledException))

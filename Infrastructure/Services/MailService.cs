@@ -22,7 +22,7 @@ public class MailService : IMailService
         _logger = logger;
     }
 
-    public async Task<Result> SendEmailAsync(MailRequest mailRequest)
+    public async Task<Result> SendEmailAsync(MailRequest mailRequest, CancellationToken cancellationToken = default)
     {
         // The offending setting name is logged but never returned: the whole
         // Error object is serialized into ProblemDetails, so a client would
@@ -37,6 +37,12 @@ public class MailService : IMailService
 
             return MailErrors.NotConfigured();
         }
+
+        // FindMissingSetting has guaranteed these are non-null/non-blank; bind
+        // them once so the compiler sees the same guarantee the guard provides.
+        var host = _mailSettings.Host!;
+        var username = _mailSettings.Username!;
+        var password = _mailSettings.Password!;
 
         MimeMessage message;
         try
@@ -58,10 +64,10 @@ public class MailService : IMailService
             // with surrounding whitespace, which the provider rejects.
             // SecureSocketOptions.Auto picks implicit TLS on 465 and START TLS on
             // 587/25, so switching providers or ports needs no code change.
-            await smtp.ConnectAsync(_mailSettings.Host.Trim(), _mailSettings.Port, SecureSocketOptions.Auto);
-            await smtp.AuthenticateAsync(_mailSettings.Username.Trim(), _mailSettings.Password.Trim());
-            await smtp.SendAsync(message);
-            await smtp.DisconnectAsync(true);
+            await smtp.ConnectAsync(host.Trim(), _mailSettings.Port, SecureSocketOptions.Auto, cancellationToken);
+            await smtp.AuthenticateAsync(username.Trim(), password.Trim(), cancellationToken);
+            await smtp.SendAsync(message, cancellationToken);
+            await smtp.DisconnectAsync(true, cancellationToken);
         }
         catch (Exception ex)
         {

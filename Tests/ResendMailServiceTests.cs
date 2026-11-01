@@ -179,7 +179,7 @@ public class ResendMailServiceTests
 
 	 public FakeFallbackMailService(Action? onSend = null) => _onSend = onSend;
 
-		public Task<Result> SendEmailAsync(MailRequest mailRequest)
+		public Task<Result> SendEmailAsync(MailRequest mailRequest, CancellationToken cancellationToken = default)
 		{
 			_onSend?.Invoke();
 			return Task.FromResult(Result.Success());
