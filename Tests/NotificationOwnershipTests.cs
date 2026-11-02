@@ -203,6 +203,7 @@ public class NotificationOwnershipTests
 		public IChatMessageRepository ChatMessages => throw new NotImplementedException();
 		public IChatMessageReportRepository ChatMessageReports => throw new NotImplementedException();
 		public IDoctorRepository Doctors => throw new NotImplementedException();
+		public IDoctorRatingRepository DoctorRatings => throw new NotImplementedException();
 		public IUserRepository Users => throw new NotImplementedException();
 		public IProfileRepository Profiles => throw new NotImplementedException();
 		public IAppointmentRepository Appointments => throw new NotImplementedException();

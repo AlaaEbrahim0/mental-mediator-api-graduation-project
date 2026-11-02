@@ -35,6 +35,9 @@ public class DoctorService : IDoctorService
 		}
 
 		var response = _mapper.Map<DoctorInfoResponse>(user);
+		var summary = await _repoManager.DoctorRatings.GetSummaryAsync(id);
+		response.RatingAverage = summary?.Average;
+		response.RatingCount = summary?.Count ?? 0;
 		return response;
 
 	}
@@ -111,6 +114,20 @@ public class DoctorService : IDoctorService
 	{
 		var doctors = await _repoManager.Doctors.GetAll(requestParameters, false);
 		var response = _mapper.Map<List<DoctorInfoResponse>>(doctors);
+
+		// Summaries in one grouped query for the page, like PostRepository's
+		// like-states — never an Include over the whole ratings table.
+		var summaries = await _repoManager.DoctorRatings
+			.GetSummariesAsync(response.Select(doctor => doctor.Id));
+		foreach (var doctor in response)
+		{
+			if (summaries.TryGetValue(doctor.Id, out var summary))
+			{
+				doctor.RatingAverage = summary.Average;
+				doctor.RatingCount = summary.Count;
+			}
+		}
+
 		return response;
 	}
 

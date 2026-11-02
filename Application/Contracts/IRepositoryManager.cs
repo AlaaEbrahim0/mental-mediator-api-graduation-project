@@ -13,6 +13,7 @@ public interface IRepositoryManager
 	IChatMessageReportRepository ChatMessageReports { get; }
 	IChatRoomInvitationRepository ChatRoomInvitations { get; }
 	IDoctorRepository Doctors { get; }
+	IDoctorRatingRepository DoctorRatings { get; }
 	IUserRepository Users { get; }
 	IProfileRepository Profiles { get; }
 	IAppointmentRepository Appointments { get; }

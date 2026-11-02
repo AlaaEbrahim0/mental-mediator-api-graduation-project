@@ -24,5 +24,7 @@ public class DoctorInfoResponse : BaseUserInfoResponse
 	public bool IsAvailable { get; set; }
 	public decimal SessionFees { get; set; }
 	public DoctorSpecialization Specialization { get; set; }
+	public double? RatingAverage { get; set; }
+	public int RatingCount { get; set; }
 
 }

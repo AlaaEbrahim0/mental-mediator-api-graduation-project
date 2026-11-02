@@ -5,7 +5,7 @@ architecture, EF Core + SQL Server, SignalR for realtime, external ML service fo
 moderation.
 
 Verified against the code on 2026-11-01 (`dotnet build -c Release`: 0 errors;
-`dotnet test -c Release`: 230 passing). Companion documents:
+`dotnet test -c Release`: 244 passing). Companion documents:
 [`../README.md`](../README.md) (endpoint and hosting surface),
 [`KNOWN_LIMITATIONS.md`](KNOWN_LIMITATIONS.md) (what is deliberate vs deferred — this
 document does not repeat it), [`DEPLOYMENT.md`](DEPLOYMENT.md),

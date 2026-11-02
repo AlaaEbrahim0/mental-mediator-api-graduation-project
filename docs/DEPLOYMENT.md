@@ -35,7 +35,7 @@ flowchart LR
 
 | Job | Runner | Condition | What it does |
 |---|---|---|---|
-| `build` ("Build and test") | `ubuntu-latest` | always | `actions/checkout@v4`, `actions/setup-dotnet@v4` with `dotnet-version: 8.0.x`, then `dotnet restore`, `dotnet build --configuration Release --no-restore`, `dotnet test --configuration Release --no-build --verbosity normal` (230 tests) |
+| `build` ("Build and test") | `ubuntu-latest` | always | `actions/checkout@v4`, `actions/setup-dotnet@v4` with `dotnet-version: 8.0.x`, then `dotnet restore`, `dotnet build --configuration Release --no-restore`, `dotnet test --configuration Release --no-build --verbosity normal` (244 tests) |
 | `publish` ("Publish Docker image to Docker Hub") | `ubuntu-latest` | `needs: build` | `docker/login-action@v3`, `docker/setup-buildx-action@v3`, `docker/build-push-action@v5` pushing `systematicmess/nexus_api:latest` |
 | `deploy` ("Publish and deploy to MonsterASP.net (WebDeploy)") | `windows-latest` | `needs: build` **and** (`workflow_dispatch` with `inputs.deploy_to_production`, **or** `push` with repo variable `vars.AUTO_DEPLOY_MONSTERASP == 'true'`); `environment: production` | publish, generate production settings, validate output, `msdeploy.exe -verb:sync`, poll `/health` |
 

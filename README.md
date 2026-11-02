@@ -285,9 +285,9 @@ The pipeline runs on every push to `master` and on manual `workflow_dispatch`:
 
 1. **Build** — `dotnet restore`, `dotnet build --configuration Release --no-restore`
 2. **Test** — `dotnet test --configuration Release --no-build --verbosity normal`. This runs the
-   230 tests in `Tests/MentalMediator.Tests.csproj` covering booking validation, slot calculation,
+   244 tests in `Tests/MentalMediator.Tests.csproj` covering booking validation, slot calculation,
    schedule mutation, profile validation, content moderation, room passphrase hashing, chat room
-   privacy, notification ownership, auth security, and post composition. The
+   privacy, notification ownership, auth security, post composition, and doctor ratings. The
    project is registered in `MentalMediator.sln`, so solution-level `dotnet test` discovers and runs
    the full suite.
 3. **Publish** — Build and push `systematicmess/nexus_api:latest` to Docker Hub
@@ -308,7 +308,7 @@ MonsterASP, so a registry failure cannot take the site down.
 |------|-----------------|
 | Restore | `dotnet restore` |
 | Build | `dotnet build --configuration Release --no-restore` |
-| Test | `dotnet test --configuration Release --no-build --verbosity normal` (230 tests in `Tests/`, registered in `MentalMediator.sln`) |
+| Test | `dotnet test --configuration Release --no-build --verbosity normal` (244 tests in `Tests/`, registered in `MentalMediator.sln`) |
 | Docker Login | `docker/login-action@v3` using `DOCKER_USERNAME` / `DOCKER_PASSWORD` |
 | Docker Build & Push | `docker/build-push-action@v5` → `systematicmess/nexus_api:latest` |
 | Publish for IIS | `dotnet publish API/API.csproj -c Release --output ./publish --runtime win-x86 --self-contained false -p:UseAppHost=false` |

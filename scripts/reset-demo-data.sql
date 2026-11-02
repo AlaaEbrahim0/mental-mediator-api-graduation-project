@@ -57,6 +57,7 @@ DELETE FROM [ChatMessages];
 DELETE FROM [ChatRoomMembers];
 DELETE FROM [ChatRooms];
 DELETE FROM [PostLikes];
+DELETE FROM [DoctorRatings];
 DELETE FROM [Replies];
 DELETE FROM [Comments];
 DELETE FROM [PostMediaAssets];

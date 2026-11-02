@@ -11,6 +11,29 @@ release tags; entries are dated by the day the work landed on `master`.
 Nothing queued. Under the freeze, anything that is not a defect fix is recorded as a deferred
 item in [`docs/KNOWN_LIMITATIONS.md`](docs/KNOWN_LIMITATIONS.md) instead of being scheduled here.
 
+## [2026-11-02] — Doctor ratings
+
+Requested by the project owner as a deliberate exception to the feature freeze. Baseline:
+`dotnet build -c Release` → 0 errors, 6 warnings; `dotnet test -c Release` → **244 passed**
+(was 230 before the 14 rating tests).
+
+### Added
+
+- `DoctorRating` entity + `AddDoctorRatings` migration (table `DoctorRatings`, unique index on
+  `(DoctorId, RaterUserId)`; FKs `NoAction` because accounts are soft-deleted, never removed).
+- `POST /api/doctors/{doctorId}/ratings` (upsert — a second submission edits the existing vote),
+  `GET .../ratings` (recent, max 20), `GET .../ratings/summary`, `GET/DELETE .../ratings/mine`
+  (`API/Controllers/DoctorRatingsController.cs`). Writing is `[Authorize(Roles = "User")]`;
+  patients only, never the doctor's own account.
+- `DoctorInfoResponse.RatingAverage` / `RatingCount`, filled by one grouped query per page in
+  `DoctorService` (the `(double)` cast in `DoctorRatingRepository` is load-bearing — SQL
+  `AVG(int)` truncates, so 4+5 would report 4).
+- Rating comments run through the same hate-speech gate as posts, including the existing
+  allow-on-unavailable behaviour (`DoctorRatingService.IsRestrictedCommentAsync`).
+- `Tests/DoctorRatingTests.cs` — 14 tests pinning upsert-once, role and self-rating refusal,
+  owner-scoped delete, the non-truncating average, and validator bounds.
+- `scripts/reset-demo-data.sql` now clears `DoctorRatings` with the other child rows.
+
 ## [2026-11-01] — Google OAuth removal
 
 The patient portal's Google sign-in handoff could not establish a session, so the button was a

@@ -214,6 +214,7 @@ public static class DependencyInjection
 			.AddTransient<MailTemplates>()
 			.AddScoped<IUserService, UserService>()
 			.AddScoped<IDoctorService, DoctorService>()
+			.AddScoped<IDoctorRatingService, DoctorRatingService>()
 			.AddScoped<IProfileService, ProfileService>()
 			.AddScoped<IStorageService, CloudinaryStorageService>()
 			// Room passphrases are a separate credential class from account

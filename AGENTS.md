@@ -48,7 +48,7 @@ architecture, EF Core + SQL Server, SignalR, external ML moderation service.
 ```bash
 dotnet restore
 dotnet build -c Release                 # 0 errors, 6 warnings (NU1903 AutoMapper 12.0.1, NU1902 MailKit 4.3.0)
-dotnet test  -c Release                 # 230 passed, 0 failed
+dotnet test  -c Release                 # 244 passed, 0 failed
 dotnet run --project API --launch-profile https   # https://localhost:7235 + http://localhost:5184, /swagger
 ```
 
@@ -91,9 +91,9 @@ Infrastructure/     Data/ (AppDbContext, DbInitializer), Configurations/ (EF ent
                     TPT, soft-delete filter), Repositories/ (RepositoryBase + RepositoryManager +
                     SqlServerAppointmentBookingLock), Services/, Clients/ (MLServiceProbe,
                     HateSpeech*, ChatContentModerator, News, Resend), Hubs/, Caching/, Utilities/,
-                    Migrations/ (37 migrations), BackgroundJobs/ (HostingRefresher — DORMANT)
+                    Migrations/ (38 migrations), BackgroundJobs/ (HostingRefresher — DORMANT)
 Shared/             Result.cs, Error.cs, ErrorType.cs, PagingExtensions.cs, RequestParameters/
-Tests/              xUnit + FluentAssertions + EF InMemory — 230 tests, registered in the solution
+Tests/              xUnit + FluentAssertions + EF InMemory — 244 tests, registered in the solution
 scripts/            reset-demo-data.sql (guarded), seed.sql (guarded, idempotent, fictional data)
 docs/               ARCHITECTURE.md, DEPLOYMENT.md, RUNBOOK.md, KNOWN_LIMITATIONS.md,
                     adr/0001–0004, openapi.json, migrations/ (idempotent SQL for hosts without
@@ -198,7 +198,7 @@ upward reference, never let `Application` know a DbContext or an HTTP type exist
 
 ```bash
 dotnet build -c Release            # 0 errors, exactly 6 warnings
-dotnet test  -c Release            # 230+ passing, no skipped
+dotnet test  -c Release            # 244+ passing, no skipped
 ```
 
 For anything touching auth, CORS, moderation, scheduling/booking, or the pipeline, also re-check
