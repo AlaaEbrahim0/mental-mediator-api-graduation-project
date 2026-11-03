@@ -1,4 +1,5 @@
 ﻿using Domain.Enums;
+using Application.Dtos.ReactionsDto;
 
 namespace Application.Dtos.PostsDto;
 
@@ -40,5 +41,8 @@ public class PostResponse
 	public int CommentsCount { get; set; }
 	public int LikesCount { get; set; }
 	public bool IsLikedByCurrentUser { get; set; }
+
+	public List<ReactionSummaryResponse> Reactions { get; set; } = new();
+	public string? MyReaction { get; set; }
 
 }

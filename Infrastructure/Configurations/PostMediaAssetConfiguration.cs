@@ -15,6 +15,8 @@ public class PostMediaAssetConfiguration : IEntityTypeConfiguration<PostMediaAss
 
 		builder.HasIndex(x => x.Url).IsUnique();
 		builder.HasIndex(x => new { x.OwnerId, x.PostId, x.CreatedAtUtc });
+		builder.HasIndex(x => new { x.OwnerId, x.CommentId, x.CreatedAtUtc });
+		builder.HasIndex(x => new { x.OwnerId, x.ReplyId, x.CreatedAtUtc });
 
 		// A deleted post removes its asset ledger rows; the service destroys the
 		// Cloudinary files before the database delete.
@@ -23,6 +25,21 @@ public class PostMediaAssetConfiguration : IEntityTypeConfiguration<PostMediaAss
 			.WithMany()
 			.HasForeignKey(x => x.PostId)
 			.OnDelete(DeleteBehavior.Cascade);
+
+		// Comment/reply attachments are cleaned up explicitly by their services
+		// before the row is deleted. Cascading here would create a second cascade
+		// path from Post to PostMediaAsset through Comment.
+		builder
+			.HasOne(x => x.Comment)
+			.WithMany()
+			.HasForeignKey(x => x.CommentId)
+			.OnDelete(DeleteBehavior.NoAction);
+
+		builder
+			.HasOne(x => x.Reply)
+			.WithMany()
+			.HasForeignKey(x => x.ReplyId)
+			.OnDelete(DeleteBehavior.NoAction);
 
 		builder
 			.HasOne<BaseUser>()

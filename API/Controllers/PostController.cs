@@ -1,6 +1,7 @@
 ﻿
 using Application.Contracts;
 using Application.Dtos.PostsDto;
+using Application.Dtos.ReactionsDto;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Shared;
@@ -167,5 +168,22 @@ public class PostController : ControllerBase
 		return result.IsFailure ? result.ToProblemDetails() : Ok(result.Value);
 	}
 
+	/// <summary>Sets or replaces the current user's reaction to a post.</summary>
+	[HttpPut("{id:int}/reactions")]
+	[Authorize]
+	public async Task<IActionResult> ReactToPost(int id, [FromBody] SetReactionRequest request)
+	{
+		var result = await _postService.SetReaction(id, request.Reaction);
+		return result.IsFailure ? result.ToProblemDetails() : Ok(result.Value);
+	}
+
+	/// <summary>Removes the current user's reaction from a post.</summary>
+	[HttpDelete("{id:int}/reactions")]
+	[Authorize]
+	public async Task<IActionResult> RemovePostReaction(int id)
+	{
+		var result = await _postService.RemoveReaction(id);
+		return result.IsFailure ? result.ToProblemDetails() : Ok(result.Value);
+	}
 
 }

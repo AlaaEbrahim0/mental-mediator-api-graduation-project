@@ -40,4 +40,6 @@ public class ChatMessage
 	public DateTime? DeletedAtUtc { get; set; }
 
 	public string? DeletedById { get; set; }
+
+	public List<ChatMessageReaction> Reactions { get; set; } = new();
 }

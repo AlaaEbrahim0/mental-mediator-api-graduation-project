@@ -16,6 +16,7 @@ public class ChatMessageMediaValidatorTests
 
     private const string ManagedImage = "https://res.cloudinary.com/demo/image/upload/a.jpg";
     private const string ManagedVideo = "https://res.cloudinary.com/demo/video/upload/a.mp4";
+    private const string ManagedAudio = "https://res.cloudinary.com/demo/video/upload/a.webm";
 
     private static SendChatMessageRequest Request(
         string content = "",
@@ -60,9 +61,12 @@ public class ChatMessageMediaValidatorTests
     public void Media_url_without_type_is_rejected() =>
         IsValid(Request(mediaUrl: ManagedImage)).Should().BeFalse();
 
+    [Fact]
+    public void Voice_note_is_valid_as_media_only() =>
+        IsValid(Request(mediaUrl: ManagedAudio, mediaType: "audio")).Should().BeTrue();
+
     [Theory]
     [InlineData("pdf")]
-    [InlineData("audio")]
     [InlineData("gif")]
     public void Unsupported_media_type_is_rejected(string mediaType) =>
         IsValid(Request(mediaUrl: ManagedImage, mediaType: mediaType)).Should().BeFalse();

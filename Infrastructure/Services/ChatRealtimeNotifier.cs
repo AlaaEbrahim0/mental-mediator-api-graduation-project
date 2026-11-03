@@ -34,6 +34,12 @@ public class ChatRealtimeNotifier : IChatRealtimeNotifier
 			"MessageDeleted",
 			client => client.MessageDeleted(message));
 
+	public Task MessageReactionsUpdatedAsync(int roomId, ChatMessageReactionsUpdatedEvent update) =>
+		SendToRoomAsync(
+			roomId,
+			"MessageReactionsUpdated",
+			client => client.MessageReactionsUpdated(update));
+
 	public Task MemberUpdatedAsync(int roomId, ChatRoomMemberResponse member) =>
 		SendToRoomAsync(
 			roomId,

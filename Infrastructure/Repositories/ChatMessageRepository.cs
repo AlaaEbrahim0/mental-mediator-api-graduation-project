@@ -18,14 +18,20 @@ public class ChatMessageRepository : IChatMessageRepository
 		trackChanges ? _dbContext.ChatMessages : _dbContext.ChatMessages.AsNoTracking();
 
 	public Task<ChatMessage?> GetMessageByIdAsync(long messageId, bool trackChanges) =>
-		Messages(trackChanges).FirstOrDefaultAsync(x => x.Id == messageId);
+		Messages(trackChanges)
+			.Include(x => x.Reactions)
+			.FirstOrDefaultAsync(x => x.Id == messageId);
 
 	public Task<ChatMessage?> GetByClientMessageIdAsync(string senderId, Guid clientMessageId, bool trackChanges) =>
-		Messages(trackChanges).FirstOrDefaultAsync(x => x.SenderId == senderId && x.ClientMessageId == clientMessageId);
+		Messages(trackChanges)
+			.Include(x => x.Reactions)
+			.FirstOrDefaultAsync(x => x.SenderId == senderId && x.ClientMessageId == clientMessageId);
 
 	public async Task<IReadOnlyList<ChatMessage>> GetMessagesAsync(int roomId, long? beforeId, long? afterId, int limit, bool trackChanges)
 	{
-		var query = Messages(trackChanges).Where(x => x.RoomId == roomId);
+		var query = Messages(trackChanges)
+			.Include(x => x.Reactions)
+			.Where(x => x.RoomId == roomId);
 
 		if (afterId.HasValue)
 		{
@@ -88,8 +94,7 @@ public class ChatMessageRepository : IChatMessageRepository
 		return messages.ToDictionary(x => x.RoomId);
 	}
 
-	public async Task<IReadOnlyDictionary<int, int>> GetUnreadCountsAsync(string userId, IReadOnlyCollection<int> roomIds)
-	{
+	public async Task<IReadOnlyDictionary<int, int>> GetUnreadCountsAsync(string userId, IReadOnlyCollection<int> roomIds)	{
 		if (roomIds.Count == 0)
 		{
 			return new Dictionary<int, int>();
@@ -147,4 +152,12 @@ public class ChatMessageRepository : IChatMessageRepository
 	public void CreateMessage(ChatMessage message) => _dbContext.ChatMessages.Add(message);
 
 	public void UpdateMessage(ChatMessage message) => _dbContext.ChatMessages.Update(message);
+
+	public Task<ChatMessageReaction?> GetReactionAsync(long messageId, string userId, bool trackChanges) =>
+		(trackChanges ? _dbContext.ChatMessageReactions : _dbContext.ChatMessageReactions.AsNoTracking())
+			.FirstOrDefaultAsync(reaction => reaction.MessageId == messageId && reaction.UserId == userId);
+
+	public void AddReaction(ChatMessageReaction reaction) => _dbContext.ChatMessageReactions.Add(reaction);
+
+	public void RemoveReaction(ChatMessageReaction reaction) => _dbContext.ChatMessageReactions.Remove(reaction);
 }

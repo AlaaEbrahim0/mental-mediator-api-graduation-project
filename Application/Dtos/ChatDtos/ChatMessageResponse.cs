@@ -1,3 +1,5 @@
+using Application.Dtos.ReactionsDto;
+
 namespace Application.Dtos.ChatDtos;
 
 public class ChatMessageResponse
@@ -26,10 +28,13 @@ public class ChatMessageResponse
 	/// <summary>Managed URL of an attached image/video, or null. Hidden when the message is deleted.</summary>
 	public string? MediaUrl { get; set; }
 
-	/// <summary>"image" or "video", or null.</summary>
+	/// <summary>"image", "video" or "audio", or null.</summary>
 	public string? MediaType { get; set; }
 
 	public DateTime SentAtUtc { get; set; }
 
 	public bool IsDeleted { get; set; }
+
+	public List<ReactionSummaryResponse> Reactions { get; set; } = new();
+	public string? MyReaction { get; set; }
 }

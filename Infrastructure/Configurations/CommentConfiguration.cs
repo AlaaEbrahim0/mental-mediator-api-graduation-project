@@ -13,6 +13,14 @@ public class CommentConfiguration : IEntityTypeConfiguration<Comment>
 			.HasMaxLength(4000);
 
 		builder
+			.Property(c => c.MediaUrl)
+			.HasMaxLength(1000);
+
+		builder
+			.Property(c => c.MediaType)
+			.HasMaxLength(10);
+
+		builder
 			.HasIndex(c => c.PostId);
 
 		builder

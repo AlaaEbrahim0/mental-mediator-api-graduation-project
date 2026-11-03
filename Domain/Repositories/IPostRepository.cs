@@ -1,4 +1,5 @@
 ﻿using Domain.Entities;
+using Domain.Value_Objects;
 using Shared.RequestParameters;
 
 namespace Domain.Repositories;
@@ -25,7 +26,15 @@ public interface IPostRepository
 	/// <summary>Like counts and the caller's liked state for a page in two queries.</summary>
 	Task<IReadOnlyDictionary<int, (int Count, bool IsLiked)>> GetLikeStates(IEnumerable<int> postIds, string? userId);
 
+	/// <summary>Reaction counts and the caller's reaction for one post.</summary>
+	Task<ReactionState> GetReactionState(int postId, string? userId);
+
+	/// <summary>Reaction counts and the caller's reaction for a page in one query.</summary>
+	Task<IReadOnlyDictionary<int, ReactionState>> GetReactionStates(IEnumerable<int> postIds, string? userId);
+
 	Task SetLike(int postId, string userId, bool liked);
+	Task SetReaction(int postId, string userId, string reaction);
+	Task RemoveReaction(int postId, string userId);
 	void CreatePost(Post post);
 	void UpdatePost(Post post);
 	void DeletePost(Post post);

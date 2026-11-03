@@ -43,6 +43,32 @@ public class PostMediaAssetRepository : IPostMediaAssetRepository
 			.ToListAsync();
 	}
 
+	public async Task<IReadOnlyList<PostMediaAsset>> GetAttachedToCommentThreadAsync(int commentId, bool trackChanges)
+	{
+		return await Assets(trackChanges)
+			.Where(asset =>
+				asset.CommentId == commentId ||
+				(asset.ReplyId != null && asset.Reply!.CommentId == commentId))
+			.ToListAsync();
+	}
+
+	public async Task<IReadOnlyList<PostMediaAsset>> GetAttachedToReplyAsync(int replyId, bool trackChanges)
+	{
+		return await Assets(trackChanges)
+			.Where(asset => asset.ReplyId == replyId)
+			.ToListAsync();
+	}
+
+	public async Task<IReadOnlyList<PostMediaAsset>> GetAttachedToPostThreadAsync(int postId, bool trackChanges)
+	{
+		return await Assets(trackChanges)
+			.Where(asset =>
+				asset.PostId == postId ||
+				(asset.CommentId != null && asset.Comment!.PostId == postId) ||
+				(asset.ReplyId != null && asset.Reply!.Comment!.PostId == postId))
+			.ToListAsync();
+	}
+
 	public async Task<IReadOnlyList<PostMediaAsset>> GetOrphansAsync(
 		string ownerId,
 		DateTime olderThanUtc,
@@ -50,7 +76,12 @@ public class PostMediaAssetRepository : IPostMediaAssetRepository
 		bool trackChanges)
 	{
 		return await Assets(trackChanges)
-			.Where(asset => asset.OwnerId == ownerId && asset.PostId == null && asset.CreatedAtUtc < olderThanUtc)
+			.Where(asset =>
+				asset.OwnerId == ownerId &&
+				asset.PostId == null &&
+				asset.CommentId == null &&
+				asset.ReplyId == null &&
+				asset.CreatedAtUtc < olderThanUtc)
 			.OrderBy(asset => asset.CreatedAtUtc)
 			.Take(take)
 			.ToListAsync();

@@ -344,7 +344,39 @@ namespace Application.Services
 			return responses;
 		}
 
-		public async Task<Result<PostResponse>> SetLike(int id, bool liked)
+		public async Task<Result<PostResponse>> SetLike(int id, bool liked) =>
+			liked ? await SetReaction(id, ReactionKinds.Like) : await RemoveReaction(id);
+
+		public async Task<Result<PostResponse>> SetReaction(int id, string reaction)
+		{
+			if (!ReactionKinds.IsValid(reaction))
+			{
+				return Error.Validation(
+					"Reactions.InvalidReaction",
+					"Reaction must be one of: like, love, haha, wow, sad.");
+			}
+
+			var normalized = ReactionKinds.Normalize(reaction);
+			var userId = _userClaimsService.GetUserId();
+			var role = _userClaimsService.GetRole();
+
+			var post = await _repos.Posts.GetPostById(id, false);
+			if (post is null || post.IsDraft || !await CanReadAsync(post, userId, role))
+			{
+				return PostErrors.NotFound(id);
+			}
+
+			await _repos.Posts.SetReaction(id, userId, normalized);
+			await _repos.SaveAsync();
+
+			await NotifyPostLikeAsync(post, userId, normalized);
+
+			var response = ToResponse(post, userId, role);
+			await PopulateLikeStateAsync(post, response);
+			return response;
+		}
+
+		public async Task<Result<PostResponse>> RemoveReaction(int id)
 		{
 			var userId = _userClaimsService.GetUserId();
 			var role = _userClaimsService.GetRole();
@@ -355,13 +387,8 @@ namespace Application.Services
 				return PostErrors.NotFound(id);
 			}
 
-			await _repos.Posts.SetLike(id, userId, liked);
+			await _repos.Posts.RemoveReaction(id, userId);
 			await _repos.SaveAsync();
-
-			if (liked)
-			{
-				await NotifyPostLikeAsync(post, userId);
-			}
 
 			var response = ToResponse(post, userId, role);
 			await PopulateLikeStateAsync(post, response);
@@ -369,11 +396,11 @@ namespace Application.Services
 		}
 
 		/// <summary>
-		/// Tells the author once per liker and post. The notification carries the
-		/// post id and the liker's public name only; the post body, category and
-		/// audience are never copied into it.
+		/// Tells the author once per reacting user and post. The notification
+		/// carries the post id and the reactor's public name only; the post body,
+		/// category and audience are never copied into it.
 		/// </summary>
-		private async Task NotifyPostLikeAsync(Post post, string userId)
+		private async Task NotifyPostLikeAsync(Post post, string userId, string reaction = ReactionKinds.Like)
 		{
 			if (post.IsDraft ||
 				string.IsNullOrEmpty(post.AppUserId) ||
@@ -390,12 +417,13 @@ namespace Application.Services
 
 			var likerName = post.IsAnonymous ? string.Empty : _userClaimsService.GetUserName();
 			var likerPhoto = post.IsAnonymous ? string.Empty : _userClaimsService.GetPhotoUrl();
+			var verb = reaction == ReactionKinds.Like ? "liked" : "reacted to";
 			var notification = Notification.CreateNotification(
 				post.AppUserId,
-				"New like on your post",
+				"New reaction on your post",
 				post.IsAnonymous
-					? "Someone liked your anonymous post."
-					: $"{likerName} liked your post.",
+					? $"Someone {verb} your anonymous post."
+					: $"{likerName} {verb} your post.",
 				new Dictionary<string, int> { { "postId", post.Id } },
 				likerName,
 				likerPhoto,
@@ -460,7 +488,7 @@ namespace Application.Services
 				// Never reveal or delete another user's upload.
 				return Result.Success();
 			}
-			if (asset.PostId is not null)
+			if (asset.PostId is not null || asset.CommentId is not null || asset.ReplyId is not null)
 			{
 				return PostErrors.MediaAttached();
 			}
@@ -662,7 +690,9 @@ namespace Application.Services
 
 		private async Task DeleteTrackedMediaForPostAsync(Post post)
 		{
-			var assets = await _repos.PostMediaAssets.GetAttachedToPostAsync(post.Id, true);
+			// A post owns its own attachments plus the attachments of every
+			// comment and reply that will be cascade-deleted with it.
+			var assets = await _repos.PostMediaAssets.GetAttachedToPostThreadAsync(post.Id, true);
 			foreach (var asset in assets)
 			{
 				await _storageService.DeleteMediaAsync(asset.PublicId, asset.MediaType);
@@ -729,12 +759,13 @@ namespace Application.Services
 			{
 				response.LikesCount = 0;
 				response.IsLikedByCurrentUser = false;
+				response.Reactions = new();
+				response.MyReaction = null;
 				return;
 			}
 
-			var (count, liked) = await _repos.Posts.GetLikeState(post.Id, _userClaimsService.GetUserId());
-			response.LikesCount = count;
-			response.IsLikedByCurrentUser = liked;
+			var state = await _repos.Posts.GetReactionState(post.Id, _userClaimsService.GetUserId());
+			ApplyReactionState(response, state);
 		}
 
 		private async Task PopulateLikeStatesAsync(IEnumerable<Post> posts, List<PostResponse> responses)
@@ -746,11 +777,13 @@ namespace Application.Services
 				{
 					response.LikesCount = 0;
 					response.IsLikedByCurrentUser = false;
+					response.Reactions = new();
+					response.MyReaction = null;
 				}
 				return;
 			}
 
-			var states = await _repos.Posts.GetLikeStates(
+			var states = await _repos.Posts.GetReactionStates(
 				published.Select(post => post.Id),
 				_userClaimsService.GetUserId());
 
@@ -758,10 +791,24 @@ namespace Application.Services
 			{
 				if (states.TryGetValue(response.Id, out var state))
 				{
-					response.LikesCount = state.Count;
-					response.IsLikedByCurrentUser = state.IsLiked;
+					ApplyReactionState(response, state);
 				}
 			}
+		}
+
+		private static void ApplyReactionState(PostResponse response, Domain.Value_Objects.ReactionState state)
+		{
+			response.Reactions = state.Counts
+				.Select(count => new Application.Dtos.ReactionsDto.ReactionSummaryResponse
+				{
+					Reaction = count.Reaction,
+					Count = count.Count
+				})
+				.ToList();
+			response.MyReaction = state.MyReaction;
+			response.LikesCount = state.Counts
+				.FirstOrDefault(count => count.Reaction == ReactionKinds.Like)?.Count ?? 0;
+			response.IsLikedByCurrentUser = state.MyReaction == ReactionKinds.Like;
 		}
 	}
 }

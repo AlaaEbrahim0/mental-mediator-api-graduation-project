@@ -13,6 +13,14 @@ public class ReplyConfiguration : IEntityTypeConfiguration<Reply>
 			.HasMaxLength(4000);
 
 		builder
+			.Property(r => r.MediaUrl)
+			.HasMaxLength(1000);
+
+		builder
+			.Property(r => r.MediaType)
+			.HasMaxLength(10);
+
+		builder
 			.HasIndex(r => r.CommentId);
 
 		builder

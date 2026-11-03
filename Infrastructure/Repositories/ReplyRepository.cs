@@ -30,6 +30,8 @@ public class ReplyRepository : RepositoryBase<Reply>, IReplyRepository
 				AppUserId = r.AppUserId,
 				CommentId = r.CommentId,
 				Content = r.Content,
+				MediaUrl = r.MediaUrl,
+				MediaType = r.MediaType,
 				RepliedAt = r.RepliedAt,
 				Username = r.AppUser!.FullName,
 				PhotoUrl = r.AppUser!.PhotoUrl,
@@ -58,6 +60,8 @@ public class ReplyRepository : RepositoryBase<Reply>, IReplyRepository
 					AppUserId = r.AppUserId,
 					CommentId = r.CommentId,
 					Content = r.Content,
+					MediaUrl = r.MediaUrl,
+					MediaType = r.MediaType,
 					RepliedAt = r.RepliedAt,
 					PhotoUrl = r.AppUser!.PhotoUrl,
 					Username = r.AppUser!.FullName
@@ -83,4 +87,25 @@ public class ReplyRepository : RepositoryBase<Reply>, IReplyRepository
 	{
 		Update(reply);
 	}
+
+	public async Task<IReadOnlyList<ReplyReaction>> GetReactionsAsync(IReadOnlyCollection<int> replyIds, bool trackChanges)
+	{
+		if (replyIds.Count == 0)
+		{
+			return Array.Empty<ReplyReaction>();
+		}
+
+		return await _dbContext.ReplyReactions
+			.AsNoTracking()
+			.Where(reaction => replyIds.Contains(reaction.ReplyId))
+			.ToListAsync();
+	}
+
+	public Task<ReplyReaction?> GetReactionAsync(int replyId, string userId, bool trackChanges) =>
+		(trackChanges ? _dbContext.ReplyReactions : _dbContext.ReplyReactions.AsNoTracking())
+			.FirstOrDefaultAsync(reaction => reaction.ReplyId == replyId && reaction.UserId == userId);
+
+	public void AddReaction(ReplyReaction reaction) => _dbContext.ReplyReactions.Add(reaction);
+
+	public void RemoveReaction(ReplyReaction reaction) => _dbContext.ReplyReactions.Remove(reaction);
 }

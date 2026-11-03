@@ -8,6 +8,8 @@ public interface IChatClient
 
 	Task MessageDeleted(ChatMessageResponse message);
 
+	Task MessageReactionsUpdated(ChatMessageReactionsUpdatedEvent update);
+
 	Task MemberUpdated(ChatRoomMemberResponse member);
 
 	Task MemberLeft(int memberId);

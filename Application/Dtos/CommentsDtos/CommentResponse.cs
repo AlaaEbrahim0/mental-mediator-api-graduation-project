@@ -1,4 +1,5 @@
-﻿
+﻿using Application.Dtos.ReactionsDto;
+
 namespace Application.Dtos.CommentsDtos;
 
 public class CommentResponse
@@ -11,4 +12,9 @@ public class CommentResponse
 	public string? PhotoUrl { get; set; }
 	public int RepliesCount { get; set; }
 
+	public string? MediaUrl { get; set; }
+	public string? MediaType { get; set; }
+
+	public List<ReactionSummaryResponse> Reactions { get; set; } = new();
+	public string? MyReaction { get; set; }
 }

@@ -71,7 +71,7 @@ public static class ChatErrors
 		"Chat.InvalidMessageContent", "Message content must be between 1 and 2000 characters.");
 
 	public static Error InvalidMessageMedia() => Error.Validation(
-		"Chat.InvalidMessageMedia", "Attach an image or video uploaded through this room's media endpoint.");
+		"Chat.InvalidMessageMedia", "Attach an image, video or audio file uploaded through this room's media endpoint.");
 
 	public static Error InvalidClientMessageId() => Error.Validation(
 		"Chat.InvalidClientMessageId", "clientMessageId must be a non-empty GUID.");
@@ -84,6 +84,9 @@ public static class ChatErrors
 
 	public static Error MessageDeleted() => Error.Validation(
 		"Chat.MessageDeleted", "Deleted messages cannot be reported.");
+
+	public static Error CannotReactToDeletedMessage() => Error.Validation(
+		"Chat.CannotReactToDeletedMessage", "Deleted messages cannot be reacted to.");
 
 	public static Error ClientMessageIdConflict() => Error.Conflict(
 		"Chat.ClientMessageIdConflict", "clientMessageId has already been used for a different message.");

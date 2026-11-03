@@ -24,11 +24,14 @@ public class AppDbContext : IdentityDbContext<BaseUser>
 	public DbSet<PostLike> PostLikes { get; set; }
 	public DbSet<PostMediaAsset> PostMediaAssets { get; set; }
 	public DbSet<Comment> Comments { get; set; }
+	public DbSet<CommentReaction> CommentReactions { get; set; }
 	public DbSet<Reply> Replies { get; set; }
+	public DbSet<ReplyReaction> ReplyReactions { get; set; }
 	public DbSet<Notification> Notifications { get; set; }
 	public DbSet<ChatRoom> ChatRooms { get; set; }
 	public DbSet<ChatRoomMember> ChatRoomMembers { get; set; }
 	public DbSet<ChatMessage> ChatMessages { get; set; }
+	public DbSet<ChatMessageReaction> ChatMessageReactions { get; set; }
 	public DbSet<ChatMessageReport> ChatMessageReports { get; set; }
 	public DbSet<ChatRoomInvitation> ChatRoomInvitations { get; set; }
 	public DbSet<PatientNote> PatientNotes { get; set; }

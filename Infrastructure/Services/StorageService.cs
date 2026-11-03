@@ -12,10 +12,16 @@ public class CloudinaryStorageService : IStorageService
 	// upload path is behind that validator (UpdatePostRequest has none).
 	private const long MaxImageBytes = 5 * 1024 * 1024;
 	private const long MaxVideoBytes = 20 * 1024 * 1024;
+	private const long MaxAudioBytes = 10 * 1024 * 1024;
 	private const string UploadFolder = "posts";
 
 	private static readonly string[] ImageExtensions = { ".jpg", ".jpeg", ".png", ".gif", ".webp" };
 	private static readonly string[] VideoExtensions = { ".mp4", ".webm", ".mov" };
+
+	// Voice notes are recorded by the browser as audio/webm, audio/ogg or
+	// audio/mp4. The matching extension is checked as a fallback for clients
+	// that send a generic content type.
+	private static readonly string[] AudioExtensions = { ".mp3", ".m4a", ".wav", ".ogg", ".oga", ".aac", ".opus", ".weba", ".flac" };
 
 	private readonly string? cloudinaryUrl;
 	private Cloudinary? cloudinary;
@@ -73,27 +79,39 @@ public class CloudinaryStorageService : IStorageService
 				"No file was supplied. Send it as multipart form data.");
 		}
 
-		var isVideo = IsVideo(file);
-		if (isVideo && imagesOnly)
+		var mediaKind = DetectMediaKind(file);
+		if (mediaKind == MediaKind.None)
+		{
+			return Shared.Error.Validation(
+				"Storage.UnsupportedMedia",
+				"Only JPG, JPEG, PNG, GIF, WebP images, MP4, WebM, MOV videos and MP3, M4A, WAV, OGG, AAC audio files can be uploaded.");
+		}
+
+		if (imagesOnly && mediaKind != MediaKind.Image)
 		{
 			return Shared.Error.Validation(
 				"Storage.NotAnImage",
 				"Only JPG, JPEG, PNG, GIF, and WebP images can be uploaded.");
 		}
 
-		if (!isVideo && !IsImage(file))
+		var maxBytes = mediaKind switch
 		{
-			return Shared.Error.Validation(
-				"Storage.UnsupportedMedia",
-				"Only JPG, JPEG, PNG, GIF, WebP images and MP4, WebM, MOV videos can be uploaded.");
-		}
+			MediaKind.Audio => MaxAudioBytes,
+			MediaKind.Video => MaxVideoBytes,
+			_ => MaxImageBytes
+		};
 
-		var maxBytes = isVideo ? MaxVideoBytes : MaxImageBytes;
 		if (file.Length > maxBytes)
 		{
+			var label = mediaKind switch
+			{
+				MediaKind.Audio => "Audio",
+				MediaKind.Video => "Videos",
+				_ => "Images"
+			};
 			return Shared.Error.Validation(
 				"Storage.FileTooLarge",
-				$"{(isVideo ? "Videos" : "Images")} must be smaller than {maxBytes / (1024 * 1024)} MB.");
+				$"{label} must be smaller than {maxBytes / (1024 * 1024)} MB.");
 		}
 
 		var client = GetClient();
@@ -115,8 +133,9 @@ public class CloudinaryStorageService : IStorageService
 		try
 		{
 			var description = new FileDescription { FileName = publicId, Stream = stream };
-			if (isVideo)
+			if (mediaKind is MediaKind.Video or MediaKind.Audio)
 			{
+				// Cloudinary stores audio under its video resource type.
 				uploadResult = await client.UploadAsync(new VideoUploadParams
 				{
 					File = description,
@@ -168,7 +187,12 @@ public class CloudinaryStorageService : IStorageService
 
 		return new StoredMedia(
 			url,
-			isVideo ? "video" : "image",
+			mediaKind switch
+			{
+				MediaKind.Video => "video",
+				MediaKind.Audio => "audio",
+				_ => "image"
+			},
 			uploadResult.PublicId ?? $"{UploadFolder}/{publicId}");
 	}
 
@@ -191,7 +215,8 @@ public class CloudinaryStorageService : IStorageService
 		{
 			var result = await client.DestroyAsync(new DeletionParams(publicId)
 			{
-				ResourceType = string.Equals(mediaType, "video", StringComparison.OrdinalIgnoreCase)
+				ResourceType = string.Equals(mediaType, "video", StringComparison.OrdinalIgnoreCase) ||
+					string.Equals(mediaType, "audio", StringComparison.OrdinalIgnoreCase)
 					? ResourceType.Video
 					: ResourceType.Image
 			});
@@ -218,13 +243,41 @@ public class CloudinaryStorageService : IStorageService
 		}
 	}
 
-	private static bool IsVideo(IFormFile file) =>
-		(file.ContentType ?? string.Empty).StartsWith("video/", StringComparison.OrdinalIgnoreCase) ||
-		VideoExtensions.Contains(Path.GetExtension(file.FileName ?? string.Empty).ToLowerInvariant());
+	private enum MediaKind
+	{
+		None,
+		Image,
+		Video,
+		Audio
+	}
 
-	private static bool IsImage(IFormFile file) =>
-		(file.ContentType ?? string.Empty).StartsWith("image/", StringComparison.OrdinalIgnoreCase) ||
-		ImageExtensions.Contains(Path.GetExtension(file.FileName ?? string.Empty).ToLowerInvariant());
+	private static MediaKind DetectMediaKind(IFormFile file)
+	{
+		var contentType = file.ContentType ?? string.Empty;
+		var extension = Path.GetExtension(file.FileName ?? string.Empty).ToLowerInvariant();
+
+		// Audio is checked first because a browser voice note can be
+		// audio/webm, which shares the .webm extension with video.
+		if (contentType.StartsWith("audio/", StringComparison.OrdinalIgnoreCase) ||
+			AudioExtensions.Contains(extension))
+		{
+			return MediaKind.Audio;
+		}
+
+		if (contentType.StartsWith("video/", StringComparison.OrdinalIgnoreCase) ||
+			VideoExtensions.Contains(extension))
+		{
+			return MediaKind.Video;
+		}
+
+		if (contentType.StartsWith("image/", StringComparison.OrdinalIgnoreCase) ||
+			ImageExtensions.Contains(extension))
+		{
+			return MediaKind.Image;
+		}
+
+		return MediaKind.None;
+	}
 
 	private Cloudinary? GetClient()
 	{

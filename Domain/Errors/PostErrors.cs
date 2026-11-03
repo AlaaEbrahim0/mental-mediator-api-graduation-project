@@ -24,5 +24,5 @@ public static class PostErrors
 		"Posts.SpecificGroupNotFound", "That group is not available.");
 
 	public static Error MediaAttached() => Error.Conflict(
-		"Posts.MediaAttached", "This media is already attached to a post and cannot be removed.");
+		"Posts.MediaAttached", "This media is already attached and cannot be removed.");
 }

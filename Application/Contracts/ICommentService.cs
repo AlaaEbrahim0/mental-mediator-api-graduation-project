@@ -9,6 +9,6 @@ public interface ICommentService
 	Task<Result<CommentResponse>> DeleteComment(int postId, int commentId);
 	Task<Result<CommentResponse>> CreateComment(int postId, CreateCommentRequest createCommentRequest);
 	Task<Result<CommentResponse>> UpdateComment(int postId, int commentId, UpdateCommentRequest createCommentRequest);
+	Task<Result<CommentResponse>> SetReaction(int postId, int commentId, string reaction);
+	Task<Result<CommentResponse>> RemoveReaction(int postId, int commentId);
 }
-
-

@@ -16,4 +16,6 @@ public interface IPostService
 	Task<Result<PostResponse>> DeletePost(int id);
 	Task<Result<PostResponse>> CreatePostAsync(CreatePostRequest postRequest);
 	Task<Result<PostResponse>> SetLike(int id, bool liked);
+	Task<Result<PostResponse>> SetReaction(int id, string reaction);
+	Task<Result<PostResponse>> RemoveReaction(int id);
 }

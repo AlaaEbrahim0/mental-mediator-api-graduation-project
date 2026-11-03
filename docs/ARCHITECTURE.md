@@ -4,8 +4,8 @@ ASP.NET Core 8 Web API for the Nexus / Mental Mediator platform. Clean (Onion-sh
 architecture, EF Core + SQL Server, SignalR for realtime, external ML service for
 moderation.
 
-Verified against the code on 2026-11-01 (`dotnet build -c Release`: 0 errors;
-`dotnet test -c Release`: 244 passing). Companion documents:
+Verified against the code on 2026-11-03 (`dotnet build -c Release`: 0 errors;
+`dotnet test -c Release`: 271 passing). Companion documents:
 [`../README.md`](../README.md) (endpoint and hosting surface),
 [`KNOWN_LIMITATIONS.md`](KNOWN_LIMITATIONS.md) (what is deliberate vs deferred — this
 document does not repeat it), [`DEPLOYMENT.md`](DEPLOYMENT.md),
@@ -331,6 +331,33 @@ model **before** it is persisted.
   (MailKit SMTP) when Resend is unconfigured or refuses. The wiring is hand-written in DI
   because `ResendMailService` itself implements `IMailService` and a generic registration
   would form a resolution cycle. `RESEND_API_KEY` overrides `Resend:ApiKey`.
+
+### 4.9 Additive redefinition: reactions and the shared media ledger
+
+Two features had to land without breaking a deployed client, so both widened an
+existing structure instead of replacing it.
+
+- **Reactions.** `PostLike` gained a `Reaction` column (default `"like"`) and kept its
+  table name, so every existing like row is a valid `like` reaction and
+  `PUT/DELETE /posts/{id}/like` is now an alias for setting/removing that one token.
+  `LikesCount` and `IsLikedByCurrentUser` are recomputed from the `like` count only, so an
+  old response field never contradicts the new `reactions`/`myReaction` pair. Comments,
+  replies and chat messages got their own tables with a unique `(UserId, TargetId)` index —
+  one reaction per member per target, enforced by the database rather than by the service.
+  `Domain/Value_Objects/ReactionState` aggregates the rows once per page (`GetReactionStates`)
+  instead of per item, and the vocabulary lives in one place (`Domain/Enums/ReactionKinds.cs`),
+  mirrored by `shared-ui/src/utils/reactions.js`.
+- **Attachments.** Post media was already tracked in `PostMediaAssets` for exactly this
+  reason — orphan uploads must be deletable — so comment and reply media reuse that ledger
+  by gaining nullable `CommentId`/`ReplyId` columns instead of a second table. Those FKs are
+  `NoAction`: SQL Server refuses two cascade paths into one table, so the service deletes the
+  rows (`GetAttachedToCommentThreadAsync`, `GetAttachedToPostThreadAsync`) and destroys the
+  Cloudinary asset in the same unit of work. The client-supplied URL is never trusted:
+  `AttachmentMediaPolicy` accepts an attachment only if the ledger says the submitting
+  account owns it and it is attached to nothing yet.
+- **SignalR stays per-viewer-safe.** `MessageReactionsUpdated` carries the counts plus
+  `actorMemberId`/`actorReaction` rather than a per-reader `myReaction`, because one payload
+  goes to the whole room. Each client resolves its own reaction locally.
 
 ---
 

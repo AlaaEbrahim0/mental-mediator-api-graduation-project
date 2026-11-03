@@ -18,17 +18,28 @@ public class MappingProfile : Profile
 	{
 		CreateMap<Post, PostResponse>()
 			.ForMember(dest => dest.Media, src => src.MapFrom(post => PostMediaCodec.ToResponse(post.MediaJson)))
-			.ForMember(dest => dest.TargetGroupId, src => src.MapFrom(post => post.TargetChatRoomId));
+			.ForMember(dest => dest.TargetGroupId, src => src.MapFrom(post => post.TargetChatRoomId))
+			.ForMember(dest => dest.Reactions, src => src.Ignore())
+			.ForMember(dest => dest.MyReaction, src => src.Ignore());
 		CreateMap<CreatePostRequest, Post>();
 		CreateMap<UpdatePostRequest, Post>().ReverseMap();
 
 		CreateMap<CreateCommentRequest, Comment>();
-		CreateMap<UpdateCommentRequest, Comment>().ReverseMap();
-		CreateMap<Comment, CommentResponse>();
+		CreateMap<UpdateCommentRequest, Comment>()
+			.ForMember(dest => dest.MediaUrl, opt => opt.Ignore())
+			.ForMember(dest => dest.MediaType, opt => opt.Ignore())
+			.ReverseMap();
+		CreateMap<Comment, CommentResponse>()
+			.ForMember(dest => dest.Reactions, opt => opt.Ignore())
+			.ForMember(dest => dest.MyReaction, opt => opt.Ignore());
 
-		CreateMap<Reply, ReplyResponse>();
+		CreateMap<Reply, ReplyResponse>()
+			.ForMember(dest => dest.Reactions, opt => opt.Ignore())
+			.ForMember(dest => dest.MyReaction, opt => opt.Ignore());
 		CreateMap<CreateReplyRequest, Reply>();
-		CreateMap<UpdateReplyRequest, Reply>();
+		CreateMap<UpdateReplyRequest, Reply>()
+			.ForMember(dest => dest.MediaUrl, opt => opt.Ignore())
+			.ForMember(dest => dest.MediaType, opt => opt.Ignore());
 
 		CreateMap<UpdateUserInfoRequest, User>();
 		CreateMap<UpdateDoctorInfoRequest, Doctor>();

@@ -1,4 +1,5 @@
 ﻿using Application.Contracts;
+using Application.Dtos.ReactionsDto;
 using Application.Dtos.ReplyDtos;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -75,6 +76,22 @@ public class ReplyController : ControllerBase
 			return result.ToProblemDetails();
 		}
 		return Ok(result.Value);
+	}
+
+	/// <summary>Sets or replaces the current user's reaction to a reply.</summary>
+	[HttpPut("{replyId:int}/reactions")]
+	public async Task<IActionResult> ReactToReply(int postId, int commentId, int replyId, [FromBody] SetReactionRequest request)
+	{
+		var result = await _replyService.SetReaction(postId, commentId, replyId, request.Reaction);
+		return result.IsFailure ? result.ToProblemDetails() : Ok(result.Value);
+	}
+
+	/// <summary>Removes the current user's reaction from a reply.</summary>
+	[HttpDelete("{replyId:int}/reactions")]
+	public async Task<IActionResult> RemoveReplyReaction(int postId, int commentId, int replyId)
+	{
+		var result = await _replyService.RemoveReaction(postId, commentId, replyId);
+		return result.IsFailure ? result.ToProblemDetails() : Ok(result.Value);
 	}
 
 }

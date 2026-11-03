@@ -38,6 +38,8 @@ public class CommentRepository : RepositoryBase<Comment>, ICommentRepository
 				PostId = x.PostId,
 				CommentedAt = x.CommentedAt,
 				Content = x.Content,
+				MediaUrl = x.MediaUrl,
+				MediaType = x.MediaType,
 				Post = x.Post,
 				PhotoUrl = x.AppUser.PhotoUrl,
 				RepliesCount = x.Replies.Count(),
@@ -59,6 +61,8 @@ public class CommentRepository : RepositoryBase<Comment>, ICommentRepository
 					PostId = x.PostId,
 					CommentedAt = x.CommentedAt,
 					Content = x.Content,
+					MediaUrl = x.MediaUrl,
+					MediaType = x.MediaType,
 					PhotoUrl = x.AppUser.PhotoUrl,
 					RepliesCount = x.Replies.Count(),
 				})
@@ -79,4 +83,25 @@ public class CommentRepository : RepositoryBase<Comment>, ICommentRepository
 
 		return comment;
 	}
+
+	public async Task<IReadOnlyList<CommentReaction>> GetReactionsAsync(IReadOnlyCollection<int> commentIds, bool trackChanges)
+	{
+		if (commentIds.Count == 0)
+		{
+			return Array.Empty<CommentReaction>();
+		}
+
+		return await _dbContext.CommentReactions
+			.AsNoTracking()
+			.Where(reaction => commentIds.Contains(reaction.CommentId))
+			.ToListAsync();
+	}
+
+	public Task<CommentReaction?> GetReactionAsync(int commentId, string userId, bool trackChanges) =>
+		(trackChanges ? _dbContext.CommentReactions : _dbContext.CommentReactions.AsNoTracking())
+			.FirstOrDefaultAsync(reaction => reaction.CommentId == commentId && reaction.UserId == userId);
+
+	public void AddReaction(CommentReaction reaction) => _dbContext.CommentReactions.Add(reaction);
+
+	public void RemoveReaction(CommentReaction reaction) => _dbContext.CommentReactions.Remove(reaction);
 }

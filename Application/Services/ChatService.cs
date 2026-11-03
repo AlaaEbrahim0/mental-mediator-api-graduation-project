@@ -1,10 +1,12 @@
 using System.Security.Cryptography;
 using Application.Contracts;
 using Application.Dtos.ChatDtos;
+using Application.Dtos.ReactionsDto;
 using Domain.Entities;
 using Domain.Enums;
 using Domain.Errors;
 using Domain.Repositories;
+using Domain.Value_Objects;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Shared;
@@ -564,7 +566,7 @@ public class ChatService : IChatService
 
 		var response = new ChatMessagePageResponse
 		{
-			Messages = page.Select(message => MapMessage(message)).ToList(),
+			Messages = page.Select(message => MapMessage(message, currentUser.Value.Id)).ToList(),
 			HasMore = hasMore,
 			NextBeforeId = !parameters.AfterId.HasValue && hasMore && page.Count > 0
 				? page[0].Id
@@ -628,7 +630,7 @@ public class ChatService : IChatService
 			// The URL must be one this storage service issued. That is what stops
 			// a client from attaching an arbitrary third-party link and having it
 			// rendered to every member of the room.
-			if (mediaType is not ("image" or "video") || !_storageService.IsManagedMediaUrl(mediaUrl!))
+			if (mediaType is not ("image" or "video" or "audio") || !_storageService.IsManagedMediaUrl(mediaUrl!))
 			{
 				return ChatErrors.InvalidMessageMedia();
 			}
@@ -649,7 +651,7 @@ public class ChatService : IChatService
 
 		if (existing is not null)
 		{
-			return HandleDuplicateMessage(existing, roomId, content, mediaUrl, mediaType);
+			return HandleDuplicateMessage(existing, roomId, content, mediaUrl, mediaType, currentUser.Value.Id);
 		}
 
 		// A media-only message has nothing to moderate. Text is still checked.
@@ -701,7 +703,7 @@ public class ChatService : IChatService
 		var duplicate = await _repos.ChatMessages.CreateMessageIfAbsentAsync(message);
 		if (duplicate is not null)
 		{
-			return HandleDuplicateMessage(duplicate, roomId, content, mediaUrl, mediaType);
+			return HandleDuplicateMessage(duplicate, roomId, content, mediaUrl, mediaType, currentUser.Value.Id);
 		}
 
 		var trackedRoom = await _repos.ChatRooms.GetRoomByIdAsync(roomId, true);
@@ -731,9 +733,9 @@ public class ChatService : IChatService
 		// Persist before broadcast. The notifier logs and swallows delivery
 		// failures so the command still succeeds; recovery uses the REST
 		// history endpoint.
-		await _realtimeNotifier.MessageCreatedAsync(roomId, MapMessage(message));
+		await _realtimeNotifier.MessageCreatedAsync(roomId, MapMessage(message, currentUser.Value.Id));
 
-		return MapMessage(message);
+		return MapMessage(message, currentUser.Value.Id);
 	}
 
 	public async Task<Result<StoredMedia>> UploadMessageMediaAsync(int roomId, IFormFile? file)
@@ -805,7 +807,7 @@ public class ChatService : IChatService
 
 		if (message.IsDeleted)
 		{
-			return MapMessage(message);
+			return MapMessage(message, currentUser.User.Id);
 		}
 
 		message.IsDeleted = true;
@@ -814,9 +816,154 @@ public class ChatService : IChatService
 		_repos.ChatMessages.UpdateMessage(message);
 		await _repos.SaveAsync();
 
-		await _realtimeNotifier.MessageDeletedAsync(message.RoomId, MapMessage(message));
+		await _realtimeNotifier.MessageDeletedAsync(message.RoomId, MapMessage(message, currentUser.User.Id));
 
-		return MapMessage(message);
+		return MapMessage(message, currentUser.User.Id);
+	}
+
+	public async Task<Result<ChatMessageResponse>> SetReactionAsync(long messageId, string reaction)
+	{
+		if (!ReactionKinds.IsValid(reaction))
+		{
+			return Error.Validation(
+				"Reactions.InvalidReaction",
+				"Reaction must be one of: like, love, haha, wow, sad.");
+		}
+
+		var currentUser = await GetCurrentUserAsync();
+		if (currentUser.IsFailure)
+		{
+			return currentUser.Error;
+		}
+
+		var message = await _repos.ChatMessages.GetMessageByIdAsync(messageId, false);
+		if (message is null)
+		{
+			return ChatErrors.MessageNotFound();
+		}
+
+		if (message.IsDeleted)
+		{
+			return ChatErrors.CannotReactToDeletedMessage();
+		}
+
+		var membership = await _repos.ChatRooms.GetMembershipAsync(
+			message.RoomId,
+			currentUser.Value.Id,
+			false);
+		if (!IsActiveMember(membership))
+		{
+			return ChatErrors.MessageNotFound();
+		}
+
+		var normalized = ReactionKinds.Normalize(reaction);
+		var existing = await _repos.ChatMessages.GetReactionAsync(messageId, currentUser.Value.Id, true);
+		if (existing is null)
+		{
+			_repos.ChatMessages.AddReaction(new ChatMessageReaction
+			{
+				MessageId = messageId,
+				UserId = currentUser.Value.Id,
+				Reaction = normalized,
+				CreatedAtUtc = DateTime.UtcNow
+			});
+		}
+		else
+		{
+			existing.Reaction = normalized;
+			existing.CreatedAtUtc = DateTime.UtcNow;
+		}
+
+		await _repos.SaveAsync();
+
+		return await BroadcastAndMapReactionAsync(
+			messageId,
+			message.RoomId,
+			membership!.Id,
+			normalized,
+			currentUser.Value.Id);
+	}
+
+	public async Task<Result<ChatMessageResponse>> RemoveReactionAsync(long messageId)
+	{
+		var currentUser = await GetCurrentUserAsync();
+		if (currentUser.IsFailure)
+		{
+			return currentUser.Error;
+		}
+
+		var message = await _repos.ChatMessages.GetMessageByIdAsync(messageId, false);
+		if (message is null)
+		{
+			return ChatErrors.MessageNotFound();
+		}
+
+		if (message.IsDeleted)
+		{
+			return ChatErrors.CannotReactToDeletedMessage();
+		}
+
+		var membership = await _repos.ChatRooms.GetMembershipAsync(
+			message.RoomId,
+			currentUser.Value.Id,
+			false);
+		if (!IsActiveMember(membership))
+		{
+			return ChatErrors.MessageNotFound();
+		}
+
+		var existing = await _repos.ChatMessages.GetReactionAsync(messageId, currentUser.Value.Id, true);
+		if (existing is not null)
+		{
+			_repos.ChatMessages.RemoveReaction(existing);
+			await _repos.SaveAsync();
+		}
+
+		return await BroadcastAndMapReactionAsync(
+			messageId,
+			message.RoomId,
+			membership!.Id,
+			null,
+			currentUser.Value.Id);
+	}
+
+	private async Task<Result<ChatMessageResponse>> BroadcastAndMapReactionAsync(
+		long messageId,
+		int roomId,
+		int actorMemberId,
+		string? actorReaction,
+		string currentUserId)
+	{
+		var updated = await _repos.ChatMessages.GetMessageByIdAsync(messageId, false);
+		if (updated is null)
+		{
+			return ChatErrors.MessageNotFound();
+		}
+
+		var state = ReactionState.From(
+			updated.Reactions.Select(reaction => (reaction.Reaction, reaction.UserId)),
+			null);
+
+		// One neutral payload for the whole room: the actor is identified by
+		// membership id so each viewer can resolve their own reaction locally.
+		await _realtimeNotifier.MessageReactionsUpdatedAsync(
+			roomId,
+			new ChatMessageReactionsUpdatedEvent
+			{
+				MessageId = messageId,
+				RoomId = roomId,
+				Reactions = state.Counts
+					.Select(count => new ReactionSummaryResponse
+					{
+						Reaction = count.Reaction,
+						Count = count.Count
+					})
+					.ToList(),
+				ActorMemberId = actorMemberId,
+				ActorReaction = actorReaction
+			});
+
+		return MapMessage(updated, currentUserId);
 	}
 
 	public async Task<Result<ChatMessageReportResponse>> ReportMessageAsync(long messageId, ReportChatMessageRequest request)
@@ -890,7 +1037,7 @@ public class ChatService : IChatService
 			return ChatErrors.ReportAlreadyExists();
 		}
 
-		return MapReport(report, message, false);
+		return MapReport(report, message, false, currentUser.Value.Id);
 	}
 
 	public async Task<Result<IReadOnlyList<ChatMessageReportResponse>>> GetRoomReportsAsync(int roomId, ChatReportRequestParameters parameters)
@@ -934,7 +1081,7 @@ public class ChatService : IChatService
 				continue;
 			}
 
-			response.Add(MapReport(report, report.Message, true));
+			response.Add(MapReport(report, report.Message, true, currentUser.User.Id));
 		}
 
 		return Result<IReadOnlyList<ChatMessageReportResponse>>.Success(response);
@@ -991,7 +1138,7 @@ public class ChatService : IChatService
 			await _repos.SaveAsync();
 		}
 
-		return MapReport(report, report.Message, true);
+		return MapReport(report, report.Message, true, currentUser.User.Id);
 	}
 
 	public async Task<Result<ChatRoomMemberResponse>> UpdateMemberRoleAsync(
@@ -1724,7 +1871,8 @@ public class ChatService : IChatService
 		int roomId,
 		string content,
 		string? mediaUrl,
-		string? mediaType)
+		string? mediaType,
+		string currentUserId)
 	{
 		var sameMedia = string.Equals(existing.MediaUrl, mediaUrl, StringComparison.Ordinal) &&
 			string.Equals(existing.MediaType, NormalizeType(mediaType), StringComparison.Ordinal);
@@ -1736,7 +1884,7 @@ public class ChatService : IChatService
 			return ChatErrors.ClientMessageIdConflict();
 		}
 
-		return MapMessage(existing);
+		return MapMessage(existing, currentUserId);
 	}
 
 	private static bool IsActiveMember(ChatRoomMember? member) =>
@@ -2002,8 +2150,17 @@ public class ChatService : IChatService
 
 	private static ChatMessageResponse MapMessage(
 		ChatMessage message,
-		bool includeDeletedContent = false) =>
-		new()
+		string? currentUserId,
+		bool includeDeletedContent = false)
+	{
+		var hideContent = message.IsDeleted && !includeDeletedContent;
+		var state = hideContent
+			? null
+			: ReactionState.From(
+				message.Reactions.Select(reaction => (reaction.Reaction, reaction.UserId)),
+				currentUserId);
+
+		return new ChatMessageResponse
 		{
 			Id = message.Id,
 			RoomId = message.RoomId,
@@ -2012,18 +2169,28 @@ public class ChatService : IChatService
 			ClientMessageId = message.ClientMessageId,
 			SenderDisplayName = message.SenderDisplayName,
 			SenderIsDoctor = message.SenderIsDoctor,
-			Content = message.IsDeleted && !includeDeletedContent ? string.Empty : message.Content,
+			Content = hideContent ? string.Empty : message.Content,
 			// A deleted message hides its media too: the URL would still resolve.
-			MediaUrl = message.IsDeleted && !includeDeletedContent ? null : message.MediaUrl,
-			MediaType = message.IsDeleted && !includeDeletedContent ? null : message.MediaType,
+			MediaUrl = hideContent ? null : message.MediaUrl,
+			MediaType = hideContent ? null : message.MediaType,
 			SentAtUtc = message.SentAtUtc,
-			IsDeleted = message.IsDeleted
+			IsDeleted = message.IsDeleted,
+			Reactions = state?.Counts
+				.Select(count => new ReactionSummaryResponse
+				{
+					Reaction = count.Reaction,
+					Count = count.Count
+				})
+				.ToList() ?? new List<ReactionSummaryResponse>(),
+			MyReaction = state?.MyReaction
 		};
+	}
 
 	private static ChatMessageReportResponse MapReport(
 		ChatMessageReport report,
 		ChatMessage message,
-		bool includeDeletedContent) =>
+		bool includeDeletedContent,
+		string? currentUserId) =>
 		new()
 		{
 			Id = report.Id,
@@ -2034,7 +2201,7 @@ public class ChatService : IChatService
 			ReviewedAtUtc = report.ReviewedAtUtc,
 			// Moderators need the original content to review a report even if
 			// the sender deleted the message after it was reported.
-			Message = MapMessage(message, includeDeletedContent)
+			Message = MapMessage(message, currentUserId, includeDeletedContent)
 		};
 
 	private static string BuildPreview(ChatMessage message)
@@ -2043,6 +2210,7 @@ public class ChatService : IChatService
 		{
 			"image" => "Sent a photo",
 			"video" => "Sent a video",
+			"audio" => "Sent a voice message",
 			_ => null
 		};
 

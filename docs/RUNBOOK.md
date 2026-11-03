@@ -269,7 +269,7 @@ maintainer's own, and is recoverable only from a backup.
 cp .env.example .env                      # fill in values; .env is gitignored, never committed
 dotnet restore
 dotnet build -c Release                   # expect 0 errors, 6 warnings (package advisories)
-dotnet test  -c Release                   # expect 244 passed
+dotnet test  -c Release                   # expect 271 passed
 dotnet run --project API --launch-profile https
 ```
 

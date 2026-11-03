@@ -11,6 +11,55 @@ release tags; entries are dated by the day the work landed on `master`.
 Nothing queued. Under the freeze, anything that is not a defect fix is recorded as a deferred
 item in [`docs/KNOWN_LIMITATIONS.md`](docs/KNOWN_LIMITATIONS.md) instead of being scheduled here.
 
+## [2026-11-03] — Community reactions, comment/reply attachments, chat voice notes
+
+Requested by the project owner as a deliberate exception to the feature freeze, together with
+the matching portal work in `../shared-ui`, `../patient-ui` and `../doctor-ui`. Baseline:
+`dotnet build -c Release` → 0 errors, 6 warnings; `dotnet test -c Release` → **271 passed**
+(was 244 before the 27 reaction/attachment tests). **API-first rollout: this deploy must land
+before the portals, and every change below is additive** — `/like`, JSON comment bodies and
+all existing response shapes keep working.
+
+### Added
+
+- **Reactions** (`like`, `love`, `haha`, `wow`, `sad`) on posts, comments, replies and chat
+  messages. `Domain/Enums/ReactionKinds.cs` is the vocabulary; `Domain/Value_Objects/ReactionState.cs`
+  aggregates one query per page. New `PUT`/`DELETE …/reactions` routes on
+  `/api/posts/{id}`, `/api/posts/{postId}/comments/{commentId}`, `…/replies/{replyId}` and
+  `/api/chat/messages/{messageId}`. Responses gained `reactions` + `myReaction`.
+- `PostLike.Reaction` (migration `AddCommunityReactionsAndAttachments`, `PostLikes` keeps its
+  name and every existing row stays a valid `like`) plus new `CommentReactions`,
+  `ReplyReactions` and `ChatMessageReactions` tables, each with a unique `(UserId, TargetId)`
+  index — one reaction per member per target, enforced by the database.
+- **One image or video attachment per comment/reply.** `Comment`/`Reply` gained `MediaUrl` +
+  `MediaType`; `PostMediaAsset` gained nullable `CommentId`/`ReplyId` so the existing upload
+  ledger also owns comment and reply media (`NoAction` FKs; the services delete the rows and
+  destroy the Cloudinary asset, because SQL Server refuses two cascade paths into one table).
+  `Application/Community/AttachmentMediaPolicy.cs` accepts a URL only when the ledger says the
+  submitting account owns it and it is attached to nothing else.
+- **Voice notes in chat rooms.** `CloudinaryStorageService` now classifies and uploads audio
+  (`.mp3 .m4a .wav .ogg .oga .aac .opus .weba .flac`, 10 MB cap) and deletes it through the
+  video resource type. `SendChatMessageRequest` accepts `mediaType: "audio"`, a voice note is a
+  valid media-only message, and `LastMessagePreview` renders “Sent a voice message”.
+- `MessageReactionsUpdated` SignalR event: one neutral payload per room carrying the counts and
+  `actorMemberId`/`actorReaction`, so each viewer resolves its own `myReaction` client-side.
+- `Tests/ChatReactionTests.cs` (11) and `Tests/CommunityReactionTests.cs` (16): membership gating
+  on message reactions, replace-not-stack per member, deleted-message refusal, the like/reaction
+  equivalence, media-only comment and reply creation, ownership and reuse rejection, and
+  comment-thread attachment cleanup.
+
+### Changed
+
+- `PUT/DELETE /posts/{id}/like` are now aliases for setting/removing the `like` reaction, and
+  `LikesCount`/`IsLikedByCurrentUser` are computed from the `like` token only. A `love` reaction
+  does not raise the like count. Notifying the author reads “reacted to your post” for any token
+  other than `like`.
+- `CreateReplyRequest.Content` became `string` defaulting to `string.Empty`, matching
+  `CreateCommentRequest`. Media-only replies previously mapped to a `null` content and failed at
+  `SaveChanges`; this is the defect fix that makes a reply-with-video actually persist.
+- Hate-speech moderation on a comment or reply now runs only when text is present, so a
+  media-only post is not sent to the model as an empty string.
+
 ## [2026-11-02] — Doctor ratings
 
 Requested by the project owner as a deliberate exception to the feature freeze. Baseline:

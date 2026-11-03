@@ -13,6 +13,8 @@ public interface IChatRealtimeNotifier
 
 	Task MessageDeletedAsync(int roomId, ChatMessageResponse message);
 
+	Task MessageReactionsUpdatedAsync(int roomId, ChatMessageReactionsUpdatedEvent update);
+
 	Task MemberUpdatedAsync(int roomId, ChatRoomMemberResponse member);
 
 	Task MemberLeftAsync(int roomId, int memberId, string userId);

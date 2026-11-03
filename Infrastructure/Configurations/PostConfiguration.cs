@@ -1,4 +1,5 @@
 ﻿using Domain.Entities;
+using Domain.Enums;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
@@ -79,5 +80,6 @@ public class PostLikeConfiguration : IEntityTypeConfiguration<PostLike>
 		builder.HasOne<BaseUser>().WithMany().HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.NoAction);
 		builder.HasIndex(x => new { x.UserId, x.PostId }).IsUnique();
 		builder.Property(x => x.UserId).HasMaxLength(450).IsRequired();
+		builder.Property(x => x.Reaction).HasMaxLength(16).IsRequired().HasDefaultValue(ReactionKinds.Like);
 	}
 }

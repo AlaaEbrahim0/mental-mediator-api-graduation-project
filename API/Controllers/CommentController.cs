@@ -1,6 +1,7 @@
 ﻿
 using Application.Contracts;
 using Application.Dtos.CommentsDtos;
+using Application.Dtos.ReactionsDto;
 using Application.Services;
 using Infrastructure.Hubs;
 using Microsoft.AspNetCore.Authorization;
@@ -86,6 +87,24 @@ public class CommentController : ControllerBase
 			return result.ToProblemDetails();
 		}
 		return Ok(result.Value);
+	}
+
+	/// <summary>Sets or replaces the current user's reaction to a comment.</summary>
+	[HttpPut("{commentId:int}/reactions")]
+	[Authorize]
+	public async Task<IActionResult> ReactToComment(int postId, int commentId, [FromBody] SetReactionRequest request)
+	{
+		var result = await _commentService.SetReaction(postId, commentId, request.Reaction);
+		return result.IsFailure ? result.ToProblemDetails() : Ok(result.Value);
+	}
+
+	/// <summary>Removes the current user's reaction from a comment.</summary>
+	[HttpDelete("{commentId:int}/reactions")]
+	[Authorize]
+	public async Task<IActionResult> RemoveCommentReaction(int postId, int commentId)
+	{
+		var result = await _commentService.RemoveReaction(postId, commentId);
+		return result.IsFailure ? result.ToProblemDetails() : Ok(result.Value);
 	}
 
 

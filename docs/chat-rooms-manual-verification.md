@@ -73,6 +73,8 @@ All routes require a bearer token.
 | `GET` | `/api/chat/rooms/{roomId}/messages?beforeId=&afterId=&limit=` | Active member | 200 `ChatMessagePageResponse` |
 | `POST` | `/api/chat/rooms/{roomId}/messages` | Active member in an unlocked room | 200 `ChatMessageResponse` (idempotent) |
 | `DELETE` | `/api/chat/messages/{messageId}` | Sender, owner, or Doctor moderator | 200 `ChatMessageResponse` |
+| `PUT` | `/api/chat/messages/{messageId}/reactions` (`{ "reaction": "love" }`) | Active member; message not deleted | 200 `ChatMessageResponse` |
+| `DELETE` | `/api/chat/messages/{messageId}/reactions` | Active member | 200 `ChatMessageResponse` |
 | `POST` | `/api/chat/messages/{messageId}/reports` | Active member, not the sender | 200 `ChatMessageReportResponse` |
 | `GET` | `/api/chat/rooms/{roomId}/reports?status=&limit=` | Owner or Doctor moderator | 200 `ChatMessageReportResponse[]` |
 | `PATCH` | `/api/chat/rooms/{roomId}/reports/{reportId}` | Owner or Doctor moderator | 200 `ChatMessageReportResponse` |
@@ -114,6 +116,13 @@ in a sliding 15 minutes; a throttled attempt returns the same
 
 // POST /api/chat/rooms/{roomId}/messages
 { "content": "Hello", "clientMessageId": "5f0c2d5e-5f4a-4d33-9d1f-0e6c8c1d2a11" }
+
+// POST /api/chat/rooms/{roomId}/messages — a voice note, uploaded first
+{ "content": "", "mediaUrl": "https://res.cloudinary.com/.../chat/voice.mp3",
+  "mediaType": "audio", "clientMessageId": "9a1b..." }
+
+// PUT /api/chat/messages/{messageId}/reactions
+{ "reaction": "love" }
 
 // POST /api/chat/messages/{messageId}/reports
 { "reason": "This message is harassing another member." }
@@ -218,6 +227,15 @@ contain line breaks and tabs, but no other control characters.
   members. Room metadata is browsable, but conversation content is not.
 - `ChatMessageResponse.Content` is empty when `IsDeleted` is true. Render a neutral
   “message removed” placeholder; do not attempt to recover deleted content.
+- `ChatMessageResponse.Reactions` is the ordered count list (`[{ "reaction": "like",
+  "count": 3 }]`) and `MyReaction` is the caller's own token or `null`. Both are
+  computed per reader, so they are never carried in a shared payload — the client
+  reconciles them from `MessageReactionsUpdated` using its own `myMemberId`.
+  A deleted message reports no reactions to anybody.
+- `MediaType` is `"image"`, `"video"` or `"audio"`; a voice note is a media-only
+  message with empty `Content`, so the transcript placeholder is “Sent a voice
+  message”. Media URLs must come from the managed storage service — the send path
+  rejects any URL it did not issue, for every kind including audio.
 - `SenderDisplayName`, `SenderIsDoctor`, and `SenderMemberId` are stored on the
   message when it is sent. Later room-role changes do not rewrite the identity
   shown on older messages.
@@ -265,6 +283,7 @@ Server events:
 | --- | --- | --- |
 | `MessageCreated` | `ChatMessageResponse` | A message was persisted. |
 | `MessageDeleted` | `ChatMessageResponse` | A message was soft-deleted; `isDeleted=true`, content empty. |
+| `MessageReactionsUpdated` | `{ messageId, roomId, reactions, actorMemberId, actorReaction }` | A member set or removed a reaction. One neutral payload goes to the whole room: `reactions` are the authoritative counts, `actorMemberId`/`actorReaction` say who changed and to what (`null` when removed). Each viewer keeps its own `myReaction` unless `actorMemberId` is its own per-room id. |
 | `MemberUpdated` | `ChatRoomMemberResponse` | A member joined, rejoined, or had a role/display change. |
 | `MemberLeft` | per-room `memberId` (integer) | A member left; the leaver's connections are removed from the group first. |
 | `RoomArchived` | `ChatRoomResponse` | The owner archived the room. |
@@ -503,6 +522,9 @@ cannot be exercised against an unreachable database.
 | M4-22 | `UnsubscribeFromRoom` | No further events on that connection; membership remains |
 | M4-23 | `/notification-hub` negotiate with a valid token | Still 200 (regression) |
 | M4-24 | Force a broadcast failure, then send via REST | REST still succeeds; message is in history; error is logged without content |
+| M4-25 | `patientA` reacts to a message while `patientB` is subscribed | Both receive one `MessageReactionsUpdated` with identical `reactions` and `actorMemberId` |
+| M4-26 | `patientB` already reacted `love`, `patientA` reacts `haha` | `patientB`'s `myReaction` stays `love`; `patientA`'s becomes `haha` — only the actor's view moves |
+| M4-27 | A viewer reacts while offline, then recovers | History returns `myReaction` computed for that reader, not the sender's |
 
 ### 5.12 Privacy, patient creation, locking and covers
 
@@ -528,6 +550,21 @@ cannot be exercised against an unreachable database.
 | R-18 | A plain member archives | 403 `Chat.ModeratorRequired` |
 | R-19 | A patient's third room within an hour | 429 from `chat-room-creation` |
 | R-20 | Staff create a sixth room within an hour | 429; staff and patient budgets are independent |
+
+### 5.13 Voice notes and reactions
+
+| # | Action | Expected |
+| --- | --- | --- |
+| V-1 | Upload a recorded clip to `POST /api/chat/rooms/{roomId}/media` | 200; `type` is `audio`; the URL is under the managed cloud |
+| V-2 | Send a media-only message with `mediaType: "audio"` | 200; `content` empty; preview renders “Sent a voice message” |
+| V-3 | Upload a clip over 10 MB | Rejected before the storage call |
+| V-4 | Send `mediaType: "audio"` with a third-party URL | 400 `Chat.InvalidMessageMedia` |
+| V-5 | `PUT /api/chat/messages/{id}/reactions` with `"love"` | 200; `myReaction: "love"`; one `ChatMessageReactions` row |
+| V-6 | React again with `"sad"` | 200; still one row for that member, now `sad` |
+| V-7 | `DELETE /api/chat/messages/{id}/reactions` | 200; row gone; `reactions` empty |
+| V-8 | React with `"angry"` | 400 `Reactions.InvalidReaction`; no row written |
+| V-9 | A non-member reacts to a message id read from another account | 404 `Chat.MessageNotFound` — the id is not a permission |
+| V-10 | React to a soft-deleted message | 400 `Chat.CannotReactToDeletedMessage` |
 
 ---
 

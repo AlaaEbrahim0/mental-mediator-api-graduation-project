@@ -21,6 +21,7 @@ public class ChatMessageReportRepository : IChatMessageReportRepository
 	public Task<ChatMessageReport?> GetReportByIdAsync(int reportId, bool trackChanges) =>
 		Reports(trackChanges)
 			.Include(x => x.Message)
+			.ThenInclude(x => x!.Reactions)
 			.FirstOrDefaultAsync(x => x.Id == reportId);
 
 	public Task<ChatMessageReport?> GetReportAsync(long messageId, string reporterId, bool trackChanges) =>
@@ -30,6 +31,7 @@ public class ChatMessageReportRepository : IChatMessageReportRepository
 	{
 		var query = Reports(trackChanges)
 			.Include(x => x.Message)
+			.ThenInclude(x => x!.Reactions)
 			.Where(x => x.Message.RoomId == roomId);
 
 		if (status.HasValue)

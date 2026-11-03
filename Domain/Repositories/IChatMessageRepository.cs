@@ -7,6 +7,9 @@ public interface IChatMessageRepository
 	Task<ChatMessage?> GetMessageByIdAsync(long messageId, bool trackChanges);
 	Task<ChatMessage?> GetByClientMessageIdAsync(string senderId, Guid clientMessageId, bool trackChanges);
 	Task<IReadOnlyList<ChatMessage>> GetMessagesAsync(int roomId, long? beforeId, long? afterId, int limit, bool trackChanges);
+	Task<ChatMessageReaction?> GetReactionAsync(long messageId, string userId, bool trackChanges);
+	void AddReaction(ChatMessageReaction reaction);
+	void RemoveReaction(ChatMessageReaction reaction);
 	Task<ChatMessage?> GetLatestMessageAsync(int roomId, bool trackChanges);
 	Task<IReadOnlyDictionary<int, ChatMessage>> GetLatestMessagesAsync(IReadOnlyCollection<int> roomIds, bool trackChanges);
 

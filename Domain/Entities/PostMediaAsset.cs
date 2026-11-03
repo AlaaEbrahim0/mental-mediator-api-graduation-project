@@ -22,5 +22,15 @@ public class PostMediaAsset
 
 	public Post? Post { get; set; }
 
+	/// <summary>Set when the asset is attached to a comment instead of a post.</summary>
+	public int? CommentId { get; set; }
+
+	public Comment? Comment { get; set; }
+
+	/// <summary>Set when the asset is attached to a reply instead of a post.</summary>
+	public int? ReplyId { get; set; }
+
+	public Reply? Reply { get; set; }
+
 	public DateTime CreatedAtUtc { get; set; }
 }

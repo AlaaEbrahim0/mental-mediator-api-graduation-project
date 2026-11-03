@@ -2,6 +2,7 @@
 using Domain.Entities;
 using Domain.Enums;
 using Domain.Repositories;
+using Domain.Value_Objects;
 using Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using Shared.RequestParameters;
@@ -135,7 +136,7 @@ public class PostRepository : RepositoryBase<Post>, IPostRepository
 
 	public async Task<(int Count, bool IsLiked)> GetLikeState(int postId, string? userId)
 	{
-		var query = _dbContext.PostLikes.Where(x => x.PostId == postId);
+		var query = _dbContext.PostLikes.Where(x => x.PostId == postId && x.Reaction == ReactionKinds.Like);
 		return (await query.CountAsync(), userId != null && await query.AnyAsync(x => x.UserId == userId));
 	}
 
@@ -149,7 +150,7 @@ public class PostRepository : RepositoryBase<Post>, IPostRepository
 
 		var counts = await _dbContext.PostLikes
 			.AsNoTracking()
-			.Where(like => ids.Contains(like.PostId))
+			.Where(like => ids.Contains(like.PostId) && like.Reaction == ReactionKinds.Like)
 			.GroupBy(like => like.PostId)
 			.Select(group => new { PostId = group.Key, Count = group.Count() })
 			.ToListAsync();
@@ -158,7 +159,7 @@ public class PostRepository : RepositoryBase<Post>, IPostRepository
 			? new HashSet<int>()
 			: (await _dbContext.PostLikes
 				.AsNoTracking()
-				.Where(like => ids.Contains(like.PostId) && like.UserId == userId)
+				.Where(like => ids.Contains(like.PostId) && like.UserId == userId && like.Reaction == ReactionKinds.Like)
 				.Select(like => like.PostId)
 				.ToListAsync())
 				.ToHashSet();
@@ -172,11 +173,80 @@ public class PostRepository : RepositoryBase<Post>, IPostRepository
 			});
 	}
 
+	public async Task<ReactionState> GetReactionState(int postId, string? userId)
+	{
+		var rows = await _dbContext.PostLikes
+			.AsNoTracking()
+			.Where(x => x.PostId == postId)
+			.Select(x => new { x.Reaction, x.UserId })
+			.ToListAsync();
+
+		return ReactionState.From(rows.Select(row => (row.Reaction, row.UserId)), userId);
+	}
+
+	public async Task<IReadOnlyDictionary<int, ReactionState>> GetReactionStates(IEnumerable<int> postIds, string? userId)
+	{
+		var ids = postIds.Distinct().ToArray();
+		if (ids.Length == 0)
+		{
+			return new Dictionary<int, ReactionState>();
+		}
+
+		var rows = await _dbContext.PostLikes
+			.AsNoTracking()
+			.Where(x => ids.Contains(x.PostId))
+			.Select(x => new { x.PostId, x.Reaction, x.UserId })
+			.ToListAsync();
+
+		var byPost = rows.GroupBy(row => row.PostId);
+		return ids.ToDictionary(
+			id => id,
+			id =>
+			{
+				var postRows = byPost.FirstOrDefault(group => group.Key == id);
+				return ReactionState.From(
+					postRows?.Select(row => (row.Reaction, row.UserId)) ?? Enumerable.Empty<(string, string)>(),
+					userId);
+			});
+	}
+
 	public async Task SetLike(int postId, string userId, bool liked)
 	{
+		if (liked)
+		{
+			await SetReaction(postId, userId, ReactionKinds.Like);
+			return;
+		}
+
+		await RemoveReaction(postId, userId);
+	}
+
+	public async Task SetReaction(int postId, string userId, string reaction)
+	{
 		var existing = await _dbContext.PostLikes.FirstOrDefaultAsync(x => x.PostId == postId && x.UserId == userId);
-		if (liked && existing == null) _dbContext.PostLikes.Add(new PostLike { PostId = postId, UserId = userId, LikedOn = DateTime.UtcNow });
-		else if (!liked && existing != null) _dbContext.PostLikes.Remove(existing);
+		if (existing is null)
+		{
+			_dbContext.PostLikes.Add(new PostLike
+			{
+				PostId = postId,
+				UserId = userId,
+				Reaction = reaction,
+				LikedOn = DateTime.UtcNow
+			});
+			return;
+		}
+
+		existing.Reaction = reaction;
+		existing.LikedOn = DateTime.UtcNow;
+	}
+
+	public async Task RemoveReaction(int postId, string userId)
+	{
+		var existing = await _dbContext.PostLikes.FirstOrDefaultAsync(x => x.PostId == postId && x.UserId == userId);
+		if (existing is not null)
+		{
+			_dbContext.PostLikes.Remove(existing);
+		}
 	}
 
 	private static IQueryable<Post> ApplyAudience(IQueryable<Post> query, PostAudience audience)

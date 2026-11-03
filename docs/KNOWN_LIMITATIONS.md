@@ -154,3 +154,43 @@ navigations to `Post`/`Reply`/`UserCertificate`/`UserQualification`. Non-fatal; 
 soft-delete filters and required relationships coexist as configured.
 - **Recommended fix:** matching query filters on the dependent entities, or model
   the navigation as optional, if the warnings are ever promoted to errors.
+
+### Reactions keep the `PostLikes` name — intentional
+Posts store reactions in the historical `PostLikes` table with a `Reaction` column,
+while comments, replies and chat messages use `*Reactions` tables. Renaming the
+table would need a migration and changes in both portals for no behavioural gain.
+- **Consequence:** reading the schema, `PostLikes` is a reaction ledger, not a like
+  ledger; `LikesCount` is derived from the rows whose token is `like`.
+
+### Who reacted is not exposed — intentional
+Reaction responses carry aggregate counts and the caller's own token only. There is
+no `GET .../reactions` list of members, and `PostLikes.UserId`/`*Reaction.UserId`
+stay internal (the global user id never appears in a community response).
+- **Recommended fix, if the product ever asks for it:** a per-target list scoped to
+  the audience that may already read the target, paginated, returning per-room or
+  per-post member ids rather than global ids.
+
+### Reaction writes are not rate limited — accepted risk
+The `PUT/DELETE .../reactions` endpoints (post, comment, reply, chat message) carry
+no `EnableRateLimiting` policy, matching the `/like` endpoints they replace. Writes
+are idempotent per member per target — one row can only ever be created, replaced or
+removed — so the worst case is request noise, not ledger growth.
+- **Recommended fix:** a shared `reactions` policy if abuse shows up in the logs.
+
+### Comment and reply attachments are immutable and single — intentional
+One image or video per comment/reply, chosen at creation; an edit cannot swap it and
+the validator rejects `audio` on these two surfaces (voice is a chat affordance). The
+attachment is honoured only when the `PostMediaAssets` ledger says the submitting
+account owns it and it is attached to nothing else.
+- **Recommended fix, if editing becomes a requirement:** accept a new public id,
+  verify ownership the same way, and delete the replaced asset after the commit.
+
+### Voice notes are capped at 2 minutes / 10 MB and browser-encoded — deferred
+`ChatComposer` records with `MediaRecorder`, stops itself at 2:00, and the API caps
+audio uploads at 10 MB. The container and codec are whatever the browser chooses
+(`.webm`/Opus in Chromium and Firefox, `.mp4`/AAC in Safari), and the extension is
+inferred from the recorded MIME type — it is not transcoded anywhere.
+- **Consequence:** playback depends on the viewer's codecs; a file that plays in the
+  recording browser is normally playable in the same family, not across families.
+- **Recommended fix:** a server-side transcode pass, or a fixed `audio/webm;codecs=opus`
+  contract with a recording-time fallback message.
