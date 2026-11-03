@@ -60,6 +60,14 @@ all existing response shapes keep working.
 - Hate-speech moderation on a comment or reply now runs only when text is present, so a
   media-only post is not sent to the model as an empty string.
 
+### Deferred
+
+- `docs/openapi.json` is now eight routes behind the live surface: the four
+  `PUT/DELETE …/reactions` pairs are missing from the snapshot (94 paths exported at commit
+  `2bdc6a2`). Refreshing it means running the API and saving `/swagger/v1/swagger.json`, and
+  that export path is not scripted in this repo, so it was not regenerated as part of this
+  change. The Swagger UI served at `/swagger` is generated from the running app and is correct.
+
 ## [2026-11-02] — Doctor ratings
 
 Requested by the project owner as a deliberate exception to the feature freeze. Baseline:
